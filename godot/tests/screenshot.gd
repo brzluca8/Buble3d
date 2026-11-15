@@ -17,6 +17,8 @@ func _initialize() -> void:
 		hud.blast.nc = hud.blast.RAINBOW
 		hud.blast.cc = hud.blast.BOMB
 		hud.blast.mt = 0.0
+	elif args.size() > 1 and args[1].begins_with("tema"):
+		main.apply_theme(int(args[1].substr(4)))
 	elif args.size() > 1 and args[1] in ["attack", "raid", "album", "noenergy"]:
 		var hud = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
 		var g = root.get_node("Game")

@@ -56,6 +56,16 @@ const TEXTURED := {"Piatra": "cream", "Soclu": "ped", "Pavaj": "stone", "Acoperi
 ## Nuanțe calde (ca în randare): piatra crem mai caldă, iarba mai bogată, stânca mai adâncă.
 const TINT := {"Piatra": Color(0.95, 0.88, 0.78), "Soclu": Color(0.9, 0.82, 0.7), "Pavaj": Color(0.92, 0.84, 0.72), "Iarba": Color(0.72, 0.9, 0.55), "Stanca": Color(0.82, 0.76, 0.8), "AcoperisTurcoaz": Color(0.95, 1.0, 1.0)}
 
+## Materialele create pe categorii (pentru temele insulelor): cheie -> [material...]
+static var registry := {}
+
+static func register(key: String, m: BaseMaterial3D) -> void:
+	m.set_meta("base", m.albedo_color)
+	if not registry.has(key):
+		registry[key] = []
+	registry[key].append(m)
+
+
 static func _apply_textures(n: Node) -> void:
 	if n is MeshInstance3D:
 		var mi := n as MeshInstance3D
@@ -74,6 +84,7 @@ static func _apply_textures(n: Node) -> void:
 						copy.roughness = src.roughness
 						copy.metallic = src.metallic
 						mi.set_surface_override_material(i, copy)
+						register(key, copy)
 					else:
 						mi.set_surface_override_material(i, base)
 	for c in n.get_children():

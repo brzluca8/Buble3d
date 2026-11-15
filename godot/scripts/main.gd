@@ -34,12 +34,14 @@ func _ready() -> void:
 	Game.selected.connect(_on_selected)
 	Game.upgraded.connect(_on_upgraded)
 	Game.quality_changed.connect(func(_q): _apply_quality())
+	Game.island_completed.connect(func(_i): apply_theme(Game.island))
 	_apply_quality()
+	apply_theme(Game.island)
 
 
 # ---------------- mediu și lumini ----------------
 func _build_environment() -> void:
-	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat = ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color("3d72cf")
 	sky_mat.sky_horizon_color = Color("a9cdf3")
 	sky_mat.ground_horizon_color = Color("bcd6f5")
@@ -349,6 +351,64 @@ func _build_sky() -> void:
 		g.position = FAR[i]
 		add_child(g)
 		far_islands.append(g)
+
+
+# ---------------- temele insulelor ----------------
+## Fiecare insulă are propria atmosferă: cer, ceață, soare, acoperișuri, iarbă, piatră, stâncă.
+const THEMES := [
+	{"sky": ["3d72cf", "a9cdf3", "8fb4e8"], "fog": "b9d3f3", "sun": "ffe4b8", "amb": "c9a98a",
+		"roof": "", "grass": "ffffff", "stone": "ffffff", "rock": "ffffff", "cloud": "ffffff"},
+	# Insula de Cristal – rece, cristalină
+	{"sky": ["3a6fd0", "d6e8ff", "a8c8f0"], "fog": "d0e4ff", "sun": "eaf2ff", "amb": "9fb4d8",
+		"roof": "6fa4ff", "grass": "a8e6d0", "stone": "e8f0ff", "rock": "a9b8e0", "cloud": "eef4ff"},
+	# Valea Lavandei – violet, roz
+	{"sky": ["6a5ad8", "f2c8e8", "c8a8e8"], "fog": "e8c8f0", "sun": "ffe0f0", "amb": "c09ac8",
+		"roof": "9a70e0", "grass": "b8d890", "stone": "fff0f8", "rock": "c8a8d8", "cloud": "fff0fa"},
+	# Țărmul de Aur – apus cald
+	{"sky": ["3f7fd8", "ffd9a0", "f0b890"], "fog": "ffe0b8", "sun": "ffc880", "amb": "d8a070",
+		"roof": "e0a030", "grass": "d8e070", "stone": "fff0d0", "rock": "d8b098", "cloud": "fff0dc"},
+	# Grădina Stelelor – amurg
+	{"sky": ["1f2a6b", "8a7ad8", "4a4aa0"], "fog": "8a8ad0", "sun": "b8c0ff", "amb": "7a70b8",
+		"roof": "2fb0c8", "grass": "88c0a0", "stone": "d8d8ff", "rock": "8a88c0", "cloud": "c8c8ff"},
+	# Cetatea Curcubeului – vesel, saturat
+	{"sky": ["2f9fe0", "c8f4ff", "98d8f0"], "fog": "c8f0ff", "sun": "fff0c8", "amb": "c8b0a0",
+		"roof": "ff74ac", "grass": "a0f080", "stone": "fff8f0", "rock": "c8a8b8", "cloud": "ffffff"},
+]
+var sky_mat: ProceduralSkyMaterial
+
+
+func apply_theme(index: int) -> void:
+	var th: Dictionary = THEMES[(index - 1) % THEMES.size()]
+	if sky_mat:
+		sky_mat.sky_top_color = Color(th.sky[0])
+		sky_mat.sky_horizon_color = Color(th.sky[1])
+		sky_mat.ground_horizon_color = Color(th.sky[1]).lerp(Color(th.sky[2]), 0.4)
+		sky_mat.ground_bottom_color = Color(th.sky[2])
+	env.fog_light_color = Color(th.fog)
+	env.ambient_light_color = Color(th.amb)
+	sun.light_color = Color(th.sun)
+	var map := {"AcoperisTurcoaz": th.roof, "Iarba": th.grass, "Piatra": th.stone, "Soclu": th.stone, "Pavaj": th.stone, "Stanca": th.rock}
+	for key in map:
+		for m in Models.registry.get(key, []):
+			(m as BaseMaterial3D).albedo_color = _themed(m, map[key], key == "AcoperisTurcoaz")
+	for pk in [["rock", th.rock, false], ["ped", th.stone, false], ["grass", th.grass, false], ["teal", th.roof, true]]:
+		var pm: StandardMaterial3D = Proc.M(pk[0])
+		if not pm.has_meta("base"):
+			pm.set_meta("base", pm.albedo_color)
+		pm.albedo_color = _themed(pm, pk[1], pk[2])
+	for c in clouds:
+		if c is Sprite3D:
+			var a: float = c.modulate.a
+			c.modulate = Color(th.cloud)
+			c.modulate.a = a
+
+
+## Culoarea unui material pentru temă: nuanțare (×) sau, pentru acoperișuri, culoare directă.
+func _themed(m: Material, col: String, absolute: bool) -> Color:
+	var base := Color(m.get_meta("base"))
+	if col == "":
+		return base
+	return Color(col) if absolute else base * Color(col)
 
 
 # ---------------- evenimente ----------------

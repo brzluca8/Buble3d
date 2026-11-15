@@ -98,11 +98,6 @@ func _ready() -> void:
 	_rival_visit()
 	_tick_energy()
 	save_game()
-	var t := Timer.new()
-	t.wait_time = INCOME_EVERY_S
-	t.autostart = true
-	t.timeout.connect(_on_income)
-	add_child(t)
 	var e := Timer.new()
 	e.wait_time = 1.0
 	e.autostart = true
@@ -129,7 +124,7 @@ func island_name() -> String:
 
 ## Costul crește cu nivelul clădirii și cu numărul insulei.
 func cost(id: String) -> int:
-	return roundi(building(id).b * pow(levels[id], 1.7) * pow(island, 1.35))
+	return roundi(building(id).b * pow(levels[id], 1.7) * pow(island, 2.0))
 
 
 ## Unitatea de recompensă: crește cu insula și cu progresul pe insulă.
@@ -204,7 +199,8 @@ func add_coins(n: float) -> void:
 
 
 func blast_reward(score: int, won: bool) -> int:
-	var co := score / 4 + (100 + 20 * (blast_level - 1) if won else 0)
+	# recompensa crește cu insula, ca Buble Blast să rămână util și mai târziu
+	var co := int((score / 4 + (100 + 20 * (blast_level - 1) if won else 0)) * (0.5 + 0.5 * island))
 	coins += co
 	xp += score / 5 + (30 if won else 0)
 	missions.blast = true
@@ -213,6 +209,11 @@ func blast_reward(score: int, won: bool) -> int:
 	changed.emit()
 	save_game()
 	return co
+
+
+## Câștigul mediu al unei runde de Buble Blast (folosit de simularea economiei).
+func blast_estimate() -> int:
+	return unit() * 8
 
 
 func set_quality(q: String) -> void:
@@ -424,7 +425,10 @@ func _on_income() -> void:
 	save_game()
 
 
+## Venitul pasiv a fost scos: energia (bulele) este resursa care se reface în timp.
 func _collect_offline() -> int:
+	if true:
+		return 0
 	if last_save_unix <= 0.0:
 		return 0
 	var el := minf(Time.get_unix_time_from_system() - last_save_unix, OFFLINE_MAX_S)
