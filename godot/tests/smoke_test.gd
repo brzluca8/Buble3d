@@ -17,18 +17,20 @@ func _initialize() -> void:
 	var game = root.get_node("Game")
 	game.coins = 1000.0
 	game.levels = {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
-	var main = load("res://scenes/main.tscn").instantiate()
+	var main = load(ProjectSettings.get_setting("application/run/main_scene")).instantiate()
 	root.add_child(main)
 	for i in 10:
 		await process_frame
-	check(main.island.get_node("Buildings").get_child_count() == 5, "5 clădiri create")
-	check(main.cam.buildings.size() == 5, "camera cunoaște clădirile")
+	check(main.pieces.size() == 5, "5 clădiri create")
+	check(main.hot.has("mascot"), "mascota are zonă de atingere")
 
-	# selectare prin raycast din centrul clădirii proiectat pe ecran
-	var b = main.island.get_node("Buildings/palat")
-	var sp: Vector2 = main.cam.unproject_position(b.global_position + Vector3(0, 2, 0))
-	main.cam._pick(sp)
+	# atingere pe ecran în centrul palatului
+	var sp: Vector2 = main.world_to_screen(main.hot["palat"].get_center())
+	main.pick(sp)
 	check(game.sel == "palat", "atingerea selectează palatul (%s)" % game.sel)
+	main.pick(main.world_to_screen(main.hot["turn"].get_center()))
+	check(game.sel == "turn", "atingerea selectează turnul (%s)" % game.sel)
+	game.select("palat")
 
 	var before: float = game.coins
 	check(game.upgrade("palat"), "upgrade reușit")
@@ -37,7 +39,7 @@ func _initialize() -> void:
 	check(not game.upgrade("obs"), "upgrade refuzat fără monede")
 
 	# Buble Blast: trage până se termină runda
-	var hud = main.get_children().filter(func(n): return n is CanvasLayer)[0]
+	var hud = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
 	hud._open_blast()
 	await process_frame
 	var bl = hud.blast

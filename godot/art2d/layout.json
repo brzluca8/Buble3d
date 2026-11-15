@@ -1,0 +1,18 @@
+{
+	"_info": "Coordonatele sunt în pixeli ai imaginii de fundal (originea = colțul stânga-sus). rect = [x, y, lățime, înălțime]; anchor = punctul de la bază (centru-jos) al clădirii.",
+	"background": "res://art2d/scene.jpg",
+	"fade": [0.04, 0.02, 0.04, 0.09],
+	"sky": ["5b8fd6", "9cc0ea", "dfe2f2"],
+	"buildings": {
+		"palat": {"rect": [585, 20, 800, 820], "anchor": [985, 830]},
+		"obs":   {"rect": [0, 250, 590, 520], "anchor": [270, 760]},
+		"turn":  {"rect": [1630, 380, 338, 820], "anchor": [1800, 1190]},
+		"mag":   {"rect": [0, 770, 590, 380], "anchor": [270, 1140]},
+		"sera":  {"rect": [1290, 560, 380, 400], "anchor": [1480, 950]}
+	},
+	"mascot": {"rect": [450, 1050, 510, 460], "anchor": [700, 1490]},
+	"fountain": [1012, 828],
+	"waterfalls": [[310, 1580, 175, 520], [1345, 1540, 190, 540], [1612, 120, 60, 230], [368, 92, 40, 140]],
+	"lanterns": [[372, 1290], [1248, 1268], [606, 760], [1252, 772], [1660, 1010]],
+	"windows": [[985, 600, 1.6], [300, 960, 1.4], [440, 970, 1.2], [1490, 830, 1.0], [300, 650, 0.8], [1870, 960, 0.7]]
+}
