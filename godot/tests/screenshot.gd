@@ -25,10 +25,16 @@ func _initialize() -> void:
 			if args.size() > 4:
 				main.cam.position = Vector2(float(args[3]), float(args[4]))
 		else:
-			main.cam.dist = float(args[2])
-			main.cam.target = Vector3(0, 0.8, 3.5)
-	for i in 60:
+			main.cam._t_dist = float(args[2])
+			if args.size() > 5:
+				main.cam._t_target = Vector3(float(args[3]), float(args[4]), float(args[5]))
+	for i in 90:
 		await process_frame
+	print("STATISTICI: apeluri de desenare=%d, primitive=%d, obiecte=%d, FPS (mediu de test, nu telefon)=%d" % [
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+		Performance.get_monitor(Performance.TIME_FPS)])
 	root.get_texture().get_image().save_png(out)
 	print("saved ", out)
 	quit()

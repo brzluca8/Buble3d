@@ -15,11 +15,12 @@ const OFFLINE_MAX_S := 3600.0
 const INCOME_EVERY_S := 10.0
 
 const BUILDINGS := [
-	{"id": "palat", "n": "Palatul Norilor", "x": 0.0, "z": -4.0, "b": 150},
-	{"id": "obs", "n": "Observatorul", "x": -4.6, "z": -1.2, "b": 100},
-	{"id": "turn", "n": "Turnul Elegant", "x": 4.6, "z": -1.2, "b": 100},
-	{"id": "mag", "n": "Magazinul", "x": -4.0, "z": 2.6, "b": 80},
-	{"id": "sera", "n": "Sera de Cristal", "x": 4.0, "z": 2.6, "b": 90},
+	# poziții (x, z) compuse după randarea de referință; fața insulei (scările) este spre +Z
+	{"id": "palat", "n": "Palatul Norilor", "x": 0.0, "z": -4.3, "b": 150},
+	{"id": "obs", "n": "Observatorul", "x": -4.7, "z": -1.5, "b": 100},
+	{"id": "turn", "n": "Turnul Elegant", "x": 5.2, "z": 1.7, "b": 100},
+	{"id": "mag", "n": "Magazinul", "x": -4.4, "z": 2.5, "b": 80},
+	{"id": "sera", "n": "Sera de Cristal", "x": 3.7, "z": -1.6, "b": 90},
 ]
 
 var coins: float = 300.0

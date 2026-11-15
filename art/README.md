@@ -7,6 +7,12 @@ Scripturi care construiesc modelele jocului în Blender 4.x și le exportă ca G
 blender -b --factory-startup --python art/blender/buildings.py -- godot/models
 # terenul insulei
 blender -b --factory-startup --python art/blender/island.py -- godot/models/insula.glb
+# piața centrală și vegetația (fântână, alei, bănci, felinare, tufe, lavandă, copaci)
+blender -b --factory-startup --python art/blender/plaza.py -- godot/models/plaza.glb
+# insula îndepărtată prerandată (PNG transparent pentru fundal)
+blender -b --factory-startup --python art/blender/far_island.py -- godot/models godot/art3d/far_island.png
+# norii 2D (PNG transparent)
+python3 tools/make_clouds.py godot/art3d
 # mascota (cu animații idle / walk / jump)
 blender -b --factory-startup --python art/blender/mascot.py -- godot/models/mascot.glb
 ```

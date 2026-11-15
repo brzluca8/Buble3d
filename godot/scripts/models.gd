@@ -3,8 +3,9 @@ extends RefCounted
 ## Modele GLB din res://models/<id>.glb. Godot le importă automat; dacă un fișier
 ## lipsește, piesa rămâne procedurală.
 
-const HEIGHT := {"palat": 5.5, "obs": 4.5, "turn": 5.3, "mag": 3.0, "sera": 3.0, "mascot": 1.6}
+const HEIGHT := {"palat": 7.4, "obs": 5.8, "turn": 6.6, "mag": 4.1, "sera": 3.7, "mascot": 2.7}
 const ISLAND_DIAMETER := 14.4
+const UNSCALED := ["plaza"]
 
 
 static func path(k: String) -> String:
@@ -34,7 +35,9 @@ static func instance(k: String) -> Node3D:
 	var bb := subtree_aabb(model, Transform3D.IDENTITY)
 	if bb.size == Vector3.ZERO:
 		return wrap
-	if k == "insula":
+	if k in UNSCALED:
+		pass   # modelat direct în coordonatele insulei (piața, decorurile)
+	elif k == "insula":
 		# insula: scalată după lățime (X); originea modelului rămâne centrul insulei,
 		# ca scările sau alte piese ieșite în față să nu o deplaseze.
 		model.scale *= ISLAND_DIAMETER / maxf(bb.size.x, 0.001)
@@ -50,6 +53,8 @@ static func instance(k: String) -> Node3D:
 ## Materialele cu nume cunoscute din Blender primesc texturile triplanare ale jocului
 ## (piatră, pavaj, acoperiș, stâncă, iarbă), deci modelele nu au nevoie de UV-uri.
 const TEXTURED := {"Piatra": "cream", "Soclu": "ped", "Pavaj": "stone", "AcoperisTurcoaz": "teal", "Stanca": "rock", "Iarba": "grass"}
+## Nuanțe calde (ca în randare): piatra crem mai caldă, iarba mai bogată, stânca mai adâncă.
+const TINT := {"Piatra": Color(0.95, 0.88, 0.78), "Soclu": Color(0.9, 0.82, 0.7), "Pavaj": Color(0.92, 0.84, 0.72), "Iarba": Color(0.72, 0.9, 0.55), "Stanca": Color(0.82, 0.76, 0.8), "AcoperisTurcoaz": Color(0.95, 1.0, 1.0)}
 
 static func _apply_textures(n: Node) -> void:
 	if n is MeshInstance3D:
@@ -65,7 +70,7 @@ static func _apply_textures(n: Node) -> void:
 					var src := m as BaseMaterial3D
 					if src:
 						var copy := base.duplicate() as StandardMaterial3D
-						copy.albedo_color = src.albedo_color
+						copy.albedo_color = src.albedo_color * TINT.get(key, Color.WHITE)
 						copy.roughness = src.roughness
 						copy.metallic = src.metallic
 						mi.set_surface_override_material(i, copy)

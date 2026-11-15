@@ -88,22 +88,22 @@ func _vignette() -> void:
 # ---------------- bara de sus ----------------
 func _top_bar() -> void:
 	var hb := HBoxContainer.new()
-	K.place(hb, true, 14, 84, 18, 18)
-	hb.add_theme_constant_override("separation", 14)
+	K.place(hb, true, 12, 70, 16, 16)
+	hb.add_theme_constant_override("separation", 12)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hb)
 
 	var av := PanelContainer.new()
-	av.custom_minimum_size = Vector2(80, 80)
+	av.custom_minimum_size = Vector2(68, 68)
 	av.add_theme_stylebox_override("panel", K.box(Color("fff3e0"), 26, K.GOLD, 5))
-	var face := K.label("☺", 46, K.INK)
+	var face := K.label("☺", 40, K.INK)
 	face.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	face.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	av.add_child(face)
 	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(av)
 
-	var name_lbl := K.label("Buble", 56, Color.WHITE, 900, 10)
+	var name_lbl := K.label("Buble", 48, Color.WHITE, 900, 10)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hb.add_child(name_lbl)
@@ -112,7 +112,7 @@ func _top_bar() -> void:
 	pill.add_theme_stylebox_override("panel", K.box(Color("f6f0ff"), 50, Color("d9c8ff"), 2, 6, 14))
 	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	coins_lbl = K.label("🪙 0", 30, K.INK, 800)
+	coins_lbl = K.label("🪙 0", 27, K.INK, 800)
 	pill.add_child(coins_lbl)
 	hb.add_child(pill)
 
@@ -121,15 +121,15 @@ func _top_bar() -> void:
 	bs.corner_radius_bottom_left = 40
 	bs.corner_radius_bottom_right = 40
 	badge.add_theme_stylebox_override("panel", bs)
-	badge.custom_minimum_size = Vector2(86, 84)
+	badge.custom_minimum_size = Vector2(76, 70)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", -6)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var t := K.label("NIVEL", 17)
+	var t := K.label("NIVEL", 15)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lvl_lbl = K.label("1", 38, Color.WHITE, 900)
+	lvl_lbl = K.label("1", 32, Color.WHITE, 900)
 	lvl_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	vb.add_child(lvl_lbl)
@@ -139,8 +139,8 @@ func _top_bar() -> void:
 
 func _xp_bar() -> void:
 	var p := PanelContainer.new()
-	K.place(p, true, 116, 92, 18, 18)
-	p.add_theme_stylebox_override("panel", K.box(Color(1, 1, 1, 0.82), 32, Color.TRANSPARENT, 0, 8, 16))
+	K.place(p, true, 92, 60, 16, 16)
+	p.add_theme_stylebox_override("panel", K.box(Color(1, 1, 1, 0.8), 28, Color.TRANSPARENT, 0, 6, 10))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(p)
 	var hb := HBoxContainer.new()
@@ -152,16 +152,16 @@ func _xp_bar() -> void:
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(vb)
-	prog_lbl = K.label("", 24, K.INK, 800)
+	prog_lbl = K.label("", 20, K.INK, 800)
 	vb.add_child(prog_lbl)
 	xp_bar = ProgressBar.new()
 	xp_bar.show_percentage = false
-	xp_bar.custom_minimum_size = Vector2(0, 18)
+	xp_bar.custom_minimum_size = Vector2(0, 12)
 	xp_bar.add_theme_stylebox_override("background", K.box(Color(0.29, 0.23, 0.6, 0.33), 9))
 	xp_bar.add_theme_stylebox_override("fill", K.box(Color("f7b82a"), 9))
 	xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(xp_bar)
-	var mis := K.button("Misiuni", 26, K.box(Color.WHITE, 26, Color("e4d8ff"), 2, 0, 14), K.VIO)
+	var mis := K.button("Misiuni", 22, K.box(Color.WHITE, 22, Color("e4d8ff"), 2, 0, 10), K.VIO)
 	mis.pressed.connect(func():
 		show_toast("%s Îmbunătățește o clădire  •  %s Joacă Buble Blast" % ["✅" if Game.missions.up else "⬜", "✅" if Game.missions.blast else "⬜"], 3.5))
 	hb.add_child(mis)
@@ -169,17 +169,19 @@ func _xp_bar() -> void:
 
 func _title() -> void:
 	var vb := VBoxContainer.new()
-	K.place(vb, false, 365, 90, 0, 0)
+	K.place(vb, true, 160, 70, 100, 100)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_theme_constant_override("separation", 0)
-	var t1 := K.label("Grădina dintre nori", 44, Color.WHITE, 900, 10, Color(0.1, 0.05, 0.3, 0.6))
+	vb.add_theme_constant_override("separation", -2)
+	var t1 := K.label("Grădina dintre nori", 34, Color.WHITE, 900, 9, Color(0.1, 0.05, 0.3, 0.55))
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var t2 := K.label("Atinge o clădire ca să o dezvolți", 24, Color(1, 1, 1, 0.9), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
+	var t2 := K.label("Atinge o clădire ca să o dezvolți", 19, Color(1, 1, 1, 0.92), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t1)
 	vb.add_child(t2)
 	root.add_child(vb)
 	title = vb
+	# titlul dispare după câteva secunde, ca să lase insula la vedere
+	get_tree().create_timer(6.0).timeout.connect(func(): create_tween().tween_property(title, "modulate:a", 0.0, 1.2))
 
 
 # ---------------- foaia de upgrade ----------------
@@ -192,7 +194,7 @@ func _sheet() -> void:
 	sheet.anchor_bottom = 1
 	sheet.offset_left = 26
 	sheet.offset_right = -26
-	sheet.offset_bottom = -362
+	sheet.offset_bottom = -252
 	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	sheet.visible = false
 	root.add_child(sheet)
@@ -227,7 +229,7 @@ func _refresh_sheet() -> void:
 		return
 	var cs := Game.cost(id)
 	var up := K.gold_button("Îmbunătățește · 🪙 %d" % cs, 30)
-	up.custom_minimum_size = Vector2(0, 84)
+	up.custom_minimum_size = Vector2(0, 76)
 	var lack := Game.coins < cs
 	if lack:
 		up.modulate = Color(0.75, 0.72, 0.8, 0.8)
@@ -246,16 +248,16 @@ func _refresh_sheet() -> void:
 
 # ---------------- butoane principale ----------------
 func _blast_button() -> void:
-	var b := K.gold_button("", 54)
-	K.place(b, false, 168, 146, 30, 30)
+	var b := K.gold_button("", 44)
+	K.place(b, false, 132, 104, 40, 40)
 	var vb := VBoxContainer.new()
 	K.full_rect(vb)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", -4)
-	var t1 := K.label("Buble Blast", 54, K.INK, 900)
+	var t1 := K.label("Buble Blast", 44, K.INK, 900)
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var t2 := K.label("JOACĂ ȘI CÂȘTIGĂ MONEDE", 22, Color(K.INK, 0.7), 800)
+	var t2 := K.label("JOACĂ ȘI CÂȘTIGĂ MONEDE", 18, Color(K.INK, 0.7), 800)
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blast_sub = t2
 	vb.add_child(t1)
@@ -267,8 +269,8 @@ func _blast_button() -> void:
 
 func _nav() -> void:
 	var p := PanelContainer.new()
-	K.place(p, false, 14, 132, 14, 14)
-	p.add_theme_stylebox_override("panel", K.box(Color(0.145, 0.114, 0.416, 0.95), 52, Color("7a6ad8"), 4, 0, 8))
+	K.place(p, false, 10, 112, 12, 12)
+	p.add_theme_stylebox_override("panel", K.box(Color(0.145, 0.114, 0.416, 0.93), 46, Color("7a6ad8"), 3, 0, 6))
 	root.add_child(p)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 4)
@@ -283,9 +285,9 @@ func _nav() -> void:
 		vb.alignment = BoxContainer.ALIGNMENT_CENTER
 		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_theme_constant_override("separation", 0)
-		var ic := K.label(it[1], 44)
+		var ic := K.label(it[1], 36)
 		ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		var tx := K.label(it[2], 20, Color.WHITE, 800)
+		var tx := K.label(it[2], 18, Color.WHITE, 800)
 		tx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vb.add_child(ic)
 		vb.add_child(tx)
@@ -315,21 +317,34 @@ func _nav_to(key: String) -> void:
 
 
 func _settings_button() -> void:
-	var b := K.button("⚙️ Setări", 22, K.box(Color(0.125, 0.1, 0.37, 0.8), 26, Color(1, 1, 1, 0.33), 2, 0, 12))
-	b.anchor_left = 1
-	b.anchor_right = 1
-	b.offset_left = -190
-	b.offset_right = -18
-	b.offset_top = 228
-	b.offset_bottom = 284
-	b.pressed.connect(func(): _open_modal("settings"))
-	root.add_child(b)
+	var st := K.box(Color(0.125, 0.1, 0.37, 0.78), 32, Color(1, 1, 1, 0.35), 2)
+	var items := [["⚙️", func(): _open_modal("settings")], ["⟲", _reset_view]]
+	for i in items.size():
+		var b := K.button(items[i][0], 30, st)
+		b.anchor_left = 1
+		b.anchor_right = 1
+		b.offset_left = -80
+		b.offset_right = -16
+		b.offset_top = 164 + i * 74
+		b.offset_bottom = 228 + i * 74
+		b.tooltip_text = "Setări" if i == 0 else "Vederea generală"
+		b.pressed.connect(items[i][1])
+		root.add_child(b)
+
+
+## Revine la perspectiva implicită a insulei.
+func _reset_view() -> void:
+	Sfx.play("click")
+	Game.select("")
+	var c := get_viewport().get_camera_3d()
+	if c and c.has_method("reset_view"):
+		c.reset_view()
 
 
 # ---------------- mesaje ----------------
 func _toast() -> void:
 	toast_panel = PanelContainer.new()
-	K.place(toast_panel, true, 296, 0, 36, 36)
+	K.place(toast_panel, true, 164, 0, 96, 96)
 	toast_panel.add_theme_stylebox_override("panel", K.box(Color(0.125, 0.1, 0.37, 0.92), 30, Color.TRANSPARENT, 0, 8, 18))
 	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_panel.modulate.a = 0.0

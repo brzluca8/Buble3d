@@ -1,9 +1,9 @@
 # Buble 3D – Godot 4
 
-> **Grafica principală este acum 2.5D pictată** (`scenes/main2d.tscn`, `scripts/world2d.gd`): o imagine
-> pictată a insulei + animații peste ea (cascade, fântână, nori cu paralaxă, lumini, scântei, mascotă).
-> Pozițiile sunt în `art2d/layout.json`; arta de generat e descrisă în `art2d/ARTA_DE_GENERAT.md`.
-> Versiunea complet 3D rămâne în `scenes/main.tscn` (o poți porni cu F6 pe acea scenă).
+> **Prezentare 2.5D cu modele 3D reale** (`scenes/main.tscn`): cameră cinematografică oblică (~33°, FOV
+> orizontal 25°, rotație limitată la ±25°, zoom, apropiere pe clădirea selectată, buton ⟲ pentru vederea
+> generală). Insula, piața, clădirile și mascota sunt modele 3D; cerul, norii și insulele îndepărtate sunt
+> elemente 2D/prerandate (`art3d/`). Varianta pictată 2D rămâne în `scenes/main2d.tscn`.
 
 Versiunea principală a jocului: Godot 4.7, renderer **Mobile** (Vulkan, cu fallback automat la OpenGL ES 3),
 ecran portret, interfață în română.

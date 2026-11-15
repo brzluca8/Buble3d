@@ -70,7 +70,8 @@ def grass_top():
 def rock():
     levels = []
     z = -0.2
-    profile = [(-0.2, 7.35), (-0.9, 7.15), (-1.0, 6.8), (-1.8, 6.6), (-2.0, 6.0), (-2.9, 5.5), (-3.1, 4.8), (-4.0, 4.0), (-4.3, 3.3), (-5.2, 2.4), (-5.6, 1.7), (-6.3, 0.9), (-6.9, 0.3)]
+    # perete abrupt sub margine (ca în randare), apoi straturi care se îngustează spre vârf
+    profile = [(-0.2, 7.35), (-1.3, 7.3), (-1.45, 7.05), (-2.7, 6.95), (-2.9, 6.55), (-4.1, 6.2), (-4.35, 5.5), (-5.4, 4.7), (-5.8, 3.8), (-6.8, 2.8), (-7.3, 1.8), (-8.1, 0.9), (-8.6, 0.3)]
     verts, faces = [], []
     seg = 40
     for li, (z, r) in enumerate(profile):
@@ -84,7 +85,7 @@ def rock():
         for j in range(seg):
             faces.append((b0 + j, b1 + j, b1 + (j + 1) % seg, b0 + (j + 1) % seg))
     tip = len(verts)
-    verts.append((0.2, -0.1, -7.6))
+    verts.append((0.2, -0.1, -9.2))
     last = (len(profile) - 1) * seg
     for j in range(seg):
         faces.append((last + j, tip, last + (j + 1) % seg))
@@ -145,7 +146,7 @@ for i in range(9):
     a = i * 0.7 + 0.3
     r = 1.0 + 1.6 * ((i * 37) % 10) / 10
     h = 0.8 + 0.7 * ((i * 53) % 10) / 10
-    o = cyl(0.28, h, (math.cos(a) * r, math.sin(a) * r, -5.4 - h / 2 + 0.3 * math.sin(i)), P["gem"], seg=6, r2=0.0, rot=(math.pi, 0.15 * math.sin(i), 0.15 * math.cos(i)), smooth=False)
+    o = cyl(0.28, h, (math.cos(a) * r, math.sin(a) * r, -7.2 - h / 2 + 0.3 * math.sin(i)), P["gem"], seg=6, r2=0.0, rot=(math.pi, 0.15 * math.sin(i), 0.15 * math.cos(i)), smooth=False)
 
 bk.set_parent(None)
 bk.apply_and_join(root, "Insula")

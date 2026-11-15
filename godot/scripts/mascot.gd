@@ -3,7 +3,8 @@ extends Node3D
 ## Mascota merge spre clădirea selectată și sare la upgrade / întoarcerea din Buble Blast.
 ## Dacă res://models/mascot.glb are animații, se folosesc clipurile „idle", „walk"/„run", „jump".
 
-var _target := Vector3(0, 0, 5)
+const HOME := Vector3(-1.7, 0, 4.7)   # lângă capul scărilor, ca în randare
+var _target := HOME
 var _jump := 0.0
 var _ry := 0.0
 var _t := 0.0
@@ -27,9 +28,10 @@ func _ready() -> void:
 
 func _on_selected(id: String) -> void:
 	if id == "":
+		_target = HOME
 		return
 	var b := Game.building(id)
-	_target = Vector3(b.x + (-1.9 if b.x > 0 else 1.9), 0, b.z + 2.5)
+	_target = Vector3(b.x + (-2.2 if b.x > 0 else 2.2), 0, b.z + 2.6)
 	_jump = 0.5
 
 

@@ -18,6 +18,7 @@ func setup(info: Dictionary) -> void:
 		visual = Proc.building(id)
 	add_child(visual)
 	local_aabb = Models.subtree_aabb(visual, Transform3D.IDENTITY).grow(0.2)
+	_add_colliders(visual)
 	_apply_level(false)
 	Game.upgraded.connect(_on_upgraded)
 
@@ -56,3 +57,24 @@ func ray_hit(from: Vector3, dir: Vector3) -> float:
 	if p == null:
 		return -1.0
 	return from.distance_to(global_transform * (p as Vector3))
+
+
+## Forme de coliziune exacte (din triunghiurile modelului) pentru selectarea prin atingere.
+## Stau pe stratul 2, folosit doar de cameră pentru raza de selecție.
+const PICK_LAYER := 2
+
+func _add_colliders(n: Node) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh:
+		var shape := (n as MeshInstance3D).mesh.create_trimesh_shape()
+		if shape:
+			var body := StaticBody3D.new()
+			body.collision_layer = PICK_LAYER
+			body.collision_mask = 0
+			body.set_meta("building", id)
+			var cs := CollisionShape3D.new()
+			cs.shape = shape
+			body.add_child(cs)
+			n.add_child(body)
+	for c in n.get_children():
+		if not (c is StaticBody3D):
+			_add_colliders(c)

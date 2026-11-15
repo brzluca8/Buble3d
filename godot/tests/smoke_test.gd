@@ -21,17 +21,38 @@ func _initialize() -> void:
 	root.add_child(main)
 	for i in 10:
 		await process_frame
-	check(main.pieces.size() == 5, "5 clădiri create")
-	check(main.hot.has("mascot"), "mascota are zonă de atingere")
-
-	# atingere pe ecran în centrul palatului
-	var sp: Vector2 = main.world_to_screen(main.hot["palat"].get_center())
-	main.pick(sp)
-	check(game.sel == "palat", "atingerea selectează palatul (%s)" % game.sel)
-	main.pick(main.world_to_screen(main.hot["turn"].get_center()))
-	check(game.sel == "turn", "atingerea selectează turnul (%s)" % game.sel)
-	game.select("palat")
-
+	if "pieces" in main:
+		# lumea 2.5D pictată
+		check(main.pieces.size() == 5, "5 clădiri create")
+		main.pick(main.world_to_screen(main.hot["palat"].get_center()))
+		check(game.sel == "palat", "atingerea selectează palatul (%s)" % game.sel)
+	else:
+		# lumea 3D cu cameră cinematografică
+		check(main.island.get_node("Buildings").get_child_count() == 5, "5 clădiri 3D create")
+		check(main.cam.buildings.size() == 5, "camera cunoaște clădirile")
+		for id in ["palat", "obs", "turn", "mag", "sera"]:
+			var b = main.island.get_node("Buildings/" + id)
+			var sp: Vector2 = main.cam.unproject_position(b.global_position + Vector3(0, Models.HEIGHT[id] * 0.4, 0))
+			main.cam._pick(sp)
+			check(game.sel == id, "atingerea selectează %s (%s)" % [id, game.sel])
+		for i in 90:
+			await process_frame
+		check(main.cam.dist < main.cam.HOME_DIST - 5.0, "camera se apropie de clădirea selectată (dist %.1f)" % main.cam.dist)
+		check(absf(main.cam.yaw) <= main.cam.YAW_LIMIT + 0.001, "rotația rămâne în limita de ±25°")
+		main.cam._t_yaw = 5.0
+		main.cam._t_pitch = -1.0
+		main.cam._unhandled_input(InputEventMouseMotion.new())
+		game.select("")
+		for i in 120:
+			await process_frame
+		check(absf(main.cam.dist - main.cam.HOME_DIST) < 0.5, "deselectarea readuce vederea generală")
+		check(main.cam.global_position.y > 3.0, "camera rămâne deasupra insulei (y %.1f)" % main.cam.global_position.y)
+		main.cam._zoom(0.01)
+		for i in 60:
+			await process_frame
+		check(main.cam.dist >= main.cam.DIST_MIN - 0.01, "zoomul are limită (dist %.1f)" % main.cam.dist)
+		main.cam.reset_view()
+		game.select("palat")
 	var before: float = game.coins
 	check(game.upgrade("palat"), "upgrade reușit")
 	check(game.levels.palat == 2 and game.coins == before - 150, "cost și nivel corecte")
