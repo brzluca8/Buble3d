@@ -1,7 +1,13 @@
 # Buble 3D
 
 Joc mobil 3D casual (portret, interfață în română): insulă plutitoare cu clădiri de dezvoltat,
-mascotă și mini-jocul Buble Blast. Vite + React + React Three Fiber + Drei + Zustand.
+mascotă și mini-jocul Buble Blast.
+
+**Versiunea principală este proiectul Godot 4 din [`godot/`](godot/README.md)** (aplicație Android, pregătită
+pentru monetizare – vezi [`godot/MONETIZARE.md`](godot/MONETIZARE.md)).
+
+Restul acestui fișier descrie prototipul web (Vite + React + React Three Fiber), păstrat pentru previzualizări
+rapide în browser.
 
 ## Pornire
 
