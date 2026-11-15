@@ -19,3 +19,12 @@ Fiecare înlocuiește varianta procedurală. Dacă un fișier lipsește, jocul f
 - Lumină coaptă: în Blender coace AO + lumina în textură (baked) sau folosește LightmapGI în Godot.
 - Buget pentru telefon: ~15–30k triunghiuri pe clădire, texturi 1024² (max 2048²).
   În setările de import alege compresie VRAM (ETC2/ASTC, deja activă în proiect).
+
+## Modele generate
+
+- `mascot.glb` este generat de `art/blender/mascot.py` (Blender 4.x):
+  ```bash
+  blender -b --factory-startup --python art/blender/mascot.py -- godot/models/mascot.glb previzualizare.png
+  ```
+  Animații: `idle` (face cu mâna, repetat), `walk` (repetat), `jump`. Modifică scriptul și rulează din nou;
+  Godot reimportă automat fișierul.

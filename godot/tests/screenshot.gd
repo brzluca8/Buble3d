@@ -1,5 +1,5 @@
 extends SceneTree
-## Captură de ecran: godot --path godot -s res://tests/screenshot.gd -- <fișier.png> [selecteaza]
+## Captură de ecran: godot --path godot -s res://tests/screenshot.gd -- <fișier.png> [selecteaza|-] [distanta_camera]
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -9,8 +9,11 @@ func _initialize() -> void:
 	root.add_child(main)
 	for i in 30:
 		await process_frame
-	if args.size() > 1:
+	if args.size() > 1 and args[1] != "-":
 		root.get_node("Game").select(args[1])
+	if args.size() > 2:
+		main.cam.dist = float(args[2])
+		main.cam.target = Vector3(0, 0.8, 3.5)
 	for i in 60:
 		await process_frame
 	root.get_texture().get_image().save_png(out)
