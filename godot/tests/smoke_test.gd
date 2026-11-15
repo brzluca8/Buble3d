@@ -35,7 +35,9 @@ func _initialize() -> void:
 		check(main.repo.is_demo() and empty_slots == 6, "fără server: doar sloturi goale DEMO (fără jucători simulați)")
 		for id in ["palat", "obs", "turn", "mag", "sera"]:
 			var b = main.city.get_node("Buildings/" + id)
-			var sp: Vector2 = main.cam.unproject_position(b.global_position + Vector3(0, Models.HEIGHT[id] * 0.25, 0))
+			# centrul vizibil al clădirii (cutia ei, în coordonate globale)
+			var center: Vector3 = b.global_transform * b.local_aabb.get_center()
+			var sp: Vector2 = main.cam.unproject_position(center)
 			main.cam._pick(sp)
 			check(game.sel == id, "atingerea în glob selectează %s (%s)" % [id, game.sel])
 		game.select("")
