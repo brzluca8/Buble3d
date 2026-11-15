@@ -4,8 +4,8 @@ extends Node3D
 ## Căsuța 0 („Start") este palierul scărilor din fața insulei.
 ## Pietrele, stâncile și capacele colorate se desenează cu MultiMesh (puține apeluri de desenare).
 
-const RX := 8.35
-const RZ := 8.75
+const RX := 8.1
+const RZ := 8.5
 const Z0 := 0.25
 
 var labels: Array[Label3D] = []
@@ -15,29 +15,37 @@ var _mm_rock: MultiMesh
 var _mm_caps := {}                 # tip -> MultiMesh
 var _cap_index := {}               # căsuță -> [tip, index în MultiMesh]
 var _hl := -1
+var _mm_top: MultiMesh
+var _mm_coin: MultiMesh
+## Doar căsuțele importante au iconiță permanentă (restul: inel colorat / monedă aurie).
+const LABELED := ["start", "attack", "raid", "chest", "blast", "event"]
 var _t := 0.0
 
 
 func _ready() -> void:
 	name = "Board"
 	var n := Game.BOARD.size()
-	_mm_stone = _multimesh(Proc.cyl(0.66, 0.6, 0.24, 20), Proc.M("ped"), n - 1, true)
-	_mm_rock = _multimesh(Proc.cyl(0.55, 0.05, 0.75, 7), Proc.M("rock"), n - 1, false)
+	_mm_stone = _multimesh(Proc.cyl(0.55, 0.5, 0.2, 20), Proc.M("ped"), n - 1, true)
+	_mm_rock = _multimesh(Proc.cyl(0.46, 0.05, 0.6, 7), Proc.M("rock"), n - 1, false)
 	var counts := {}
 	for i in n:
 		var kind: String = Game.BOARD[i]
 		_cap_index[i] = [kind, counts.get(kind, 0)]
 		counts[kind] = counts.get(kind, 0) + 1
+	# traseu discret: capac în ton de piatră, doar un inel subțire colorat arată tipul căsuței
 	for kind in counts:
 		var col: Color = Game.TILE_INFO[kind][2]
-		_mm_caps[kind] = _multimesh(Proc.cyl(0.5, 0.5, 0.05, 20), Proc.mat(col, {"emit": col, "energy": 0.35, "rough": 0.4}), counts[kind], false)
+		_mm_caps[kind] = _multimesh(Proc.htor(0.4, 0.035, 24, 6), Proc.mat(col, {"emit": col, "energy": 0.25, "rough": 0.4}), counts[kind], false)
+	_mm_top = _multimesh(Proc.cyl(0.47, 0.47, 0.04, 20), Proc.M("stone"), n, false)
+	_mm_coin = _multimesh(Proc.cyl(0.16, 0.16, 0.05, 14), Proc.M("gold"), counts.get("coins", 0), false)
 	for i in n:
 		_base_y.append(tile_pos(i).y)
 		var lbl := Label3D.new()
 		lbl.text = Game.TILE_INFO[Game.BOARD[i]][0]
+		lbl.visible = Game.BOARD[i] in LABELED
 		lbl.font = UiKit.font(800)
-		lbl.font_size = 72
-		lbl.pixel_size = 0.0075
+		lbl.font_size = 64
+		lbl.pixel_size = 0.0058
 		lbl.outline_size = 10
 		lbl.outline_modulate = Color(0.1, 0.05, 0.25, 0.8)
 		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -84,7 +92,13 @@ func path(from: int, to: int) -> Array:
 
 
 func highlight(i: int) -> void:
+	if _hl >= 0 and _hl < labels.size():
+		labels[_hl].visible = Game.BOARD[_hl] in LABELED
+		labels[_hl].pixel_size = 0.0058
 	_hl = i
+	if i >= 0:
+		labels[i].visible = true
+		labels[i].pixel_size = 0.009
 
 
 func _process(dt: float) -> void:
@@ -94,6 +108,7 @@ func _process(dt: float) -> void:
 
 func _update(t: float) -> void:
 	var k := 0
+	var kc := 0
 	for i in Game.BOARD.size():
 		var p := tile_pos(i)
 		p.y = _base_y[i] + (0.0 if i == 0 else sin(t * 1.2 + i) * 0.05)
@@ -105,4 +120,8 @@ func _update(t: float) -> void:
 			k += 1
 		var ci: Array = _cap_index[i]
 		(_mm_caps[ci[0]] as MultiMesh).set_instance_transform(ci[1], Transform3D(b, p + Vector3(0, 0.02 * s, 0)))
-		labels[i].position = p + Vector3(0, 0.55 * s, 0)
+		_mm_top.set_instance_transform(i, Transform3D(b, p + Vector3(0, 0.0, 0)))
+		if Game.BOARD[i] == "coins":
+			_mm_coin.set_instance_transform(kc, Transform3D((Basis(Vector3.UP, t * 1.5 + i) * Basis(Vector3.RIGHT, PI / 2)).scaled(Vector3.ONE * s), p + Vector3(0, 0.3 + 0.04 * sin(t * 2.0 + i), 0)))
+			kc += 1
+		labels[i].position = p + Vector3(0, 0.5 * s, 0)

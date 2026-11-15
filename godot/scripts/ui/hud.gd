@@ -163,7 +163,8 @@ func _xp_bar() -> void:
 	xp_bar.add_theme_stylebox_override("fill", K.box(Color("f7b82a"), 9))
 	xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(xp_bar)
-	var mis := K.button("Misiuni", 22, K.box(Color.WHITE, 22, Color("e4d8ff"), 2, 0, 10), K.VIO)
+	var mis := K.button("📜", 26, K.box(Color.WHITE, 22, Color("e4d8ff"), 2, 0, 8), K.VIO)
+	mis.tooltip_text = "Misiuni"
 	mis.pressed.connect(func():
 		show_toast("%s Îmbunătățește o clădire  •  %s Joacă Buble Blast" % ["✅" if Game.missions.up else "⬜", "✅" if Game.missions.blast else "⬜"], 3.5))
 	hb.add_child(mis)
@@ -319,19 +320,38 @@ func _nav_to(key: String) -> void:
 
 
 func _settings_button() -> void:
+	# un singur buton ☰ care deschide un meniu mic (Setări, Vederea generală, Buble Blast)
 	var st := K.box(Color(0.125, 0.1, 0.37, 0.78), 32, Color(1, 1, 1, 0.35), 2)
-	var items := [["⚙️", func(): _open_modal("settings")], ["⟲", _reset_view], ["🫧", _open_blast]]
-	for i in items.size():
-		var b := K.button(items[i][0], 30, st)
-		b.anchor_left = 1
-		b.anchor_right = 1
-		b.offset_left = -80
-		b.offset_right = -16
-		b.offset_top = 164 + i * 74
-		b.offset_bottom = 228 + i * 74
-		b.tooltip_text = ["Setări", "Vederea generală", "Buble Blast"][i]
-		b.pressed.connect(items[i][1])
-		root.add_child(b)
+	var menu_btn := K.button("☰", 30, st)
+	menu_btn.anchor_left = 1
+	menu_btn.anchor_right = 1
+	menu_btn.offset_left = -80
+	menu_btn.offset_right = -16
+	menu_btn.offset_top = 164
+	menu_btn.offset_bottom = 228
+	root.add_child(menu_btn)
+	var menu := VBoxContainer.new()
+	menu.anchor_left = 1
+	menu.anchor_right = 1
+	menu.offset_left = -250
+	menu.offset_right = -16
+	menu.offset_top = 236
+	menu.offset_bottom = 470
+	menu.add_theme_constant_override("separation", 8)
+	menu.visible = false
+	root.add_child(menu)
+	var items := [["⚙️  Setări", func(): _open_modal("settings")], ["⟲  Vederea generală", _reset_view], ["🫧  Buble Blast", _open_blast]]
+	for it in items:
+		var b := K.button(it[0], 22, K.box(Color(0.125, 0.1, 0.37, 0.92), 22, Color(1, 1, 1, 0.3), 2, 0, 10))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var cb: Callable = it[1]
+		b.pressed.connect(func():
+			menu.visible = false
+			cb.call())
+		menu.add_child(b)
+	menu_btn.pressed.connect(func():
+		Sfx.play("click")
+		menu.visible = not menu.visible)
 
 
 var play: Control
@@ -379,7 +399,7 @@ func show_toast(msg: String, secs := 2.2) -> void:
 func _refresh() -> void:
 	coins_lbl.text = "🪙 " + _fmt(int(Game.coins))
 	lvl_lbl.text = str(Game.player_level())
-	prog_lbl.text = "Dezvoltă insula • %d/25 niveluri" % Game.sum_levels()
+	prog_lbl.text = "🏝️ %s • %d/25" % [Game.island_name(), Game.sum_levels()]
 	xp_bar.value = Game.xp % 100
 	if blast_sub:
 		blast_sub.text = "NIVELUL %d • JOACĂ ȘI CÂȘTIGĂ MONEDE" % Game.blast_level

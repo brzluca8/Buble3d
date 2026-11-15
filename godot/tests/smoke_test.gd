@@ -50,7 +50,7 @@ func _initialize() -> void:
 		game.select("")
 		for i in 120:
 			await process_frame
-		check(absf(main.cam.dist - main.cam.HOME_DIST) < 0.5, "deselectarea readuce vederea generală")
+		check(absf(main.cam.dist - main.cam.home_dist) < 0.5 and main.mode == "insula", "deselectarea readuce vederea modului Insulă")
 		check(main.cam.global_position.y > 3.0, "camera rămâne deasupra insulei (y %.1f)" % main.cam.global_position.y)
 		main.cam._zoom(0.01)
 		for i in 60:
@@ -171,6 +171,16 @@ func _initialize() -> void:
 			frames += 1
 		check(not play.busy, "aruncarea din interfață se termină (%.1f s)" % (frames * 0.05))
 		check(main.mascot.position.distance_to(main.board.stand_pos(game.pos)) < 1.6, "mascota a ajuns pe căsuța %d" % game.pos)
+
+	# modurile Joc / Insulă
+	if "board" in main:
+		main.set_mode("joc")
+		await create_timer(0.6).timeout
+		check(main.board.visible and absf(main.cam.home_dist - main.cam.HOME_DIST) < 0.1, "modul Joc arată traseul")
+		game.select("mag")
+		await create_timer(0.6).timeout
+		check(main.mode == "insula" and not main.board.visible, "atingerea unei clădiri trece în modul Insulă")
+		game.select("")
 
 	# atac și jaf pe insula rivalului (cu animații)
 	if "board" in main:

@@ -3,7 +3,9 @@
 Rulare (toate sau una):
     blender -b --factory-startup --python art/blender/buildings.py -- godot/models [palat|obs|turn|mag|sera] [--preview DIR]
 
-Fiecare clădire se exportă ca godot/models/<id>.glb, cu plasele unite (puține apeluri de desenare).
+Fiecare clădire are 5 niveluri, exportate ca godot/models/<id>_<nivel>.glb (nivelul 5 și ca <id>.glb).
+La fiecare nivel clădirea crește și își schimbă forma (ex. palatul: pavilion → portal și scări →
+turnuri laterale → cupolă mare cu tambur → lanternă, steaguri, iederă). Plasele sunt unite.
 """
 import math
 import os
@@ -38,100 +40,131 @@ def ring_windows(r, z, n, w, h, P, a0=0.0, skip=(), depth=0.08):
 
 
 # ================================================================ PALAT
-def build_palat(P):
-    box((5.8, 3.3, 0.3), (0, 0.05, 0.15), P["stone_dk"], bevel=0.03)
-    # corpul central
-    box((3.0, 2.0, 2.4), (0, 0.15, 1.5), P["stone"], bevel=0.03)
-    box((3.12, 2.12, 0.08), (0, 0.15, 2.72), P["gold"])
-    box((3.25, 2.25, 0.16), (0, 0.15, 2.84), P["stone_dk"], bevel=0.03)
-    for sx in (-1, 1):
-        box((0.18, 0.12, 2.4), (sx * 1.42, -0.88, 1.5), P["stone_dk"], bevel=0.02)
-    # portal cu arc auriu, ușă luminată și cristal
-    box((1.6, 0.45, 2.55), (0, -0.98, 1.57), P["stone"], bevel=0.04)
-    box((1.7, 0.5, 0.12), (0, -1.0, 2.88), P["gold"])
-    arch_window((0, -1.22, 1.32), 0.95, 1.7, P, mullion=False)
-    door((0, -1.24, 0.3), 0.7, 1.3, P)
-    g = ico(0.17, (0, -1.27, 2.55), P["gem"], scale=(0.8, 0.5, 1.15), sub=1)
-    torus(0.24, 0.03, (0, -1.25, 2.55), P["gold"], rot=(math.pi / 2, 0, math.pi / 4), seg=4, sides=6)
-    stairs((0, -1.25, 0.3), 1.7, 3, 0.1, 0.22, P, rails=False)
-    for sx in (-1, 1):
-        banner((sx * 1.05, -0.88, 2.45), 0.36, 0.8, P)
-        arch_window((sx * 1.05, -0.86, 1.15), 0.34, 0.65, P)
-        ivy((sx * 1.35, -0.92, 2.5), P, n=8, spread=(0.45, 0.1, 1.1), seed=3 + sx)
-    # tambur, cupolă mare cu nervuri, lanternă
-    cyl(1.05, 0.9, (0, 0.15, 3.37), P["stone"], seg=40)
-    torus(1.06, 0.05, (0, 0.15, 3.0), P["gold"], seg=48)
-    ring_windows(1.05, 3.4, 10, 0.2, 0.45, P, a0=-math.pi / 2)
-    with group("CupolaMare", (0, 0.15, 3.82)):
-        dome(1.18, (0, 0, 0), P, ribs=10, h=1.0, seg=48)
-        cyl(0.26, 0.4, (0, 0, 1.38), P["stone"], seg=16)
-        ring_windows(0.26, 1.38, 6, 0.1, 0.24, P, a0=-math.pi / 2, depth=0.05)
-        onion(0.32, (0, 0, 1.58), P, seg=24)
-        flag((0, 0, 2.2), P, h=0.8)
-    # turnuri laterale
-    for sx in (-1, 1):
-        x = sx * 2.2
-        cyl(0.66, 3.1, (x, 0.15, 1.85), P["stone"], seg=32)
-        for z in (1.0, 2.2, 3.35):
-            torus(0.67, 0.045, (x, 0.15, z), P["gold"], seg=40)
-        cyl(0.74, 0.14, (x, 0.15, 3.45), P["stone_dk"], seg=32)
-        for z in (1.6, 2.75):
-            arch_window((x, 0.15 - 0.66, z), 0.26, 0.55, P)
-        arch_window((x - sx * 0.47, 0.15 - 0.47, 1.6), 0.22, 0.48, P, face_angle=-sx * math.pi / 4)
-        onion(0.7, (x, 0.15, 3.52), P, seg=32)
-        flag((x, 0.15, 4.55), P, h=0.7)
-        ivy((x + sx * 0.3, -0.42, 1.3), P, n=6, spread=(0.4, 0.1, 0.9), seed=7 + sx)
-        bush((sx * 2.3, -1.15, 0.3), 0.42, P, "pink", n=6, seed=sx)
-        cypress((sx * 2.95, 0.9, 0.3), 1.9, P)
+def build_palat(P, L):
+    w = 5.8 if L >= 3 else 3.6
+    box((w, 3.3 if L >= 2 else 2.6, 0.3), (0, 0.05, 0.15), P["stone_dk"], bevel=0.03)
+    hb = 2.4 if L >= 2 else 1.7
+    box((3.0, 2.0, hb), (0, 0.15, 0.3 + hb / 2), P["stone"], bevel=0.03)
+    top = 0.3 + hb
+    if L >= 2:
+        box((3.12, 2.12, 0.08), (0, 0.15, top + 0.02), P["gold"])
+        box((3.25, 2.25, 0.16), (0, 0.15, top + 0.14), P["stone_dk"], bevel=0.03)
+        for sx in (-1, 1):
+            box((0.18, 0.12, hb), (sx * 1.42, -0.88, 0.3 + hb / 2), P["stone_dk"], bevel=0.02)
+        # portal cu arc auriu și ușă luminată
+        box((1.6, 0.45, 2.55), (0, -0.98, 1.57), P["stone"], bevel=0.04)
+        box((1.7, 0.5, 0.12), (0, -1.0, 2.88), P["gold"])
+        arch_window((0, -1.22, 1.32), 0.95, 1.7, P, mullion=False)
+        door((0, -1.24, 0.3), 0.7, 1.3, P)
+        stairs((0, -1.25, 0.3), 1.7, 3, 0.1, 0.22, P, rails=False)
+        for sx in (-1, 1):
+            arch_window((sx * 1.05, -0.86, 1.15), 0.34, 0.65, P)
+    else:
+        door((0, -0.86, 0.3), 0.6, 1.1, P)
+        for sx in (-1, 1):
+            arch_window((sx * 0.9, -0.86, 1.15), 0.3, 0.55, P)
+    if L >= 3:
+        for sx in (-1, 1):
+            banner((sx * 1.05, -0.88, 2.45), 0.36, 0.8, P)
+            x = sx * 2.2
+            cyl(0.66, 3.1, (x, 0.15, 1.85), P["stone"], seg=32)
+            cyl(0.74, 0.14, (x, 0.15, 3.45), P["stone_dk"], seg=32)
+            for z in (1.6, 2.75):
+                arch_window((x, 0.15 - 0.66, z), 0.26, 0.55, P)
+            if L >= 4:
+                for z in (1.0, 2.2, 3.35):
+                    torus(0.67, 0.045, (x, 0.15, z), P["gold"], seg=40)
+                onion(0.7, (x, 0.15, 3.52), P, seg=32)
+            else:
+                dome(0.7, (x, 0.15, 3.52), P, seg=28)
+    if L >= 4:
+        ico(0.17, (0, -1.27, 2.55), P["gem"], scale=(0.8, 0.5, 1.15), sub=1)
+        torus(0.24, 0.03, (0, -1.25, 2.55), P["gold"], rot=(math.pi / 2, 0, math.pi / 4), seg=4, sides=6)
+        cyl(1.05, 0.9, (0, 0.15, top + 0.67), P["stone"], seg=40)
+        torus(1.06, 0.05, (0, 0.15, top + 0.3), P["gold"], seg=48)
+        ring_windows(1.05, top + 0.7, 10, 0.2, 0.45, P, a0=-math.pi / 2)
+        with group("CupolaMare", (0, 0.15, top + 1.12)):
+            dome(1.18, (0, 0, 0), P, ribs=10, h=1.0, seg=48)
+            if L >= 5:
+                cyl(0.26, 0.4, (0, 0, 1.38), P["stone"], seg=16)
+                ring_windows(0.26, 1.38, 6, 0.1, 0.24, P, a0=-math.pi / 2, depth=0.05)
+                onion(0.32, (0, 0, 1.58), P, seg=24)
+                flag((0, 0, 2.2), P, h=0.8)
+    else:
+        dome(0.95, (0, 0.15, top + 0.05 if L < 2 else top + 0.22), P, seg=32)
+    if L >= 5:
+        for sx in (-1, 1):
+            x = sx * 2.2
+            flag((x, 0.15, 4.55), P, h=0.7)
+            ivy((sx * 1.35, -0.92, 2.5), P, n=8, spread=(0.45, 0.1, 1.1), seed=3 + sx)
+            ivy((x + sx * 0.3, -0.42, 1.3), P, n=6, spread=(0.4, 0.1, 0.9), seed=7 + sx)
+            bush((sx * 2.3, -1.15, 0.3), 0.42, P, "pink", n=6, seed=sx)
+            cypress((sx * 2.95, 0.9, 0.3), 1.9, P)
 
 
 # ================================================================ OBSERVATOR
-def build_obs(P):
+def build_obs(P, L):
     cyl(1.6, 0.3, (0, 0, 0.15), P["stone_dk"], seg=40)
-    cyl(1.35, 1.45, (0, 0, 1.02), P["stone"], seg=40)
-    for z in (0.32, 1.72):
-        torus(1.36, 0.05, (0, 0, z), P["gold"], seg=48)
-    ring_windows(1.35, 1.05, 8, 0.32, 0.62, P, a0=-math.pi / 2, skip=(0,))
+    h1 = 1.45 if L >= 2 else 1.2
+    cyl(1.35, h1, (0, 0, 0.3 + h1 / 2), P["stone"], seg=40)
     door((0, -1.36, 0.3), 0.55, 1.0, P)
-    stairs((0, -1.5, 0.3), 0.8, 3, 0.1, 0.18, P, rails=False)
-    # balcon cu balustradă
+    if L >= 2:
+        for z in (0.32, 1.72):
+            torus(1.36, 0.05, (0, 0, z), P["gold"], seg=48)
+        ring_windows(1.35, 1.05, 8, 0.32, 0.62, P, a0=-math.pi / 2, skip=(0,))
+        stairs((0, -1.5, 0.3), 0.8, 3, 0.1, 0.18, P, rails=False)
+    if L < 3:
+        # acoperiș simplu, conic
+        cyl(1.5, 0.8, (0, 0, 0.3 + h1 + 0.4), P["violet"], seg=32, r2=0.15)
+        return
     cyl(1.58, 0.14, (0, 0, 1.8), P["stone_dk"], seg=40)
     balustrade_ring((0, 0, 1.87), 1.5, P, h=0.3, n=20)
     cyl(1.1, 0.95, (0, 0, 2.35), P["stone"], seg=40)
     ring_windows(1.1, 2.38, 8, 0.24, 0.48, P, a0=-math.pi / 2 + 0.4)
     torus(1.11, 0.05, (0, 0, 2.82), P["gold"], seg=48)
+    if L < 4:
+        cyl(1.2, 0.7, (0, 0, 3.17), P["violet"], seg=32, r2=0.1)
+        return
     with group("Cupola", (0, 0, 2.84)):
         dome(1.15, (0, 0, 0), P, mat_key="violet", ribs=12, h=0.98, seg=48)
-        # deschizătura cu cerul înstelat
         box((0.5, 0.2, 1.0), (0.32, -0.92, 0.55), P["night"], rot=(math.radians(-38), 0, math.radians(-18)))
         for i in range(10):
             a = i * 2.4
             sphere(0.025, (0.3 + math.cos(a) * 0.15, -1.02, 0.5 + math.sin(a) * 0.35), P["glow"], seg=6, rings=3)
         sphere(0.12, (0, 0, 1.15), P["gold"], seg=12, rings=6)
-        # telescopul auriu
-        with group("Telescop", (0.25, -0.55, 0.7), (math.radians(-55), 0, math.radians(-25))):
-            cyl(0.2, 1.9, (0, 0, 0.5), P["gold"], seg=24, r2=0.27)
-            for z in (-0.2, 0.5, 1.2):
-                torus(0.25 + z * 0.02, 0.035, (0, 0, z), P["gold"], seg=24)
-            cyl(0.24, 0.05, (0, 0, 1.46), P["night"], seg=24)
-            cyl(0.12, 0.4, (0, 0, -0.55), P["gold"], seg=16)
-    ivy((-1.2, -0.6, 1.5), P, n=8, spread=(0.4, 0.1, 1.0), seed=5)
-    bush((1.4, -1.2, 0.3), 0.35, P, "lilac", n=5, seed=2)
+        if L >= 5:
+            with group("Telescop", (0.25, -0.55, 0.7), (math.radians(-55), 0, math.radians(-25))):
+                cyl(0.2, 1.9, (0, 0, 0.5), P["gold"], seg=24, r2=0.27)
+                for z in (-0.2, 0.5, 1.2):
+                    torus(0.25 + z * 0.02, 0.035, (0, 0, z), P["gold"], seg=24)
+                cyl(0.24, 0.05, (0, 0, 1.46), P["night"], seg=24)
+                cyl(0.12, 0.4, (0, 0, -0.55), P["gold"], seg=16)
+    if L >= 5:
+        ivy((-1.2, -0.6, 1.5), P, n=8, spread=(0.4, 0.1, 1.0), seed=5)
+        bush((1.4, -1.2, 0.3), 0.35, P, "lilac", n=5, seed=2)
 
 
 # ================================================================ TURN
-def build_turn(P):
+def build_turn(P, L):
     cyl(1.0, 0.3, (0, 0, 0.15), P["stone_dk"], seg=8)
-    cyl(0.72, 3.6, (0, 0, 2.1), P["stone"], seg=32, r2=0.68)
-    for z in (0.32, 1.5, 2.7):
-        torus(0.72, 0.045, (0, 0, z), P["gold"], seg=40)
+    h = {1: 1.8, 2: 2.8, 3: 3.6, 4: 3.6, 5: 3.6}[L]
+    cyl(0.72, h, (0, 0, 0.3 + h / 2), P["stone"], seg=32, r2=0.68 if L >= 3 else 0.72)
     door((0, -0.71, 0.3), 0.45, 0.95, P)
-    stairs((0, -1.0, 0.3), 0.7, 3, 0.1, 0.12, P, rails=False)
-    for z in (1.9, 3.1):
-        arch_window((0, -0.69, z), 0.26, 0.55, P)
-    for a in (0.0, math.pi):
-        arch_window((math.cos(a) * 0.7, math.sin(a) * 0.7, 2.5), 0.22, 0.48, P, face_angle=facing(a))
-    banner((0, -0.72, 3.65), 0.42, 1.0, P)
+    top = 0.3 + h
+    if L >= 2:
+        stairs((0, -1.0, 0.3), 0.7, 3, 0.1, 0.12, P, rails=False)
+        arch_window((0, -0.69, 1.9), 0.26, 0.55, P)
+    if L >= 3:
+        for z in (0.32, 1.5, 2.7):
+            torus(0.72, 0.045, (0, 0, z), P["gold"], seg=40)
+        arch_window((0, -0.69, 3.1), 0.26, 0.55, P)
+        for a in (0.0, math.pi):
+            arch_window((math.cos(a) * 0.7, math.sin(a) * 0.7, 2.5), 0.22, 0.48, P, face_angle=facing(a))
+        banner((0, -0.72, 3.65), 0.42, 1.0, P)
+    if L < 4:
+        cyl(0.9, 1.0, (0, 0, top + 0.5), P["roof"], seg=24, r2=0.05)
+        sphere(0.1, (0, 0, top + 1.05), P["gold"], seg=10, rings=5)
+        return
     cyl(0.88, 0.14, (0, 0, 3.95), P["stone_dk"], seg=32)
     balustrade_ring((0, 0, 4.02), 0.82, P, h=0.26, n=14)
     cyl(0.6, 0.55, (0, 0, 4.3), P["stone"], seg=32)
@@ -139,96 +172,127 @@ def build_turn(P):
     torus(0.61, 0.04, (0, 0, 4.57), P["gold"], seg=40)
     with group("Cupola", (0, 0, 4.58)):
         dome(0.72, (0, 0, 0), P, ribs=8, h=0.95, seg=40)
-        cyl(0.06, 0.25, (0, 0, 0.78), P["gold"], seg=10)
-        sphere(0.15, (0, 0, 0.98), P["gold"], seg=16, rings=8)
-        cyl(0.03, 0.3, (0, 0, 1.25), P["gold"], seg=8, r2=0.0)
-    ivy((0.45, -0.5, 2.3), P, n=8, spread=(0.3, 0.1, 1.2), seed=9)
-    bush((-0.85, -0.85, 0.3), 0.3, P, "pink", n=5, seed=4)
+        if L >= 5:
+            cyl(0.06, 0.25, (0, 0, 0.78), P["gold"], seg=10)
+            sphere(0.15, (0, 0, 0.98), P["gold"], seg=16, rings=8)
+            cyl(0.03, 0.3, (0, 0, 1.25), P["gold"], seg=8, r2=0.0)
+    if L >= 5:
+        ivy((0.45, -0.5, 2.3), P, n=8, spread=(0.3, 0.1, 1.2), seed=9)
+        bush((-0.85, -0.85, 0.3), 0.3, P, "pink", n=5, seed=4)
 
 
 # ================================================================ MAGAZIN
-def build_mag(P):
+def build_mag(P, L):
+    if L == 1:
+        # tarabă de lemn cu copertină
+        box((2.2, 1.6, 0.18), (0, 0, 0.09), P["stone_dk"], bevel=0.03)
+        box((1.8, 1.0, 0.9), (0, 0.1, 0.63), P["wood_lt"], bevel=0.04)
+        for sx in (-1, 1):
+            cyl(0.05, 1.6, (sx * 0.85, -0.45, 0.98), P["wood"], seg=8)
+        box((2.0, 1.1, 0.05), (0, -0.25, 1.75), P["violet"], rot=(math.radians(18), 0, 0))
+        for k in range(3):
+            box((0.25, 0.2, 0.2), (-0.5 + k * 0.5, -0.35, 1.18), P["pink"] if k % 2 else P["lilac"])
+        return
     box((3.2, 2.4, 0.22), (0, 0, 0.11), P["stone_dk"], bevel=0.03)
     box((2.9, 2.1, 1.75), (0, 0.05, 1.1), P["stone"], bevel=0.03)
     box((3.05, 2.25, 0.14), (0, 0.05, 2.03), P["stone_dk"], bevel=0.03)
-    # acoperiș în patru ape, turcoaz
     cyl(2.15, 1.05, (0, 0.05, 2.62), P["roof"], seg=4, r2=0.25, rot=(0, 0, math.pi / 4), smooth=False)
-    box((0.42, 0.42, 0.12), (0, 0.05, 3.16), P["gold"], bevel=0.02)
-    sphere(0.12, (0, 0.05, 3.3), P["gold"], seg=12, rings=6)
-    # vitrine luminate cu rafturi
-    for sx in (-1, 1):
-        x = sx * 0.78
-        box((0.85, 0.08, 0.95), (x, -1.02, 0.95), P["glow"])
-        for z in (0.68, 0.95, 1.22):
-            box((0.85, 0.12, 0.04), (x, -1.06, z), P["wood"])
-        for k in range(4):
-            box((0.12, 0.08, 0.14), (x - 0.3 + k * 0.2, -1.1, 0.77 + (k % 2) * 0.27), P["pink"] if k % 2 else P["lilac"])
-        box((0.95, 0.14, 0.06), (x, -1.06, 0.45), P["stone_dk"])
-        for xx in (-0.45, 0.45):
-            box((0.05, 0.12, 1.0), (x + xx, -1.06, 0.95), P["gold"])
-        box((0.95, 0.12, 0.05), (x, -1.06, 1.45), P["gold"])
     door((0, -1.06, 0.22), 0.5, 1.15, P)
-    # copertina violet cu festoane și frunză aurie
-    box((3.1, 0.95, 0.06), (0, -1.38, 1.78), P["violet"], rot=(math.radians(22), 0, 0))
-    for i in range(8):
-        x = -1.36 + i * 0.39
-        cyl(0.195, 0.05, (x, -1.82, 1.6), P["violet_lt"] if i % 2 else P["violet"], seg=16, rot=(math.pi / 2, 0, 0))
-    box((3.12, 0.06, 0.06), (0, -1.82, 1.62), P["gold"])
-    leaf((0, -1.86, 1.5), 0.28, P)
-    for sx in (-1, 1):
-        cyl(0.03, 0.5, (sx * 1.5, -1.6, 1.55), P["gold"], seg=8, rot=(math.radians(60), 0, 0))
-        cyl(0.2, 0.3, (sx * 1.25, -1.45, 0.37), P["wood_lt"], seg=12, r2=0.15)
-        bush((sx * 1.25, -1.45, 0.45), 0.3, P, "pink" if sx < 0 else "lilac", n=5, seed=sx + 3)
-    box((0.4, 0.35, 0.35), (1.55, -0.6, 0.4), P["wood"], bevel=0.02)
-    ivy((-1.45, -0.6, 1.9), P, n=7, spread=(0.15, 0.6, 1.0), seed=11)
+    if L >= 3:
+        for sx in (-1, 1):
+            x = sx * 0.78
+            box((0.85, 0.08, 0.95), (x, -1.02, 0.95), P["glow"])
+            box((0.95, 0.14, 0.06), (x, -1.06, 0.45), P["stone_dk"])
+        box((3.1, 0.95, 0.06), (0, -1.38, 1.78), P["violet"], rot=(math.radians(22), 0, 0))
+        for i in range(8):
+            cyl(0.195, 0.05, (-1.36 + i * 0.39, -1.82, 1.6), P["violet_lt"] if i % 2 else P["violet"], seg=16, rot=(math.pi / 2, 0, 0))
+    else:
+        for sx in (-1, 1):
+            arch_window((sx * 0.85, -1.02, 1.0), 0.4, 0.7, P)
+    if L >= 4:
+        box((0.42, 0.42, 0.12), (0, 0.05, 3.16), P["gold"], bevel=0.02)
+        sphere(0.12, (0, 0.05, 3.3), P["gold"], seg=12, rings=6)
+        for sx in (-1, 1):
+            x = sx * 0.78
+            for z in (0.68, 0.95, 1.22):
+                box((0.85, 0.12, 0.04), (x, -1.06, z), P["wood"])
+            for k in range(4):
+                box((0.12, 0.08, 0.14), (x - 0.3 + k * 0.2, -1.1, 0.77 + (k % 2) * 0.27), P["pink"] if k % 2 else P["lilac"])
+            for xx in (-0.45, 0.45):
+                box((0.05, 0.12, 1.0), (x + xx, -1.06, 0.95), P["gold"])
+            box((0.95, 0.12, 0.05), (x, -1.06, 1.45), P["gold"])
+            cyl(0.2, 0.3, (sx * 1.25, -1.45, 0.37), P["wood_lt"], seg=12, r2=0.15)
+            bush((sx * 1.25, -1.45, 0.45), 0.3, P, "pink" if sx < 0 else "lilac", n=5, seed=sx + 3)
+    if L >= 5:
+        box((3.12, 0.06, 0.06), (0, -1.82, 1.62), P["gold"])
+        leaf((0, -1.86, 1.5), 0.28, P)
+        for sx in (-1, 1):
+            cyl(0.03, 0.5, (sx * 1.5, -1.6, 1.55), P["gold"], seg=8, rot=(math.radians(60), 0, 0))
+        box((0.4, 0.35, 0.35), (1.55, -0.6, 0.4), P["wood"], bevel=0.02)
+        ivy((-1.45, -0.6, 1.9), P, n=7, spread=(0.15, 0.6, 1.0), seed=11)
 
 
 # ================================================================ SERĂ
-def build_sera(P):
-    cyl(1.45, 0.32, (0, 0, 0.16), P["stone_dk"], seg=8, rot=(0, 0, math.pi / 8))
+def build_sera(P, L):
+    k = {1: 0.55, 2: 0.75, 3: 1.0, 4: 1.0, 5: 1.0}[L]
+    cyl(1.45 * k, 0.32, (0, 0, 0.16), P["stone_dk"], seg=8, rot=(0, 0, math.pi / 8))
+    if L == 1:
+        # ramă aurie simplă cu câteva plante
+        for i in range(4):
+            a = TAU * i / 4 + math.pi / 4
+            cyl(0.035, 1.0, (math.cos(a) * 0.7, math.sin(a) * 0.7, 0.82), P["gold"], seg=6)
+        torus(0.7 * 1.41, 0.03, (0, 0, 1.32), P["gold"], seg=4, sides=5, rot=(0, 0, math.pi / 4))
+        for i in range(3):
+            bush((math.cos(i * 2.1) * 0.35, math.sin(i * 2.1) * 0.35, 0.32), 0.28, P, "pink", n=4, seed=i)
+        return
     with group("Pereti", (0, 0, 0.32), (0, 0, math.pi / 8)):
-        cyl(1.3, 1.1, (0, 0, 0.55), P["glass"], seg=8, smooth=False)
+        cyl(1.3 * k, 1.1 * k, (0, 0, 0.55 * k), P["glass"], seg=8, smooth=False)
         for i in range(8):
             a = TAU * i / 8
-            cyl(0.035, 1.12, (math.cos(a) * 1.3, math.sin(a) * 1.3, 0.56), P["gold"], seg=6)
-        for z in (0.02, 0.55, 1.1):
-            torus(1.3, 0.03, (0, 0, z), P["gold"], seg=8, sides=5)
-    with group("Bolta", (0, 0, 1.42)):
-        pts = [(1.25 * math.cos(t), 0.95 * math.sin(t)) for t in [i * math.pi / 2 / 8 for i in range(9)]]
-        pts[-1] = (0.0001, 0.95)
+            cyl(0.035, 1.12 * k, (math.cos(a) * 1.3 * k, math.sin(a) * 1.3 * k, 0.56 * k), P["gold"], seg=6)
+        for z in (0.02, 1.1 * k):
+            torus(1.3 * k, 0.03, (0, 0, z), P["gold"], seg=8, sides=5)
+    with group("Bolta", (0, 0, 0.32 + 1.1 * k)):
+        pts = [(1.25 * k * math.cos(t), 0.95 * k * math.sin(t)) for t in [i * math.pi / 2 / 8 for i in range(9)]]
+        pts[-1] = (0.0001, 0.95 * k)
         lathe(pts, (0, 0, 0), P["glass"], seg=16)
-        for i in range(8):
-            torus(1.25, 0.028, (0, 0, 0), P["gold"], rot=(math.pi / 2, 0, TAU * i / 8), seg=20, sides=5, arc=math.pi / 2, scale=(1, 0.76, 1))
-        torus(0.75, 0.025, (0, 0, 0.75), P["gold"], seg=24, sides=5)
-        cyl(0.18, 0.18, (0, 0, 1.0), P["gold"], seg=8)
-        sphere(0.1, (0, 0, 1.15), P["gold"], seg=12, rings=6)
-    # plante și lumină caldă înăuntru
-    sphere(0.22, (0, 0.1, 1.0), P["glow_soft"], seg=12, rings=6)
-    for i in range(6):
-        a = i * TAU / 6 + 0.3
-        bush((math.cos(a) * 0.7, math.sin(a) * 0.7, 0.32), 0.33, P, "pink" if i % 2 else "lilac", n=5, seed=i)
-    cypress((0.0, 0.35, 0.32), 1.2, P)
-    # intrare
-    with group("Intrare", (0, -1.28, 0.32)):
-        box((0.62, 0.1, 0.9), (0, 0, 0.45), P["glass"])
-        torus(0.33, 0.035, (0, -0.02, 0.9), P["gold"], rot=(math.pi / 2, 0, 0), seg=16, sides=5, arc=math.pi)
+        if L >= 5:
+            for i in range(8):
+                torus(1.25, 0.028, (0, 0, 0), P["gold"], rot=(math.pi / 2, 0, TAU * i / 8), seg=20, sides=5, arc=math.pi / 2, scale=(1, 0.76, 1))
+            torus(0.75, 0.025, (0, 0, 0.75), P["gold"], seg=24, sides=5)
+        cyl(0.18 * k, 0.18, (0, 0, 0.95 * k + 0.05), P["gold"], seg=8)
+        sphere(0.1, (0, 0, 0.95 * k + 0.2), P["gold"], seg=12, rings=6)
+    n_b = {2: 3, 3: 4, 4: 6, 5: 6}[L]
+    for i in range(n_b):
+        a = i * TAU / n_b + 0.3
+        bush((math.cos(a) * 0.7 * k, math.sin(a) * 0.7 * k, 0.32), 0.33 * k, P, "pink" if i % 2 else "lilac", n=5, seed=i)
+    if L >= 4:
+        sphere(0.22, (0, 0.1, 1.0), P["glow_soft"], seg=12, rings=6)
+        cypress((0.0, 0.35, 0.32), 1.2, P)
+    with group("Intrare", (0, -1.28 * k, 0.32)):
+        box((0.62, 0.1, 0.9 * k), (0, 0, 0.45 * k), P["glass"])
         for sx in (-1, 1):
-            cyl(0.035, 0.9, (sx * 0.33, -0.02, 0.45), P["gold"], seg=6)
-    stairs((0, -1.35, 0.32), 0.7, 2, 0.16, 0.18, P, rails=False)
+            cyl(0.035, 0.9 * k, (sx * 0.33, -0.02, 0.45 * k), P["gold"], seg=6)
+    if L >= 3:
+        stairs((0, -1.35, 0.32), 0.7, 2, 0.16, 0.18, P, rails=False)
 
 
 BUILDERS = {"palat": build_palat, "obs": build_obs, "turn": build_turn, "mag": build_mag, "sera": build_sera}
+LEVELS = [int(x) for x in os.environ.get("BUBLE_LEVELS", "1,2,3,4,5").split(",")]
 
 for bid in ONLY:
-    bk.reset_scene()
-    bk._MATS.clear()
-    P = bk.palette()
-    root = bk.empty(bid.capitalize())
-    bk.set_parent(root)
-    BUILDERS[bid](P)
-    bk.set_parent(None)
-    bk.apply_and_join(root, bid.capitalize())
-    bk.export_glb(os.path.join(OUT_DIR, bid + ".glb"))
-    if PREVIEW:
-        H = {"palat": 5.5, "obs": 4.5, "turn": 5.3, "mag": 3.3, "sera": 2.6}[bid]
-        bk.preview(os.path.join(PREVIEW, bid + ".png"), target=(0, 0, H * 0.45), cam_loc=(H * 0.9, -H * 2.0, H * 1.05), lens=50, res=560)
+    for L in LEVELS:
+        bk.reset_scene()
+        bk._MATS.clear()
+        P = bk.palette()
+        root = bk.empty(bid.capitalize())
+        bk.set_parent(root)
+        BUILDERS[bid](P, L)
+        bk.set_parent(None)
+        bk.apply_and_join(root, bid.capitalize())
+        bk.export_glb(os.path.join(OUT_DIR, "%s_%d.glb" % (bid, L)))
+        if L == 5:
+            bk.export_glb(os.path.join(OUT_DIR, bid + ".glb"))
+        if PREVIEW:
+            H = {"palat": 5.5, "obs": 4.5, "turn": 5.3, "mag": 3.3, "sera": 2.6}[bid]
+            bk.preview(os.path.join(PREVIEW, "%s_%d.png" % (bid, L)), target=(0, 0, H * 0.45), cam_loc=(H * 0.9, -H * 2.0, H * 1.05), lens=50, res=320)

@@ -25,7 +25,7 @@ func _ready() -> void:
 		var w := Node3D.new()
 		w.position = Vector3(info.x, 0, info.z)
 		add_child(w)
-		var m := Models.instance(id)
+		var m := Models.instance_level(id, 5)
 		if m == null:
 			m = Proc.building(id)
 		w.add_child(m)
@@ -86,8 +86,23 @@ func _colliders(n: Node, tag: String) -> void:
 			_colliders(c, tag)
 
 
-func _scale_for(lvl: int) -> float:
-	return 0.78 + 0.06 * lvl
+func _scale_for(_lvl: int) -> float:
+	return 1.0
+
+
+## Pune modelul nivelului dat pentru clădirea rivalului (aceleași modele pe niveluri ca la jucător).
+func _set_model(id: String, lvl: int) -> void:
+	var d: Dictionary = bld[id]
+	if d.get("lvl", -1) == lvl:
+		return
+	var m := Models.instance_level(id, lvl)
+	if m == null:
+		return
+	d.m.queue_free()
+	d.w.add_child(m)
+	_colliders(m, "b:" + id)
+	d.m = m
+	d.lvl = lvl
 
 
 ## Arată clădirile după nivelurile rivalului.
@@ -96,9 +111,10 @@ func refresh(levels := {}) -> void:
 	for id in bld:
 		var lvl: int = int(shown.get(id, 1))
 		var d: Dictionary = bld[id]
+		_set_model(id, maxi(lvl, 1))
 		d.m.visible = lvl > 0
 		d.rubble.visible = lvl <= 0
-		d.w.scale = Vector3.ONE * _scale_for(maxi(lvl, 1))
+		d.w.scale = Vector3.ONE
 
 
 func _process(dt: float) -> void:
@@ -153,6 +169,8 @@ func hit(id: String, blocked: bool, new_level: int, cam: Node) -> void:
 		sq.tween_property(w, "scale", Vector3.ONE * _scale_for(maxi(new_level, 1)), 0.35).set_trans(Tween.TRANS_BACK)
 		sq.parallel().tween_property(hammer, "position", impact + Vector3(0, 2.0, 0), 0.3)
 		await sq.finished
+		if new_level > 0:
+			_set_model(id, new_level)
 		d.m.visible = new_level > 0
 		d.rubble.visible = new_level <= 0
 	var out := create_tween()

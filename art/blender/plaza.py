@@ -106,7 +106,8 @@ def lavender(x, z, n=11, seed=1):
 for (x, z, s) in ((-3.9, 5.3, 1), (-5.4, 4.8, 2), (-3.0, 6.0, 3), (4.2, 4.3, 4), (-6.3, 1.4, 5)):
     lavender(x, z, seed=s)
 
-for (x, z, h) in ((-2.3, -6.0, 2.6), (2.4, -6.1, 2.8), (6.2, -3.9, 2.4), (-6.5, -3.4, 2.5), (6.6, 3.7, 2.2), (-2.4, -2.6, 1.7)):
+# câțiva chiparoși înalți, ca accente (nu o pădure)
+for (x, z, h) in ((-2.6, -6.2, 2.8), (2.7, -6.2, 2.9), (6.4, -3.6, 2.4), (-6.5, -3.4, 2.5)):
     cypress(G(x, z), h, P)
 
 
@@ -118,12 +119,12 @@ def round_tree(x, z, s=1.0, seed=1):
         ico(0.55 * s * (1.0 if i == 0 else 0.7), G(x + math.cos(a) * d, z + math.sin(a) * d, 1.35 * s + 0.25 * s * (i % 2)), P["leaf"] if i % 2 else P["leaf_lt"], sub=2)
 
 
-for (x, z, s, k) in ((-6.4, 0.2, 1.1, 1), (-3.9, -6.0, 1.0, 2), (3.9, -5.8, 1.1, 3), (6.6, 0.4, 0.95, 4), (-5.6, -4.8, 0.9, 5), (5.4, -5.0, 0.9, 6)):
+for (x, z, s, k) in ((-6.4, 0.2, 1.0, 1), (6.6, 0.4, 0.95, 4)):
     round_tree(x, z, s, k)
 
 # brâu de vegetație pe marginea insulei (tufe, trandafiri, lavandă), cu goluri la scări și cascade
-for i in range(34):
-    a = i / 34 * math.tau + 0.05 * math.sin(i * 3.1)
+for i in range(16):
+    a = i / 16 * math.tau + 0.05 * math.sin(i * 3.1)
     x, z = math.sin(a) * 6.55, math.cos(a) * 6.55 + 0.0
     deg_front = math.degrees(math.atan2(x, z))
     if abs(deg_front) < 17 or abs(abs(deg_front) - 40) < 7:
@@ -142,7 +143,7 @@ for i in range(34):
 # flori mici răsfirate prin iarbă
 cols = ["pink", "lilac", "glow_soft", "pink", "lilac"]
 k = 0
-for i in range(170):
+for i in range(60):
     a = (math.sin(i * 12.9898) * 43758.5453) % 1.0 * math.tau
     r = 3.5 + 3.4 * math.sqrt((math.sin(i * 78.233) * 24634.6345) % 1.0)
     x, z = math.cos(a) * r, math.sin(a) * r + 0.3

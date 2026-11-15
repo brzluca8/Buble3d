@@ -49,6 +49,15 @@ func hop_path(points: Array, done: Callable) -> void:
 		done.call()
 
 
+## Merge (în câteva sărituri) până la un punct oarecare.
+func walk_to(p: Vector3) -> void:
+	var pts := []
+	var n := maxi(1, int(_base.distance_to(p) / 1.6))
+	for i in range(1, n + 1):
+		pts.append(_base.lerp(p, float(i) / n))
+	hop_path(pts, Callable())
+
+
 func is_hopping() -> bool:
 	return not _hops.is_empty()
 

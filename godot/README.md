@@ -74,6 +74,15 @@ Monetizarea: vezi [MONETIZARE.md](MONETIZARE.md).
 - Toată logica e în `autoload/game.gd` (testată în `tests/smoke_test.gd`); interfața în
   `scripts/ui/play_ui.gd`; traseul 3D în `scripts/board.gd`.
 
+## Moduri de vedere și clădiri pe niveluri
+
+- **Joc**: traseul de zaruri se vede, camera arată tot inelul. **Insulă** (🏗️ sau atingerea unei clădiri):
+  traseul dispare, camera se apropie de clădiri. ARUNCĂ trece automat înapoi în modul Joc.
+- Fiecare clădire are 5 modele (`models/<id>_1..5.glb`, generate de `art/blender/buildings.py`):
+  crește și își schimbă forma la fiecare upgrade; scara e fixată după nivelul 5.
+- Traseul e discret: piatră cu un inel colorat; iconițe doar la căsuțele importante.
+- Meniul ☰ adună Setări, Vederea generală și Buble Blast.
+
 ## Online (opțional)
 
 `autoload/net.gd` se conectează la serverul din `server/` (vezi `server/README.md`): ținte reale pentru

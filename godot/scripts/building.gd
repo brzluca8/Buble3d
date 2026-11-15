@@ -13,14 +13,9 @@ func setup(info: Dictionary) -> void:
 	id = info.id
 	name = id
 	position = Vector3(info.x, 0, info.z)
-	var visual := Models.instance(id)
-	if visual == null:
-		visual = Proc.building(id)
-	add_child(visual)
-	local_aabb = Models.subtree_aabb(visual, Transform3D.IDENTITY).grow(0.2)
-	_add_colliders(visual)
 	_apply_level(false)
 	Game.upgraded.connect(_on_upgraded)
+	Game.island_completed.connect(func(_i): _apply_level(false))
 
 
 func _on_upgraded(b: String) -> void:
@@ -28,13 +23,31 @@ func _on_upgraded(b: String) -> void:
 		_apply_level(true)
 
 
+var _visual: Node3D
+var _lvl := -1
+
+## Încarcă modelul nivelului curent (clădirea crește și își schimbă forma).
 func _apply_level(animate: bool) -> void:
 	var lvl: int = Game.levels[id]
-	if _lanterns:
-		_lanterns.queue_free()
-	_lanterns = Proc.level_lanterns(lvl)
-	add_child(_lanterns)
-	_base = 1.0 + 0.07 * (lvl - 1)
+	if lvl != _lvl:
+		_lvl = lvl
+		if _visual:
+			_visual.queue_free()
+		_visual = Models.instance_level(id, lvl)
+		var procedural := _visual == null
+		if procedural:
+			_visual = Proc.building(id)
+		add_child(_visual)
+		local_aabb = Models.subtree_aabb(_visual, Transform3D.IDENTITY).grow(0.2)
+		_add_colliders(_visual)
+		if _lanterns:
+			_lanterns.queue_free()
+			_lanterns = null
+		if procedural:
+			# fără modele pe niveluri: felinare + creștere ușoară, ca înainte
+			_lanterns = Proc.level_lanterns(lvl)
+			add_child(_lanterns)
+	_base = 1.0 if Models.has("%s_1" % id) else 1.0 + 0.07 * (lvl - 1)
 	_pop = 0.0 if animate else 1.0
 	scale = Vector3.ONE * _base
 

@@ -11,6 +11,7 @@ var roll_lbl: Label
 var energy_lbl: Label
 var timer_lbl: Label
 var mult_btn: Button
+var mode_btn: Button
 var info_lbl: Label
 var dice: Control
 var dice_lbls: Array[Label] = []
@@ -88,27 +89,50 @@ func _roll_button() -> void:
 		Game.cycle_mult())
 	add_child(mult_btn)
 
-	timer_lbl = K.label("", 19, Color.WHITE, 800, 6, Color(0.1, 0.05, 0.3, 0.7))
+	# cronometrul energiei: mic, deasupra butonului, doar când energia nu e plină
+	timer_lbl = K.label("", 18, Color.WHITE, 800, 6, Color(0.1, 0.05, 0.3, 0.7))
 	timer_lbl.anchor_left = 0.5
 	timer_lbl.anchor_right = 0.5
 	timer_lbl.anchor_top = 1
 	timer_lbl.anchor_bottom = 1
-	timer_lbl.offset_left = 180
-	timer_lbl.offset_right = 340
-	timer_lbl.offset_top = -214
-	timer_lbl.offset_bottom = -160
+	timer_lbl.offset_left = -170
+	timer_lbl.offset_right = 170
+	timer_lbl.offset_top = -280
+	timer_lbl.offset_bottom = -248
 	timer_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	timer_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	timer_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 	add_child(timer_lbl)
+
+	# comutare Insulă (construcții) / Joc (traseul)
+	mode_btn = K.button("🏗️", 34, K.box(Color(0.125, 0.1, 0.37, 0.85), 40, K.GOLD, 3, 6))
+	mode_btn.anchor_left = 0.5
+	mode_btn.anchor_right = 0.5
+	mode_btn.anchor_top = 1
+	mode_btn.anchor_bottom = 1
+	mode_btn.offset_left = 186
+	mode_btn.offset_right = 300
+	mode_btn.offset_top = -226
+	mode_btn.offset_bottom = -150
+	mode_btn.tooltip_text = "Construiește"
+	mode_btn.pressed.connect(func():
+		Sfx.play("click")
+		if world and world.has_method("set_mode"):
+			Game.select("")
+			world.set_mode("joc" if world.mode == "insula" else "insula")
+			_refresh())
+	add_child(mode_btn)
 
 
 func _info_bar() -> void:
 	var p := PanelContainer.new()
-	K.place(p, true, 160, 46, 16, 100)
-	p.add_theme_stylebox_override("panel", K.box(Color(0.125, 0.1, 0.37, 0.72), 22, Color(1, 1, 1, 0.25), 2, 0, 8))
+	p.anchor_left = 0
+	p.anchor_right = 0
+	p.offset_left = 16
+	p.offset_right = 196
+	p.offset_top = 164
+	p.offset_bottom = 204
+	p.add_theme_stylebox_override("panel", K.box(Color(0.125, 0.1, 0.37, 0.65), 20, Color(1, 1, 1, 0.2), 1, 0, 10))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info_lbl = K.label("", 19, Color.WHITE, 800)
+	info_lbl = K.label("", 18, Color.WHITE, 800)
 	info_lbl.clip_text = true
 	p.add_child(info_lbl)
 	add_child(p)
@@ -157,8 +181,10 @@ func _refresh() -> void:
 	energy_lbl.text = "🫧 %d / %d" % [Game.energy, Game.ENERGY_MAX]
 	mult_btn.text = "×%d" % Game.mult
 	var nxt := Game.energy_next_in()
-	timer_lbl.text = "" if nxt == 0 else "+1 🫧 în\n%d:%02d" % [nxt / 60, nxt % 60]
-	info_lbl.text = "🛡️ %d/3   ⭐ %s %d/%d   🏝️ %s" % [Game.shields, Game.EVENT_NAME, Game.event_pts, Game.event_next_goal(), Game.island_name()]
+	timer_lbl.text = "" if nxt == 0 else "+1 🫧 în %d:%02d" % [nxt / 60, nxt % 60]
+	info_lbl.text = "🛡️ %d   ⭐ %d/%d" % [Game.shields, Game.event_pts, Game.event_next_goal()]
+	if mode_btn and world and "mode" in world:
+		mode_btn.text = "🎲" if world.mode == "insula" else "🏗️"
 	roll_btn.modulate = Color.WHITE if Game.energy >= Game.mult else Color(0.8, 0.78, 0.85)
 
 
@@ -182,10 +208,15 @@ func roll() -> void:
 			return
 		_no_energy()
 		return
+	busy = true
+	if world and world.has_method("set_mode") and world.mode != "joc":
+		Game.select("")
+		world.set_mode("joc")
+		await get_tree().create_timer(0.7).timeout
 	var res := Game.roll()
 	if res.is_empty():
+		busy = false
 		return
-	busy = true
 	Game.select("")
 	Sfx.play("shoot")
 	await _animate_dice(res.d1, res.d2)
@@ -304,7 +335,7 @@ signal _popup_done
 
 ## Ascunde / arată comenzile principale (pe insula rivalului nu se aruncă zarurile).
 func _controls(on: bool) -> void:
-	for c in [roll_btn, mult_btn, timer_lbl]:
+	for c in [roll_btn, mult_btn, timer_lbl, mode_btn]:
 		c.visible = on
 
 

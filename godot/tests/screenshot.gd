@@ -19,6 +19,15 @@ func _initialize() -> void:
 		hud.blast.nc = hud.blast.RAINBOW
 		hud.blast.cc = hud.blast.BOMB
 		hud.blast.mt = 0.0
+	elif args.size() > 1 and args[1].begins_with("nivel"):
+		# toate clădirile la nivelul dat (pentru capturi)
+		var g = root.get_node("Game")
+		for k in g.levels:
+			g.levels[k] = int(args[1].substr(5))
+		for b in main.island.get_node("Buildings").get_children():
+			b._apply_level(false)
+		if args.size() > 2 and args[2] == "insula":
+			main.set_mode("insula")
 	elif args.size() > 1 and args[1].begins_with("tema"):
 		main.apply_theme(int(args[1].substr(4)))
 	elif args.size() > 1 and args[1] in ["friends", "events", "settings"]:
@@ -60,7 +69,7 @@ func _initialize() -> void:
 			"noenergy": hud.play._no_energy()
 	elif args.size() > 1 and args[1] != "-":
 		root.get_node("Game").select(args[1])
-	if args.size() > 2 and not (args[1] in ["friends", "events", "settings"]):
+	if args.size() > 2 and not (args[1] in ["friends", "events", "settings"]) and not args[1].begins_with("nivel"):
 		if main.cam is Camera2D:
 			main.cam.zoom = Vector2.ONE * float(args[2])
 			if args.size() > 4:

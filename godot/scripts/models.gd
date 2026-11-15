@@ -3,7 +3,7 @@ extends RefCounted
 ## Modele GLB din res://models/<id>.glb. Godot le importă automat; dacă un fișier
 ## lipsește, piesa rămâne procedurală.
 
-const HEIGHT := {"palat": 7.4, "obs": 5.8, "turn": 6.6, "mag": 4.1, "sera": 3.7, "mascot": 2.7}
+const HEIGHT := {"palat": 8.0, "obs": 5.8, "turn": 6.6, "mag": 4.1, "sera": 3.7, "mascot": 2.7}
 const ISLAND_DIAMETER := 14.4
 const UNSCALED := ["plaza"]
 
@@ -89,6 +89,32 @@ static func _apply_textures(n: Node) -> void:
 						mi.set_surface_override_material(i, base)
 	for c in n.get_children():
 		_apply_textures(c)
+
+
+## Modelul clădirii `id` la nivelul `lvl` (res://models/<id>_<lvl>.glb), la aceeași scară ca
+## nivelul 5 – astfel clădirea chiar crește de la un nivel la altul. Null dacă lipsește.
+static var _level_fit := {}
+
+static func instance_level(id: String, lvl: int) -> Node3D:
+	var key := "%s_%d" % [id, clampi(lvl, 1, 5)]
+	if not has(key):
+		return instance(id)
+	if not _level_fit.has(id):
+		var ref_key := "%s_5" % id if has("%s_5" % id) else id
+		var ref: Node3D = (load(path(ref_key)) as PackedScene).instantiate()
+		var bb := subtree_aabb(ref, Transform3D.IDENTITY)
+		ref.free()
+		var sc: float = HEIGHT.get(id, 1.0) / maxf(bb.size.y, 0.001)
+		_level_fit[id] = [sc, bb.get_center() * sc, bb.position.y * sc]
+	var fit: Array = _level_fit[id]
+	var model: Node3D = (load(path(key)) as PackedScene).instantiate()
+	var wrap := Node3D.new()
+	wrap.name = "GLB"
+	wrap.add_child(model)
+	model.scale *= fit[0]
+	model.position -= Vector3(fit[1].x, fit[2], fit[1].z)
+	_apply_textures(model)
+	return wrap
 
 
 ## AABB al tuturor plaselor dintr-un subarbore, în spațiul părintelui lui `n`.

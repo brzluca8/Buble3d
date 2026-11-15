@@ -353,6 +353,30 @@ func _build_sky() -> void:
 		far_islands.append(g)
 
 
+# ---------------- moduri: Joc (traseul) / Insulă (construcții) ----------------
+const ISLAND_HOME := Vector3(-1.7, 0.0, 4.7)     # locul mascotei pe insulă (lângă scări)
+var mode := "joc"
+
+
+## Joc: traseul se vede, camera arată tot inelul. Insulă: traseul dispare, camera se apropie de clădiri.
+func set_mode(m: String) -> void:
+	if m == mode:
+		return
+	mode = m
+	var tw := create_tween()
+	if m == "insula":
+		tw.tween_property(board, "scale", Vector3(0.92, 0.0, 0.92), 0.35)
+		tw.tween_callback(func(): board.visible = false)
+		cam.set_home(Vector3(0.0, 0.9, -0.4), 32.0)
+		mascot.walk_to(ISLAND_HOME)
+	else:
+		board.visible = true
+		board.scale = Vector3(0.92, 0.0, 0.92)
+		tw.tween_property(board, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK)
+		cam.set_home(CameraRig.HOME_TARGET, CameraRig.HOME_DIST)
+		mascot.walk_to(board.stand_pos(Game.pos))
+
+
 # ---------------- temele insulelor ----------------
 ## Fiecare insulă are propria atmosferă: cer, ceață, soare, acoperișuri, iarbă, piatră, stâncă.
 const THEMES := [
@@ -450,6 +474,7 @@ func _on_selected(id: String) -> void:
 	ring.visible = id != ""
 	if id == "":
 		return
+	set_mode("insula")
 	var b := _building(id)
 	var r := maxf(b.local_aabb.size.x, b.local_aabb.size.z) * 0.5 * b.scale.x + 0.25
 	ring.position = Vector3(b.position.x, 0.08, b.position.z)

@@ -23,6 +23,8 @@ const DIST_MAX := 50.0
 const FOCUS_DIST := 22.0
 const DAMP := 6.0
 
+var home_target := HOME_TARGET
+var home_dist := HOME_DIST
 var target := HOME_TARGET
 var yaw := HOME_YAW
 var pitch := HOME_PITCH
@@ -53,10 +55,17 @@ func _ready() -> void:
 
 ## Vederea generală implicită (butonul ⟲ din interfață).
 func reset_view() -> void:
-	_t_target = HOME_TARGET
+	_t_target = home_target
 	_t_yaw = HOME_YAW
 	_t_pitch = HOME_PITCH
-	_t_dist = HOME_DIST
+	_t_dist = home_dist
+
+
+## Vederea implicită a modului curent (Joc: traseul întreg; Insulă: clădirile de aproape).
+func set_home(t: Vector3, d: float) -> void:
+	home_target = t
+	home_dist = d
+	reset_view()
 
 
 ## Apropie camera lin de un punct (clădirea selectată).
@@ -155,7 +164,7 @@ func _zoom(f: float) -> void:
 	# la zoom apropiat, ținta coboară spre piață; la depărtare revine spre centrul insulei
 	var k := inverse_lerp(DIST_MIN, DIST_MAX, _t_dist)
 	if Game.sel == "":
-		_t_target = HOME_TARGET.lerp(Vector3(_t_target.x, 0.6, _t_target.z), 1.0 - k)
+		_t_target = home_target.lerp(Vector3(_t_target.x, 0.6, _t_target.z), 1.0 - k)
 
 
 func _pinch_dist() -> float:
