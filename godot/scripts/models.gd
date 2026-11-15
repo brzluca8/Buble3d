@@ -34,16 +34,45 @@ static func instance(k: String) -> Node3D:
 	var bb := subtree_aabb(model, Transform3D.IDENTITY)
 	if bb.size == Vector3.ZERO:
 		return wrap
-	var s: float
 	if k == "insula":
-		s = ISLAND_DIAMETER / maxf(maxf(bb.size.x, bb.size.z), 0.001)
+		# insula: scalată după lățime (X); originea modelului rămâne centrul insulei,
+		# ca scările sau alte piese ieșite în față să nu o deplaseze.
+		model.scale *= ISLAND_DIAMETER / maxf(bb.size.x, 0.001)
 	else:
-		s = HEIGHT.get(k, 1.0) / maxf(bb.size.y, 0.001)
-	model.scale *= s
-	bb = subtree_aabb(model, Transform3D.IDENTITY)
-	var c := bb.get_center()
-	model.position -= Vector3(c.x, 0.0 if k == "insula" else bb.position.y, c.z)
+		model.scale *= HEIGHT.get(k, 1.0) / maxf(bb.size.y, 0.001)
+		bb = subtree_aabb(model, Transform3D.IDENTITY)
+		var c := bb.get_center()
+		model.position -= Vector3(c.x, bb.position.y, c.z)
+	_apply_textures(model)
 	return wrap
+
+
+## Materialele cu nume cunoscute din Blender primesc texturile triplanare ale jocului
+## (piatră, pavaj, acoperiș, stâncă, iarbă), deci modelele nu au nevoie de UV-uri.
+const TEXTURED := {"Piatra": "cream", "Soclu": "ped", "Pavaj": "stone", "AcoperisTurcoaz": "teal", "Stanca": "rock", "Iarba": "grass"}
+
+static func _apply_textures(n: Node) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.mesh.surface_get_material(i)
+				if m == null:
+					continue
+				var key := m.resource_name.get_slice(".", 0)
+				if TEXTURED.has(key):
+					var base: StandardMaterial3D = Proc.M(TEXTURED[key])
+					var src := m as BaseMaterial3D
+					if src:
+						var copy := base.duplicate() as StandardMaterial3D
+						copy.albedo_color = src.albedo_color
+						copy.roughness = src.roughness
+						copy.metallic = src.metallic
+						mi.set_surface_override_material(i, copy)
+					else:
+						mi.set_surface_override_material(i, base)
+	for c in n.get_children():
+		_apply_textures(c)
 
 
 ## AABB al tuturor plaselor dintr-un subarbore, în spațiul părintelui lui `n`.

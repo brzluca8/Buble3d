@@ -512,7 +512,7 @@ static func plaza() -> Node3D:
 	var isl := Node3D.new()
 	isl.name = "Plaza"
 	add(isl, lathe([Vector2(3.3, 0), Vector2(2.3, 0)], 48), M("stone"), Vector3(0, 0.02, 0.3))
-	add(isl, box(1.8, 0.04, 4.6), M("stone"), Vector3(0, 0.02, 5.1))
+	add(isl, box(1.8, 0.04, 4.2), M("stone"), Vector3(0, 0.02, 4.9))
 	add(isl, cyl(1.6, 1.7, 0.5), M("stone"), Vector3(0, 0.25, 0.3))
 	add(isl, cyl(1.35, 1.35, 0.1), M("water"), Vector3(0, 0.5, 0.3))
 	add(isl, cyl(0.18, 0.25, 1.1, 12), M("stone"), Vector3(0, 1, 0.3))
@@ -554,9 +554,23 @@ static func plaza() -> Node3D:
 		mi.material_override = mat(fc[k], {"emit": fc[k], "energy": 0.15})
 		isl.add_child(mi)
 
-	for p in [Vector2(-1.4, 3.3), Vector2(1.4, 3.3), Vector2(-1.4, 6), Vector2(1.4, 6)]:
+	for p in [Vector2(-1.4, 3.3), Vector2(1.4, 3.3)]:
 		lantern(isl, p.x, p.y)
+	# tufe cu trandafiri și lavandă (ca în imaginea de referință)
+	for b in [[-2.0, 4.3, "pink"], [2.0, 4.3, "lilac"], [-1.9, -1.7, "pink"], [1.9, -1.7, "pink"], [-6.0, 0.6, "lilac"], [6.0, 0.6, "lilac"], [-2.6, 5.6, "pink"], [2.6, 5.6, "pink"]]:
+		_bush(isl, b[0], b[1], b[2])
 	return isl
+
+
+static func _bush(p: Node3D, x: float, z: float, flower: String) -> void:
+	for i in 5:
+		var a := i * 2.4
+		var d := 0.22 * sqrt(i + 0.5)
+		add(p, sph(0.28, 8, 6), M("leafA") if i % 2 else M("leafB"), Vector3(x + cos(a) * d, 0.25 + (i % 2) * 0.08, z + sin(a) * d))
+	for i in 7:
+		var a := i * 2.4 + 1.0
+		var d := 0.28 * sqrt(i + 0.5) / 1.6
+		add(p, sph(0.07, 6, 4), M(flower), Vector3(x + cos(a) * d, 0.48 + (i % 3) * 0.04, z + sin(a) * d))
 
 static func _tree(p: Node3D, x: float, z: float, s: float, conifer: bool) -> void:
 	var g := Node3D.new()
