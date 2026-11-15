@@ -27,6 +27,8 @@ var xp: int = 0
 var levels := {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 var missions := {"up": false, "blast": false}
 var quality := "inalta"          # "inalta" | "scazuta"
+var sound := true
+var blast_level := 1             # nivelul curent din Buble Blast
 var last_save_unix: float = 0.0
 var sel := ""
 var offline_gain := 0
@@ -103,10 +105,12 @@ func add_coins(n: float) -> void:
 
 
 func blast_reward(score: int, won: bool) -> int:
-	var co := score / 4 + (100 if won else 0)
+	var co := score / 4 + (100 + 20 * (blast_level - 1) if won else 0)
 	coins += co
 	xp += score / 5 + (30 if won else 0)
 	missions.blast = true
+	if won:
+		blast_level += 1
 	changed.emit()
 	save_game()
 	return co
@@ -139,7 +143,7 @@ func save_game() -> void:
 	last_save_unix = Time.get_unix_time_from_system()
 	var d := {
 		"v": SAVE_VERSION, "coins": coins, "xp": xp, "b": levels, "mis": missions,
-		"t": last_save_unix, "q": quality,
+		"t": last_save_unix, "q": quality, "snd": sound, "bl": blast_level,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -161,6 +165,8 @@ func load_game() -> void:
 	missions.up = bool(m.get("up", false))
 	missions.blast = bool(m.get("blast", false))
 	last_save_unix = float(d.get("t", 0.0))
+	sound = bool(d.get("snd", true))
+	blast_level = maxi(1, int(d.get("bl", 1)))
 	var q: String = str(d.get("q", quality))
 	if q in ["inalta", "scazuta"]:
 		quality = q

@@ -20,6 +20,7 @@ var modal: Control
 var modal_box: VBoxContainer
 var blast: Control
 var ad_overlay: Control
+var blast_sub: Label
 
 
 func _ready() -> void:
@@ -231,7 +232,10 @@ func _refresh_sheet() -> void:
 	if lack:
 		up.modulate = Color(0.75, 0.72, 0.8, 0.8)
 	up.pressed.connect(func():
-		if not Game.upgrade(id):
+		if Game.upgrade(id):
+			Sfx.play("upgrade")
+		else:
+			Sfx.play("click")
 			show_toast("Îți mai trebuie %d monede. Joacă Buble Blast!" % ceili(Game.cost(id) - Game.coins)))
 	sheet_box.add_child(up)
 	if lack:
@@ -253,6 +257,7 @@ func _blast_button() -> void:
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var t2 := K.label("JOACĂ ȘI CÂȘTIGĂ MONEDE", 22, Color(K.INK, 0.7), 800)
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	blast_sub = t2
 	vb.add_child(t1)
 	vb.add_child(t2)
 	b.add_child(vb)
@@ -301,6 +306,7 @@ func _set_nav(key: String) -> void:
 
 
 func _nav_to(key: String) -> void:
+	Sfx.play("click")
 	_set_nav(key)
 	if key == "home":
 		_close_modal()
@@ -349,6 +355,8 @@ func _refresh() -> void:
 	lvl_lbl.text = str(Game.player_level())
 	prog_lbl.text = "Dezvoltă insula • %d/25 niveluri" % Game.sum_levels()
 	xp_bar.value = Game.xp % 100
+	if blast_sub:
+		blast_sub.text = "NIVELUL %d • JOACĂ ȘI CÂȘTIGĂ MONEDE" % Game.blast_level
 	_refresh_sheet()
 
 
@@ -510,6 +518,21 @@ func _settings() -> void:
 		hb.add_child(b)
 	modal_box.add_child(hb)
 	_p("Calitatea înaltă activează strălucirea (bloom), umbre fine și anti-aliasing. Pe telefoane lente, alege „Scăzută”.")
+	modal_box.add_child(K.label("Sunet", 30, Color.WHITE, 900))
+	var hs := HBoxContainer.new()
+	hs.add_theme_constant_override("separation", 12)
+	for q in [[true, "🔊 Pornit"], [false, "🔇 Oprit"]]:
+		var on: bool = Game.sound == q[0]
+		var b := K.button(q[1], 26, K.box(Color("7a5ad8") if on else Color(1, 1, 1, 0.1), 22, K.GOLD if on else Color(1, 1, 1, 0.27), 3, 0, 16))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var val: bool = q[0]
+		b.pressed.connect(func():
+			Game.sound = val
+			Game.save_game()
+			Sfx.play("click")
+			_open_modal("settings"))
+		hs.add_child(b)
+	modal_box.add_child(hs)
 	modal_box.add_child(K.label("Modele 3D", 30, Color.WHITE, 900))
 	_p("Modelele se pun în folderul res://models/ al proiectului. Piesele fără model folosesc geometria din cod.")
 	var names := {"palat": "Palat", "obs": "Observator", "turn": "Turn", "mag": "Magazin", "sera": "Seră", "mascot": "Mascotă", "insula": "Insulă"}
@@ -523,6 +546,7 @@ func _open_blast() -> void:
 	blast = BubleBlast.new()
 	K.full_rect(blast)
 	blast.closed.connect(_on_blast_closed)
+	Sfx.play("click")
 	root.add_child(blast)
 	get_viewport().disable_3d = true
 
@@ -530,8 +554,10 @@ func _open_blast() -> void:
 func _on_blast_closed(rewarded: bool) -> void:
 	get_viewport().disable_3d = false
 	blast = null
+	_refresh()
 	if rewarded:
 		Game.mascot_jump.emit()
+		Sfx.play("coin")
 		show_toast("Monedele au fost adăugate în insulă 🪙")
 
 

@@ -58,6 +58,26 @@ func _initialize() -> void:
 		root.get_node("Monetization").show_rewarded("double_blast")
 		root.get_node("Monetization").finish_demo_ad(true)
 		check(game.coins == after_blast + won, "reclama DEMO dublează monedele")
+	# bombă: sparge bulele din jur
+	bl.start_level(1)
+	var before_cells := 0
+	for row in bl.g:
+		for v in row:
+			if v >= 0:
+				before_cells += 1
+	bl.mv = {"p": bl.cp(1, 3), "v": Vector2.ZERO, "c": bl.BOMB}
+	bl._place()
+	var after_cells := 0
+	for row in bl.g:
+		for v in row:
+			if v >= 0:
+				after_cells += 1
+	check(after_cells < before_cells - 5, "bomba sparge bulele din jur (%d → %d)" % [before_cells, after_cells])
+	var lvl_before: int = game.blast_level
+	game.blast_reward(100, true)
+	check(game.blast_level == lvl_before + 1, "victoria deblochează nivelul următor")
+	bl.start_level(game.blast_level)
+	check(bl.colors >= 3 and bl.shots > 24, "nivel nou pregătit (%d culori, %d mutări)" % [bl.colors, bl.shots])
 	bl._quit()
 	await process_frame
 	check(hud.blast == null, "Buble Blast închis")

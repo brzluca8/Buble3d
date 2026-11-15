@@ -34,6 +34,7 @@ Keystore-ul de release **nu** se pune în git (este în `.gitignore`). Păstreaz
 project.godot          setări (portret, Mobile renderer, compresie ETC2/ASTC)
 autoload/game.gd       stare, economie, salvare (user://save.json), venit pasiv/offline
 autoload/monetization.gd  strat unic pentru reclame și cumpărături (acum DEMO)
+autoload/sfx.gd        efecte sonore generate din cod (pornit/oprit din Setări)
 scenes/main.tscn       scena principală → scripts/main.gd (mediu, lumini, insulă, cer)
 scripts/proc.gd        geometria procedurală (palat, observator, turn, magazin, seră, mascotă, teren)
 scripts/models.gd      încărcarea modelelor din models/*.glb cu fallback procedural
@@ -42,7 +43,7 @@ scripts/mascot.gd      mascota (procedurală sau GLB cu animații)
 scripts/camera_rig.gd  orbită, zoom (2 degete / rotiță), atingere = selectare
 scripts/ui/            HUD, ferestre (Album, Prieteni, Evenimente, Magazin, Setări), Buble Blast
 shaders/waterfall.gdshader  cascade animate
-models/                modelele GLB (vezi models/README.md)
+models/                modelele GLB: insula, cele 5 clădiri și mascota (vezi models/README.md)
 tests/                 test de fum + captură de ecran
 ```
 
@@ -53,3 +54,15 @@ tests/                 test de fum + captură de ecran
 - Se schimbă din **⚙️ Setări**.
 
 Monetizarea: vezi [MONETIZARE.md](MONETIZARE.md).
+
+## Buble Blast
+
+- Niveluri: fiecare victorie deblochează nivelul următor (mai multe rânduri și culori, mai multe mutări).
+- 💣 **Bomba** sparge tot în jurul locului unde cade; o primești la o reacție în lanț de 3+ bule (și la începutul nivelurilor 3+).
+- 🌈 **Curcubeul** ia culoarea celui mai mare grup vecin; îl primești la un grup de 6+ (sau rar, la întâmplare).
+- Atinge bula mică din stânga („schimbă") ca să inversezi bula curentă cu următoarea.
+- Bonus de scor pentru mutările rămase; monedele câștigate merg pe insulă.
+
+## Modelele 3D
+
+Modelele din `models/` sunt generate cu scripturile din `art/blender/` (vezi `art/README.md`).

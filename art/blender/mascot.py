@@ -71,7 +71,7 @@ M = {
 
 
 # ================================================================ forma corpului
-BODY_C, BODY_H, DS = 0.82, 0.70, 0.88   # centru, semi-înălțime, adâncime (Y)
+BODY_C, BODY_H, DS = 0.925, 0.805, 0.88   # centru, semi-înălțime, adâncime (Y)
 
 
 def body_t(z):
@@ -80,7 +80,7 @@ def body_t(z):
 
 def body_r(z):
     t = body_t(z)
-    w = 0.62 + 0.03 * math.sin(t) - 0.08 * (1 - math.cos(t)) / 2
+    w = 0.6 + 0.03 * math.sin(t) - 0.08 * (1 - math.cos(t)) / 2
     return w * max(math.sin(t), 0.0) ** 0.8
 
 
@@ -99,7 +99,7 @@ def surf(az, z, off=0.0):
     return p + normal(p) * off
 
 
-def lathe_mesh(name, scale=1.0, rings=40, seg=56):
+def lathe_mesh(name, scale=1.0, rings=30, seg=44):
     verts, faces = [(0, 0, BODY_C - BODY_H)], []
     for i in range(1, rings):
         t = math.pi * i / rings
@@ -247,7 +247,7 @@ body = empty("Corp", (0, 0, 0), root)
 finish(lathe_mesh("Trunchi"), "Trunchi", "fur", body)
 
 # ---- față
-EYE_Z = 1.0
+EYE_Z = 1.132
 UP = Vector((0, 0, 1))
 for s, side in ((-1, "D"), (1, "S")):
     p = surf(s * 22, EYE_Z)
@@ -256,10 +256,10 @@ for s, side in ((-1, "D"), (1, "S")):
     sphere("Ochi" + side, 0.105, p + n * 0.01, "eye", scale=(0.95, 1.22, 0.55), rot=align_rot(n), parent=body, seg=28, rings=14)
     sphere("Sclipire" + side, 0.042, p + n * 0.06 + UP * 0.045 + right * 0.03, "shine", rot=align_rot(n), scale=(1, 1, 0.5), parent=body, seg=14, rings=7)
     sphere("SclipireMica" + side, 0.018, p + n * 0.055 - UP * 0.045 - right * 0.035, "shine", parent=body, seg=8, rings=4)
-    pb = surf(s * 42, 0.9)
+    pb = surf(s * 42, 1.017)
     sphere("Obraz" + side, 0.085, pb + normal(pb) * 0.005, "blush", scale=(1.25, 0.8, 0.22), rot=align_rot(normal(pb)), parent=body, seg=18, rings=9)
 
-pm = surf(0, 0.86)
+pm = surf(0, 0.971)
 nm = normal(pm)
 bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.14, location=(0, 0, 0))
 mouth = bpy.context.active_object
@@ -272,29 +272,29 @@ finish(mouth, "Gura", "mouth", body)
 sphere("Limba", 0.07, pm + nm * 0.035 - Vector((0, 0, 0.035)), "tongue", scale=(0.95, 0.3, 0.45), parent=body, seg=18, rings=9)
 
 # ---- cască de aviator
-cap = lathe_mesh("Casca", scale=1.045, rings=44, seg=60)
-keep_verts(cap, lambda c: c.z + 0.42 * c.y > 1.17)
+cap = lathe_mesh("Casca", scale=1.045, rings=32, seg=48)
+keep_verts(cap, lambda c: c.z + 0.42 * c.y > 1.327)
 solidify(cap, 0.03)
 finish(cap, "Casca", "leather", body)
-crown = lathe_mesh("Crestet", scale=1.075, rings=44, seg=60)
-keep_verts(crown, lambda c: c.z > 1.44)
+crown = lathe_mesh("Crestet", scale=1.075, rings=32, seg=48)
+keep_verts(crown, lambda c: c.z > 1.638)
 solidify(crown, 0.02)
 finish(crown, "Crestet", "purple", body)
-ZC = 1.44
+ZC = 1.638
 torus("TivCrestet", body_r(ZC) * 1.065, 0.022, (0, 0, BODY_C + (ZC - BODY_C) * 1.07), "leather_dk", scale=(1, DS, 1), parent=body, seg=60, sides=8)
 sphere("Mot", 0.05, (0, 0, BODY_C + BODY_H * 1.075 + 0.01), "purple_lt", parent=body, seg=16, rings=8)
 for s, side in ((-1, "D"), (1, "S")):
-    p = surf(s * 82, 1.05, 0.03)
+    p = surf(s * 82, 1.189, 0.03)
     sphere("Clapa" + side, 0.2, p, "leather", scale=(0.95, 1.2, 0.25), rot=align_rot(normal(p)), parent=body, seg=24, rings=12)
-    q = surf(s * 80, 0.9, 0.035)
+    q = surf(s * 80, 1.017, 0.035)
     nq = normal(q)
     cb = rbox("Curea" + side, (0.07, 0.025, 0.3), q, "leather_dk", bevel=0.01, parent=body)
     cb.rotation_euler = (Matrix.Rotation(math.atan2(nq.x, -nq.y), 4, "Z") @ Matrix.Rotation(math.radians(-8), 4, "X")).to_euler()
-    pc = surf(s * 80, 0.8, 0.05)
+    pc = surf(s * 80, 0.902, 0.05)
     torus("Catarama" + side, 0.045, 0.012, pc, "gold", rot=align_rot(normal(pc)), parent=body, seg=4, sides=6)
 
 # ---- ochelari de aviator pe frunte
-GZ = 1.33
+GZ = 1.511
 goggles = empty("Ochelari", tuple(surf(0, GZ, 0.05)), body)
 torus("CureaOchelari", body_r(GZ) * 1.06 + 0.02, 0.04, (0, 0, GZ), "leather_dk", scale=(1, DS * 1.02, 0.55), parent=body, seg=64, sides=10)
 for s, side in ((-1, "D"), (1, "S")):
@@ -308,9 +308,33 @@ for s, side in ((-1, "D"), (1, "S")):
 cylinder("Punte", 0.03, 0.14, surf(0, GZ, 0.09), "gold", rot=(0, math.radians(90), 0), parent=goggles, seg=12)
 
 # ---- fular
-SZ = 0.66
-torus("Fular", body_r(SZ) + 0.05, 0.085, (0, 0, SZ), "purple", rot=(math.radians(6), 0, 0), scale=(1, DS * 1.04, 0.7), parent=body, seg=56, sides=16)
-torus("FularPliu", body_r(SZ + 0.06) + 0.05, 0.055, (0, -0.01, SZ + 0.07), "purple_lt", rot=(math.radians(6), 0, 0), scale=(1, DS * 1.05, 0.75), parent=body, seg=56, sides=10)
+SZ = 0.741
+# bandă moale de material, care urmează forma corpului, cu pliuri
+verts, faces = [], []
+SEGF, ROWS = 48, 7
+for k in range(ROWS):
+    u = k / (ROWS - 1)
+    z = SZ - 0.1 + 0.2 * u
+    for j in range(SEGF):
+        a = 2 * math.pi * j / SEGF
+        r = body_r(z) + 0.035 + 0.05 * math.sin(u * math.pi) + 0.012 * math.sin(6 * a) * math.sin(u * math.pi)
+        zz = z - 0.03 * math.cos(a) * 0.5        # puțin mai jos în față
+        verts.append((math.sin(a) * r, -math.cos(a) * r * DS, zz))
+for k in range(ROWS - 1):
+    for j in range(SEGF):
+        a0, a1 = k * SEGF + j, k * SEGF + (j + 1) % SEGF
+        faces.append((a0, a1, a1 + SEGF, a0 + SEGF))
+me = bpy.data.meshes.new("Fular")
+me.from_pydata(verts, [], faces)
+scarf = bpy.data.objects.new("Fular", me)
+bpy.context.collection.objects.link(scarf)
+s_mod = scarf.modifiers.new("Grosime", "SOLIDIFY")
+s_mod.thickness = 0.03
+smooth(scarf)
+finish(scarf, "Fular", "purple", body)
+for k in range(3):
+    zf = SZ - 0.06 + k * 0.07
+    torus("CutaFular%d" % k, body_r(zf) + 0.085 - abs(k - 1) * 0.02, 0.012, (0, 0, zf - 0.015), "purple_lt", scale=(1, DS * 1.02, 1), parent=body, seg=48, sides=5)
 knot = surf(28, SZ - 0.02, 0.12)
 sphere("Nod", 0.1, knot, "purple", scale=(1, 0.75, 0.85), parent=body, seg=20, rings=10)
 tail = empty("CapatFular", tuple(knot), body)
@@ -325,22 +349,36 @@ end = pts[-1]
 for k in range(7):
     f = end + ws[-1] * (k / 6 - 0.5) * 0.2 + Vector((0.01, -0.005, -0.04))
     cylinder("Franj%d" % k, 0.008, 0.07, f, "purple_lt", rot=(0, math.radians(25), 0), parent=tail, seg=6)
-leaf_c = pts[8] + Vector((0, -0.035, 0))
-for k, a in enumerate((-30, 30)):
-    sphere("Frunza%d" % k, 0.05, leaf_c + Vector((math.sin(math.radians(a)) * 0.03, 0, 0.015)), "gold", scale=(0.55, 0.25, 1.0), rot=(0, math.radians(a), 0), parent=tail, seg=12, rings=8)
+leaf_c = pts[7] + Vector((0, -0.03, 0))
+outline = []
+for i in range(17):
+    t = i / 16 * 2 * math.pi
+    outline.append((0.045 * math.sin(t) * (1 - 0.3 * math.cos(t)), 0, -0.075 * math.cos(t)))
+lv = [(0, 0, 0)] + outline
+lf = [(0, i + 1, (i + 1) % 16 + 1) for i in range(16)]
+me = bpy.data.meshes.new("Frunza")
+me.from_pydata(lv, [], lf)
+leaf_o = bpy.data.objects.new("Frunza", me)
+bpy.context.collection.objects.link(leaf_o)
+sm = leaf_o.modifiers.new("Grosime", "SOLIDIFY")
+sm.thickness = 0.012
+leaf_o.location = leaf_c
+leaf_o.rotation_euler = (math.radians(-10), math.radians(-30), math.radians(10))
+finish(leaf_o, "Frunza", "gold", tail)
+cylinder("Nervura", 0.006, 0.14, leaf_c + Vector((0, -0.008, 0)), "gold", rot=(0, math.radians(-30), 0), parent=tail, seg=5)
 
 # ---- curea în diagonală cu cataramă
 # planul curelei e înclinat: sus la umărul drept/spate, jos în față-stânga
 sn = Vector((0.36, -0.36, 0.86)).normalized()
-strap = torus("CureaPiept", 0.62, 0.028, (0, 0.02, 0.8), "leather", rot=align_rot(sn), scale=(1, 0.95, 2.2), parent=body, seg=72, sides=8)
+strap = torus("CureaPiept", 0.6, 0.028, (0, 0.02, 0.902), "leather", rot=align_rot(sn), scale=(1, 0.95, 2.2), parent=body, seg=72, sides=8)
 bpy.context.view_layer.update()
 best = max((strap.matrix_world @ Vector((0.62 * math.cos(a), 0.62 * math.sin(a), 0)) for a in [i * math.tau / 72 for i in range(72)]), key=lambda v: -v.y + 0.35 * v.x)
 torus("CataramaPiept", 0.065, 0.016, best + normal(best) * 0.03, "gold", rot=align_rot(normal(best)), parent=body, seg=4, sides=6)
 
 # ---- ghiozdan (spate-dreapta)
 AZ = -115
-pack_pos = surf(AZ, 0.78, 0.26)
-outward = normal(surf(AZ, 0.8))
+pack_pos = surf(AZ, 0.879, 0.26)
+outward = normal(surf(AZ, 0.902))
 pack = empty("Ghiozdan", tuple(pack_pos), body, rot=(0, 0, math.atan2(-outward.x, outward.y)))
 rbox("Sac", (0.52, 0.3, 0.56), (0, 0, 0), "leather", bevel=0.1, parent=pack, local=True)
 rbox("ClapaSac", (0.54, 0.12, 0.3), (0, 0.14, 0.16), "leather_lt", bevel=0.05, rot=(math.radians(-12), 0, 0), parent=pack, local=True)
@@ -358,7 +396,7 @@ for k, (x, tilt) in enumerate(((-0.14, 14), (0.02, -8))):
 # ---- brațe (pivot la umăr) și picioare
 arms = {}
 for s, side in ((-1, "D"), (1, "S")):
-    sh = surf(s * 88, 0.74, -0.06)
+    sh = surf(s * 88, 0.833, -0.06)
     a = empty("Brat" + side, tuple(sh), body)
     sphere("Mana" + side, 0.15, sh + Vector((s * 0.1, -0.03, -0.13)), "fur", scale=(0.82, 0.82, 1.3), rot=(0, s * math.radians(-28), 0), parent=a, seg=24, rings=12)
     arms[s] = a
@@ -368,6 +406,11 @@ for s, side in ((-1, "D"), (1, "S")):
     sphere("Talpa" + side, 0.15, (s * 0.22, -0.04, 0.11), "fur", scale=(1, 1.15, 0.95), parent=f, seg=24, rings=12)
     feet[s] = f
 
+
+# ================================================================ unire plase (mai puține apeluri de desenare)
+sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
+import bk  # noqa: E402
+bk.apply_and_join(root, "MascotaCorp", keep_empties=[body, arms[-1], arms[1], feet[-1], feet[1], tail, goggles])
 
 # ================================================================ animații
 ANIMATED = [body, arms[-1], arms[1], feet[-1], feet[1], tail, goggles]
