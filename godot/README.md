@@ -60,6 +60,20 @@ tests/                 test de fum + captură de ecran
 
 Monetizarea: vezi [MONETIZARE.md](MONETIZARE.md).
 
+## Bucla principală: zaruri + traseu
+
+- **Energie (🫧)**: maximum 50, se reface 1 la 2 minute (și cât timp aplicația e închisă).
+- **ARUNCĂ**: două zaruri; mascota sare pe traseul de 24 de pietre din jurul insulei.
+  Dubla = aruncare gratuită. Trecerea pe la Start dă bonus. Ține apăsat = aruncare automată.
+- **Multiplicator ×1…×20**: costă tot atâtea bule și înmulțește recompensele.
+- Căsuțe: 🪙 monede, 🎁 cufăr (monede / bule / cărți), 🔨 atac și 🕳️ jaf asupra lui
+  Contele Furtună (personaj din poveste, nu jucători falși), 🛡️ scut, 🫧 Buble Blast, ⭐ eveniment.
+- Monedele construiesc cele 5 clădiri; insula completă dă premii și deschide insula următoare
+  (costurile și recompensele cresc cu fiecare insulă).
+- **Album**: 3 seturi × 9 cărți; un set complet dă +25 🫧. **Turneul Norilor**: praguri cu premii.
+- Toată logica e în `autoload/game.gd` (testată în `tests/smoke_test.gd`); interfața în
+  `scripts/ui/play_ui.gd`; traseul 3D în `scripts/board.gd`.
+
 ## Buble Blast
 
 - Niveluri: fiecare victorie deblochează nivelul următor (mai multe rânduri și culori, mai multe mutări).

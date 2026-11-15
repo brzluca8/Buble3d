@@ -1,20 +1,26 @@
 class_name Mascot
 extends Node3D
-## Mascota merge spre clădirea selectată și sare la upgrade / întoarcerea din Buble Blast.
+## Mascota este „pionul" de pe traseu: sare din căsuță în căsuță după aruncarea zarurilor
+## și sare de bucurie la upgrade / întoarcerea din Buble Blast.
 ## Dacă res://models/mascot.glb are animații, se folosesc clipurile „idle", „walk"/„run", „jump".
 
-const HOME := Vector3(-1.7, 0, 4.7)   # lângă capul scărilor, ca în randare
-var _target := HOME
+const HOP_TIME := 0.26
+
+var board: Board
+var _hops: Array = []
+var _hop_from := Vector3.ZERO
+var _hop_t := 0.0
+var _done := Callable()
 var _jump := 0.0
 var _ry := 0.0
 var _t := 0.0
 var _mouth: Node3D
 var _anim: AnimationPlayer
 var _clip := ""
+var _base := Vector3.ZERO
 
 
 func _ready() -> void:
-	position = _target
 	var visual := Models.instance("mascot")
 	if visual:
 		_anim = Models.find_anim(visual)
@@ -22,39 +28,71 @@ func _ready() -> void:
 		visual = Proc.mascot()
 		_mouth = visual.get_node("Mouth")
 	add_child(visual)
-	Game.selected.connect(_on_selected)
 	Game.mascot_jump.connect(func(): _jump = 1.0)
+	Game.selected.connect(func(id): if id != "": _jump = 0.5)
+	place_on(Game.pos)
 
 
-func _on_selected(id: String) -> void:
-	if id == "":
-		_target = HOME
-		return
-	var b := Game.building(id)
-	_target = Vector3(b.x + (-2.2 if b.x > 0 else 2.2), 0, b.z + 2.6)
-	_jump = 0.5
+func place_on(i: int) -> void:
+	if board:
+		_base = board.stand_pos(i)
+		position = _base
+
+
+## Sare prin punctele date, apoi apelează `done`.
+func hop_path(points: Array, done: Callable) -> void:
+	_hops = points.duplicate()
+	_hop_from = _base
+	_hop_t = 0.0
+	_done = done
+	if _hops.is_empty() and done.is_valid():
+		done.call()
+
+
+func is_hopping() -> bool:
+	return not _hops.is_empty()
 
 
 func _process(dt: float) -> void:
 	_t += dt
-	var d := _target - position
-	d.y = 0
-	var moving := d.length() > 0.1
-	var k := minf(1.0, dt * 2.2)
-	position.x += d.x * k
-	position.z += d.z * k
-	var want := atan2(d.x, d.z) if moving else 0.0
-	_ry += (want - _ry) * minf(1.0, dt * 5.0)
+	var y := 0.0
+	var moving := false
+	if not _hops.is_empty():
+		moving = true
+		_hop_t += dt / HOP_TIME
+		var to: Vector3 = _hops[0]
+		var k := minf(_hop_t, 1.0)
+		var p := _hop_from.lerp(to, k)
+		p.y += sin(k * PI) * 0.9
+		position = p
+		var d := to - _hop_from
+		if Vector2(d.x, d.z).length() > 0.01:
+			_ry = lerp_angle(_ry, atan2(d.x, d.z), minf(1.0, dt * 12.0))
+		if _hop_t >= 1.0:
+			Sfx.play("click", 1.0 + 0.05 * (_hops.size() % 4))
+			_hop_from = to
+			_base = to
+			_hops.pop_front()
+			_hop_t = 0.0
+			if _hops.is_empty():
+				_jump = 0.6
+				if _done.is_valid():
+					var cb := _done
+					_done = Callable()
+					cb.call()
+	else:
+		# privește spre cameră (spre +Z), respiră
+		_ry = lerp_angle(_ry, 0.0, minf(1.0, dt * 4.0))
+		y = sin(_t * 2.0) * 0.03
+		if _jump > 0.0:
+			y += sin((1.0 - _jump) * PI) * 1.0
+			_jump -= dt * 1.4
+		position = _base + Vector3(0, y, 0)
 	rotation.y = _ry
-	var y := absf(sin(_t * 10.0)) * 0.12 if moving else sin(_t * 2.0) * 0.03
-	if _jump > 0.0:
-		y += sin((1.0 - _jump) * PI) * 1.2
-		_jump -= dt * 1.4
-	position.y = y
 	if _mouth:
 		_mouth.scale.y = 0.5 + maxf(_jump, 0.0) * 1.5
 	if _anim:
-		_play("jump" if _jump > 0.0 else ("walk" if moving else "idle"))
+		_play("jump" if (moving or _jump > 0.0) else "idle")
 
 
 func _play(want: String) -> void:
@@ -76,4 +114,4 @@ func _play(want: String) -> void:
 	if pick == "" and names.size() > 0:
 		pick = names[0]
 	if pick != "":
-		_anim.play(pick, 0.25)
+		_anim.play(pick, 0.2)

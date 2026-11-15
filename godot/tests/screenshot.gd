@@ -17,6 +17,20 @@ func _initialize() -> void:
 		hud.blast.nc = hud.blast.RAINBOW
 		hud.blast.cc = hud.blast.BOMB
 		hud.blast.mt = 0.0
+	elif args.size() > 1 and args[1] in ["attack", "raid", "album", "noenergy"]:
+		var hud = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
+		var g = root.get_node("Game")
+		g.add_cards(14)
+		match args[1]:
+			"attack": hud.play._attack_popup()
+			"raid":
+				hud.play._raid_popup()
+				await process_frame
+				var bs = hud.play.popup.find_children("*", "Button", true, false)
+				bs[1].emit_signal("pressed")
+				bs[5].emit_signal("pressed")
+			"album": hud._open_modal("album")
+			"noenergy": hud.play._no_energy()
 	elif args.size() > 1 and args[1] != "-":
 		root.get_node("Game").select(args[1])
 	if args.size() > 2:

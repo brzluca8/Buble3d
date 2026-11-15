@@ -12,6 +12,8 @@ var env: Environment
 var sun: DirectionalLight3D
 var island: Node3D
 var cam: CameraRig
+var board: Board
+var mascot: Mascot
 var gem: Node3D
 var ring: MeshInstance3D
 var sel_light: OmniLight3D
@@ -145,7 +147,11 @@ func _build_island() -> void:
 		bs.add_child(b)
 		b.setup(info)
 
-	island.add_child(Mascot.new())
+	board = Board.new()
+	island.add_child(board)
+	mascot = Mascot.new()
+	mascot.board = board
+	island.add_child(mascot)
 
 	ring = Proc.add(island, Proc.htor(1.0, 0.035, 64, 8), Proc.mat(Color("ffd86b"), {"emit": Color("ffc040"), "energy": 3.0}))
 	ring.visible = false

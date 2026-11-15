@@ -17,6 +17,10 @@ func _initialize() -> void:
 	var game = root.get_node("Game")
 	game.coins = 1000.0
 	game.levels = {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
+	game.island = 1
+	game.pos = 0
+	game.energy = 50
+	game.mult = 1
 	var main = load(ProjectSettings.get_setting("application/run/main_scene")).instantiate()
 	root.add_child(main)
 	for i in 10:
@@ -105,8 +109,70 @@ func _initialize() -> void:
 	await process_frame
 	check(hud.blast == null, "Buble Blast închis")
 
+	# ---------------- bucla zaruri + traseu ----------------
+	game.energy = 10
+	game.mult = 1
+	game.pos = 0
+	var e0: int = game.energy
+	var r: Dictionary = game.roll(Vector2i(2, 3))
+	check(r.to == 5 and game.pos == 5, "aruncarea 2+3 mută mascota pe căsuța 5 (%s)" % r.get("to", -1))
+	check(game.energy == e0 - 1, "aruncarea consumă o bulă de energie")
+	r = game.roll(Vector2i(4, 4))
+	check(game.energy == e0 - 1, "dubla dă o aruncare gratuită")
+	game.pos = 20
+	var c0: float = game.coins
+	r = game.roll(Vector2i(3, 2))
+	check(r.start_bonus > 0 and game.coins >= c0 + r.start_bonus, "trecerea pe la Start dă bonus (%d)" % r.start_bonus)
+	game.energy = 0
+	check(game.roll().is_empty(), "fără energie nu se poate arunca")
+	c0 = game.coins
+	var rc: Dictionary = game.resolve_tile("coins")
+	check(rc.coins > 0 and game.coins == c0 + rc.coins, "căsuța de monede dă monede (%d)" % rc.coins)
+	game.shields = 0
+	game.resolve_tile("shield")
+	check(game.shields == 1, "căsuța de scut adaugă un scut")
+	var ev0: int = game.event_pts
+	game.resolve_tile("event")
+	check(game.event_pts > ev0, "căsuța de eveniment dă puncte")
+	var rv0: int = game.rival["turn"]
+	c0 = game.coins
+	var ra: Dictionary = game.attack("turn")
+	check(game.coins > c0 and (ra.blocked or game.rival["turn"] < rv0 or game.rival["turn"] >= 2), "atacul dă monede și strică clădirea rivalului")
+	var cells: Array = game.start_raid()
+	check(cells.size() == 9 and cells.count(0) == 3, "jaful are 9 nori, 3 goi")
+	var got: Array = game.add_cards(3)
+	check(got.size() == 3, "cuferele dau cărți pentru album")
+	# insulă completă → insula următoare
+	var isl: int = game.island
+	for k in game.levels.keys():
+		game.levels[k] = 5
+	game.levels["sera"] = 4
+	game.coins = 1e9
+	game.upgrade("sera")
+	check(game.island == isl + 1 and game.sum_levels() == 5, "insula completă deblochează insula următoare (%s)" % game.island_name())
+	# interfața: aruncare completă cu animație (mascota sare pe traseu)
+	if "board" in main:
+		game.energy = 5
+		game.pos = 0
+		var play = hud.play
+		play.roll()
+		var frames := 0
+		while play.busy and frames < 400:
+			if play.popup.visible:
+				# alege automat în ferestrele de atac / jaf
+				for b in play.popup.find_children("*", "Button", true, false):
+					if not b.disabled:
+						b.emit_signal("pressed")
+						break
+			if hud.blast:
+				hud.blast._quit()
+			await create_timer(0.05).timeout
+			frames += 1
+		check(not play.busy, "aruncarea din interfață se termină (%.1f s)" % (frames * 0.05))
+		check(main.mascot.position.distance_to(main.board.stand_pos(game.pos)) < 1.6, "mascota a ajuns pe căsuța %d" % game.pos)
+
 	game.save_game()
 	var saved := FileAccess.get_file_as_string(game.SAVE_PATH)
-	check(saved.contains("\"palat\":2"), "salvarea conține progresul")
+	check(saved.contains("\"isl\":2") and saved.contains("\"pos\""), "salvarea conține progresul (insula, poziția pe traseu)")
 	print("REZULTAT: %s" % ("TOATE TESTELE AU TRECUT" if fails == 0 else "%d EȘECURI" % fails))
 	quit(1 if fails else 0)

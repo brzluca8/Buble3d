@@ -35,9 +35,9 @@ func _ready() -> void:
 	_xp_bar()
 	_title()
 	_sheet()
-	_blast_button()
 	_nav()
 	_settings_button()
+	_play_ui()
 	_toast()
 	_modal()
 	_ad_overlay()
@@ -48,6 +48,8 @@ func _ready() -> void:
 	_refresh()
 	if Game.offline_gain > 0:
 		get_tree().create_timer(0.6).timeout.connect(func(): show_toast("Bine ai revenit! Insula a produs 🪙 %d" % Game.offline_gain))
+	if Game.offline_msg != "":
+		get_tree().create_timer(3.4).timeout.connect(func(): show_toast(Game.offline_msg, 4.0))
 
 
 # Marginile sigure (decupaj / bară de navigare Android).
@@ -169,12 +171,12 @@ func _xp_bar() -> void:
 
 func _title() -> void:
 	var vb := VBoxContainer.new()
-	K.place(vb, true, 160, 70, 100, 100)
+	K.place(vb, true, 214, 70, 100, 100)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", -2)
-	var t1 := K.label("Grădina dintre nori", 34, Color.WHITE, 900, 9, Color(0.1, 0.05, 0.3, 0.55))
+	var t1 := K.label(Game.island_name(), 34, Color.WHITE, 900, 9, Color(0.1, 0.05, 0.3, 0.55))
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var t2 := K.label("Atinge o clădire ca să o dezvolți", 19, Color(1, 1, 1, 0.92), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
+	var t2 := K.label("Aruncă zarurile, adună monede, construiește insula", 19, Color(1, 1, 1, 0.92), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t1)
 	vb.add_child(t2)
@@ -318,7 +320,7 @@ func _nav_to(key: String) -> void:
 
 func _settings_button() -> void:
 	var st := K.box(Color(0.125, 0.1, 0.37, 0.78), 32, Color(1, 1, 1, 0.35), 2)
-	var items := [["⚙️", func(): _open_modal("settings")], ["⟲", _reset_view]]
+	var items := [["⚙️", func(): _open_modal("settings")], ["⟲", _reset_view], ["🫧", _open_blast]]
 	for i in items.size():
 		var b := K.button(items[i][0], 30, st)
 		b.anchor_left = 1
@@ -327,9 +329,18 @@ func _settings_button() -> void:
 		b.offset_right = -16
 		b.offset_top = 164 + i * 74
 		b.offset_bottom = 228 + i * 74
-		b.tooltip_text = "Setări" if i == 0 else "Vederea generală"
+		b.tooltip_text = ["Setări", "Vederea generală", "Buble Blast"][i]
 		b.pressed.connect(items[i][1])
 		root.add_child(b)
+
+
+var play: Control
+
+func _play_ui() -> void:
+	play = preload("res://scripts/ui/play_ui.gd").new()
+	play.hud = self
+	play.world = get_parent()
+	root.add_child(play)
 
 
 ## Revine la perspectiva implicită a insulei.
@@ -436,9 +447,31 @@ func _open_modal(kind: String) -> void:
 	match kind:
 		"album":
 			_h("Album")
-			_demo("DEMO – fără server")
-			_p("Colecția de cărți se va debloca din Buble Blast și evenimente. Schimburile necesită conturi online.")
-			_grid(12, "🔒")
+			_p("Cărțile vin din cufere și din premiile evenimentelor. Un set complet dă +%d 🫧. Schimbul de cărți cu prietenii vine odată cu conturile online." % Game.CARD_SET_REWARD)
+			for si in Game.CARD_SETS.size():
+				var set_d: Dictionary = Game.CARD_SETS[si]
+				var have := 0
+				for ci in set_d.cards.size():
+					if Game.cards.get(Game.card_key(si, ci), 0) > 0:
+						have += 1
+				modal_box.add_child(K.label("%s  %d/%d%s" % [set_d.n, have, set_d.cards.size(), "  ✅" if have == set_d.cards.size() else ""], 28, K.GOLD, 900))
+				var g := GridContainer.new()
+				g.columns = 3
+				g.add_theme_constant_override("h_separation", 10)
+				g.add_theme_constant_override("v_separation", 10)
+				for ci in set_d.cards.size():
+					var n: int = Game.cards.get(Game.card_key(si, ci), 0)
+					var pc := PanelContainer.new()
+					pc.custom_minimum_size = Vector2(180, 110)
+					pc.add_theme_stylebox_override("panel", K.box(Color("3a2f96") if n > 0 else Color(1, 1, 1, 0.07), 16, K.GOLD if n > 0 else Color(1, 1, 1, 0.25), 2, 0, 8))
+					var stars := "★".repeat(1 + ci * 5 / set_d.cards.size())
+					var lb := K.label(("%s\n%s%s" % [set_d.cards[ci], stars, ("  ×%d" % n) if n > 1 else ""]) if n > 0 else "🔒\n" + stars, 20, Color.WHITE if n > 0 else Color(1, 1, 1, 0.5), 800)
+					lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+					lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					pc.add_child(lb)
+					g.add_child(pc)
+				modal_box.add_child(g)
 		"friends":
 			_h("Prieteni")
 			_demo("DEMO – fără server")

@@ -9,10 +9,10 @@ extends Camera3D
 var buildings: Array = []                  # Array[Building]
 
 # --- compoziția implicită (comparată cu randarea de referință) ---
-const HOME_TARGET := Vector3(0.0, 0.2, 0.6)
+const HOME_TARGET := Vector3(0.0, -0.2, 1.0)
 const HOME_YAW := 0.0                      # privește insula din față (scările spre noi)
 const HOME_PITCH := deg_to_rad(33.0)       # unghi față de orizontală
-const HOME_DIST := 33.0
+const HOME_DIST := 39.0
 const FOV_W := 25.0                        # FOV orizontal (KEEP_WIDTH) – perspectivă „aplatizată"
 
 const YAW_LIMIT := deg_to_rad(25.0)
