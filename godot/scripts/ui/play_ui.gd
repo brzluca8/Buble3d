@@ -343,10 +343,16 @@ func _attack_popup() -> void:
 	if not (world and world.has_method("visit_rival")):
 		await _attack_card()
 		return
+	# online: țintă reală (prieten sau jucător activ); offline: Contele Furtună
+	var target := {}
+	if Net.online:
+		target = await Net.pick_target()
+	var lv: Dictionary = target.get("levels", {}) if not target.is_empty() else Game.rival
+	var foe: String = target.get("name", Game.RIVAL) if not target.is_empty() else Game.RIVAL
 	await _wipe(func():
 		_controls(false)
-		world.visit_rival(true))
-	var vb := _bottom_panel("🔨 Atinge o clădire a lui %s ca s-o lovești" % Game.RIVAL)
+		world.visit_rival(true, lv))
+	var vb := _bottom_panel("🔨 Atinge o clădire a lui %s ca s-o lovești" % foe)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
@@ -355,23 +361,32 @@ func _attack_popup() -> void:
 	var st := {"id": ""}
 	for b in Game.BUILDINGS:
 		var id: String = b.id
-		var lvl: int = Game.rival[id]
+		var lvl: int = int(lv.get(id, 1))
 		var btn := K.button("%s %s" % [b.n.split(" ")[0], "●".repeat(lvl)], 19, K.box(Color(1, 1, 1, 0.12), 18, Color(1, 1, 1, 0.3), 2, 0, 8))
 		btn.custom_minimum_size = Vector2(205, 56)
 		btn.disabled = lvl <= 0
 		btn.pressed.connect(func(): st.id = id)
 		grid.add_child(btn)
 	var on_tap := func(what: String):
-		if what.begins_with("b:") and Game.rival.get(what.substr(2), 0) > 0:
+		if what.begins_with("b:") and int(lv.get(what.substr(2), 0)) > 0:
 			st.id = what.substr(2)
 	Game.rival_tapped.connect(on_tap)
 	while st.id == "":
 		await get_tree().process_frame
 	Game.rival_tapped.disconnect(on_tap)
 	_close_popup()
-	var before: int = Game.rival[st.id]
-	var r := Game.attack(st.id)
-	await world.rival.hit(st.id, r.blocked, before if r.blocked else before - 1, world.cam)
+	var before: int = int(lv.get(st.id, 1))
+	var r := {}
+	if not target.is_empty():
+		var nr := await Net.attack(int(target.id), st.id, Game.mult)
+		if nr._code == 200:
+			r = {"blocked": nr.blocked, "coins": int(nr.coins)}
+			Game.add_coins(r.coins)
+			Game.save_game()
+	if r.is_empty():
+		r = Game.attack(st.id)
+	var after := before if r.blocked else (maxi(1, before - 1) if not target.is_empty() else before - 1)
+	await world.rival.hit(st.id, r.blocked, after, world.cam)
 	_float(("Scutul Contelui a parat! +%d 🪙" if r.blocked else "Lovitură! +%d 🪙") % r.coins)
 	Sfx.play("coin")
 	await get_tree().create_timer(1.2).timeout
@@ -384,12 +399,21 @@ func _raid_popup() -> void:
 	if not (world and world.has_method("visit_rival")):
 		await _raid_card()
 		return
+	var target := {}
+	if Net.online:
+		target = await Net.pick_target()
+		if not target.is_empty():
+			var rs := await Net.raid_start(int(target.id), Game.mult)
+			if rs._code != 200:
+				target = {}
+	var lv: Dictionary = target.get("levels", {}) if not target.is_empty() else {}
 	await _wipe(func():
 		_controls(false)
-		world.visit_rival(true))
+		world.visit_rival(true, lv))
 	world.rival.make_mounds()
-	Game.start_raid()
-	var vb := _bottom_panel("🕳️ Sapă în 3 movile – sub unele sunt comori!")
+	if target.is_empty():
+		Game.start_raid()
+	var vb := _bottom_panel("🕳️ Jaf la %s – sapă în 3 movile!" % (target.get("name", Game.RIVAL) if not target.is_empty() else Game.RIVAL))
 	var info := _text(vb, "Atinge o movilă (0/3)", 22, Color("ffe08a"))
 	var grid := GridContainer.new()
 	grid.columns = 9
@@ -403,7 +427,13 @@ func _raid_popup() -> void:
 		st.busy = true
 		st.dug[i] = true
 		btns[i].disabled = true
-		var v := Game.raid_pick(i)
+		var v := 0
+		if not target.is_empty():
+			var rp := await Net.raid_pick(i)
+			v = int(rp.get("value", 0))
+			Game.add_coins(v)
+		else:
+			v = Game.raid_pick(i)
 		st.picks += 1
 		st.total += v
 		Sfx.play("coin" if v > 0 else "click")

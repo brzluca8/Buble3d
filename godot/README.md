@@ -74,6 +74,18 @@ Monetizarea: vezi [MONETIZARE.md](MONETIZARE.md).
 - Toată logica e în `autoload/game.gd` (testată în `tests/smoke_test.gd`); interfața în
   `scripts/ui/play_ui.gd`; traseul 3D în `scripts/board.gd`.
 
+## Online (opțional)
+
+`autoload/net.gd` se conectează la serverul din `server/` (vezi `server/README.md`): ținte reale pentru
+atac și jaf, mesaje primite, salvare în cloud, prieteni, cadouri de cărți, echipe de 4. Adresa se pune în
+⚙️ Setări. Test cu serverul: `tests/net_test.gd`. Fără server, totul merge offline.
+
+## Insulele
+
+Fiecare insulă are propria temă (cer, ceață, lumină, acoperișuri, iarbă, piatră): 6 teme în `scripts/main.gd`.
+Atacurile și jafurile se joacă pe Fortăreața Furtunii (`scripts/rival_island.gd`), cu animații.
+Economia: vezi `ECONOMIE.md`.
+
 ## Buble Blast
 
 - Niveluri: fiecare victorie deblochează nivelul următor (mai multe rânduri și culori, mai multe mutări).

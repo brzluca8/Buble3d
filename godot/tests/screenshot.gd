@@ -21,6 +21,16 @@ func _initialize() -> void:
 		hud.blast.mt = 0.0
 	elif args.size() > 1 and args[1].begins_with("tema"):
 		main.apply_theme(int(args[1].substr(4)))
+	elif args.size() > 1 and args[1] in ["friends", "events", "settings"]:
+		var hud = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
+		if args.size() > 2:
+			var net = root.get_node("Net")
+			net.device_id = "shot-device-0001"
+			await net.set_server(args[2], "Luca")
+			if args.size() > 3:
+				await net.add_friend(args[3])
+			await net.team_join()
+		hud._open_modal(args[1])
 	elif args.size() > 1 and args[1] in ["attack", "raid", "album", "noenergy"]:
 		var hud = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
 		var g = root.get_node("Game")
@@ -50,7 +60,7 @@ func _initialize() -> void:
 			"noenergy": hud.play._no_energy()
 	elif args.size() > 1 and args[1] != "-":
 		root.get_node("Game").select(args[1])
-	if args.size() > 2:
+	if args.size() > 2 and not (args[1] in ["friends", "events", "settings"]):
 		if main.cam is Camera2D:
 			main.cam.zoom = Vector2.ONE * float(args[2])
 			if args.size() > 4:

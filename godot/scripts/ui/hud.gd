@@ -426,15 +426,18 @@ func _modal() -> void:
 	modal_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	modal_box.add_theme_constant_override("separation", 14)
 	scroll.add_child(modal_box)
+	# butonul ✕ stă în colțul ferestrei (nu în interiorul containerului, care l-ar centra)
 	var x := K.button("✕", 40)
-	x.anchor_left = 1
-	x.anchor_right = 1
-	x.offset_left = -84
-	x.offset_right = -14
-	x.offset_top = 6
-	x.offset_bottom = 76
+	x.anchor_left = 0.5
+	x.anchor_right = 0.5
+	x.anchor_top = 0.5
+	x.anchor_bottom = 0.5
+	x.offset_left = 330 - 84
+	x.offset_right = 330 - 14
+	x.offset_top = -440 + 6
+	x.offset_bottom = -440 + 76
 	x.pressed.connect(func(): _nav_to("home"))
-	card.add_child(x)
+	modal.add_child(x)
 
 
 func _close_modal() -> void:
@@ -474,16 +477,54 @@ func _open_modal(kind: String) -> void:
 				modal_box.add_child(g)
 		"friends":
 			_h("Prieteni")
-			_demo("DEMO – fără server")
-			_p("Prietenii, vizitarea insulelor și duelurile necesită cont și backend. În această versiune nu există alți jucători.")
-			_row("Invită un prieten", "În curând")
-			_row("Vizitează o insulă", "În curând")
+			if not Net.online:
+				_demo("OFFLINE")
+				_p("Prietenii, atacurile între jucători, jafurile și cadourile de cărți funcționează cu serverul Buble. Adaugă adresa serverului în ⚙️ Setări. Până atunci, rivalul tău este %s." % Game.RIVAL)
+			else:
+				_p("Codul tău de prieten: %s – trimite-l prietenilor." % Net.code)
+				var hb := HBoxContainer.new()
+				var le := LineEdit.new()
+				le.placeholder_text = "Codul unui prieten"
+				le.add_theme_font_size_override("font_size", 26)
+				le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				le.max_length = 6
+				hb.add_child(le)
+				var add := K.gold_button("Adaugă", 24)
+				add.custom_minimum_size = Vector2(160, 60)
+				add.pressed.connect(func():
+					var r: Dictionary = await Net.add_friend(le.text)
+					show_toast("Prieten adăugat 👥" if r._code == 200 else "Cod necunoscut")
+					_open_modal("friends"))
+				hb.add_child(add)
+				modal_box.add_child(hb)
+				if Net.friends.is_empty():
+					await Net.load_friends()
+				for f in Net.friends:
+					var fid := int(f.id)
+					_row("%s %s\n🏝️ insula %d" % ["🟢" if f.online else "⚪", f.name, f.island], "🃏 Cadou", func(): _gift_card(fid))
 		"events":
 			_h("Evenimente")
-			_demo("DEMO – fără server")
-			_p("Expediția celor patru: eveniment cooperativ pentru 4 persoane.")
-			_grid(4, "Liber")
-			_row("Clasament cluburi", "În curând")
+			modal_box.add_child(K.label("⭐ %s" % Game.EVENT_NAME, 30, K.GOLD, 900))
+			_p("Puncte: %d / %d. Puncte primești pe căsuțele ⭐ (înmulțite cu multiplicatorul)." % [Game.event_pts, Game.event_next_goal()])
+			for i in Game.EVENT_GOALS.size():
+				var g: Array = Game.EVENT_GOALS[i]
+				var rew: String = {"energy": "%d 🫧" % g[2], "coins": "%d unități 🪙" % g[2], "cards": "%d cărți 🃏" % g[2]}[g[1]]
+				_row("%s %d puncte" % ["✅" if i < Game.event_step else "⬜", g[0]], rew)
+			modal_box.add_child(K.label("👥 Expediția celor patru", 30, K.GOLD, 900))
+			if not Net.online:
+				_p("Eveniment în echipă de 4 jucători – disponibil cu serverul Buble (⚙️ Setări).")
+			else:
+				if Net.team == null:
+					var join := K.gold_button("Intră într-o echipă", 26)
+					join.custom_minimum_size = Vector2(0, 70)
+					join.pressed.connect(func():
+						await Net.team_join()
+						_open_modal("events"))
+					modal_box.add_child(join)
+				else:
+					_p("Echipa ta: %d / %d puncte" % [Net.team.points, Net.team.goal])
+					for m in Net.team.members:
+						_row(m.name, "%d ⭐" % m.points)
 		"shop":
 			_h("Magazin")
 			_demo("DEMO – plăți dezactivate")
@@ -493,6 +534,25 @@ func _open_modal(kind: String) -> void:
 		"settings":
 			_settings()
 	modal.visible = true
+
+
+## Trimite unui prieten o carte dublură (ai cel puțin 2 exemplare).
+func _gift_card(friend_id: int) -> void:
+	var dup := ""
+	for k in Game.cards:
+		if Game.cards[k] >= 2:
+			dup = k
+			break
+	if dup == "":
+		show_toast("Nu ai cărți duble de dăruit")
+		return
+	var r: Dictionary = await Net.gift_card(friend_id, dup)
+	if r._code == 200:
+		Game.cards[dup] -= 1
+		Game.save_game()
+		show_toast("Carte trimisă 🃏")
+	else:
+		show_toast("Cadoul nu a putut fi trimis")
 
 
 func _h(t: String) -> void:
@@ -581,6 +641,26 @@ func _settings() -> void:
 			_open_modal("settings"))
 		hs.add_child(b)
 	modal_box.add_child(hs)
+	modal_box.add_child(K.label("Server online", 30, Color.WHITE, 900))
+	_p("Stare: %s%s" % ["🟢 conectat (cod %s)" % Net.code if Net.online else "⚪ offline", ("  – " + Net.last_error) if Net.last_error != "" and not Net.online else ""])
+	var url := LineEdit.new()
+	url.placeholder_text = "https://serverul-tau.ro"
+	url.text = Net.base_url
+	url.add_theme_font_size_override("font_size", 24)
+	modal_box.add_child(url)
+	var nm := LineEdit.new()
+	nm.placeholder_text = "Numele tău în joc"
+	nm.text = Net.player_name
+	nm.max_length = 24
+	nm.add_theme_font_size_override("font_size", 24)
+	modal_box.add_child(nm)
+	var conn := K.gold_button("Conectează" if url.text == "" or not Net.online else "Reconectează", 26)
+	conn.custom_minimum_size = Vector2(0, 70)
+	conn.pressed.connect(func():
+		var ok: bool = await Net.set_server(url.text, nm.text)
+		show_toast("Conectat la server 🟢" if ok else ("Mod offline" if url.text.strip_edges() == "" else "Serverul nu răspunde"))
+		_open_modal("settings"))
+	modal_box.add_child(conn)
 	modal_box.add_child(K.label("Modele 3D", 30, Color.WHITE, 900))
 	_p("Modelele se pun în folderul res://models/ al proiectului. Piesele fără model folosesc geometria din cod.")
 	var names := {"palat": "Palat", "obs": "Observator", "turn": "Turn", "mag": "Magazin", "sera": "Seră", "mascot": "Mascotă", "insula": "Insulă"}

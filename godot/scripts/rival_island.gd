@@ -11,6 +11,7 @@ var mounds: Array[Node3D] = []
 var fx_sparks: CPUParticles3D
 var fx_dust: CPUParticles3D
 var _t := 0.0
+var shown := {}                    # nivelurile afișate (rivalul din poveste sau un jucător real)
 
 
 func _ready() -> void:
@@ -90,9 +91,10 @@ func _scale_for(lvl: int) -> float:
 
 
 ## Arată clădirile după nivelurile rivalului.
-func refresh() -> void:
+func refresh(levels := {}) -> void:
+	shown = levels if not levels.is_empty() else Game.rival
 	for id in bld:
-		var lvl: int = Game.rival[id]
+		var lvl: int = int(shown.get(id, 1))
 		var d: Dictionary = bld[id]
 		d.m.visible = lvl > 0
 		d.rubble.visible = lvl <= 0

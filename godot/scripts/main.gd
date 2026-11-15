@@ -381,7 +381,7 @@ var rival: RivalIsland
 
 
 ## Arată insula rivalului (true) sau insula jucătorului (false).
-func visit_rival(on: bool) -> void:
+func visit_rival(on: bool, levels := {}) -> void:
 	if on and rival == null:
 		rival = RivalIsland.new()
 		add_child(rival)
@@ -389,7 +389,7 @@ func visit_rival(on: bool) -> void:
 	if rival:
 		rival.visible = on
 		if on:
-			rival.refresh()
+			rival.refresh(levels)
 	cam.rival_mode = on
 	if on:
 		Game.select("")

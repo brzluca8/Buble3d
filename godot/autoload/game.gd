@@ -14,6 +14,7 @@ signal mascot_jump                   # mascota sare (upgrade, întoarcere din Bu
 signal quality_changed(q: String)
 signal board_moved(from: int, to: int, d1: int, d2: int)
 signal island_completed(index: int)
+signal event_points(pts: int)           # puncte de eveniment câștigate (pentru echipă, online)
 signal rival_tapped(what: String)    # atingere pe insula rivalului: "b:<clădire>" sau "m:<movilă>"
 
 const SAVE_PATH := "user://save.json"
@@ -319,6 +320,7 @@ func resolve_tile(kind: String) -> Dictionary:
 		"event":
 			var pts := 2 * mult
 			event_pts += pts
+			event_points.emit(pts)
 			r.msg = "%s: +%d ⭐" % [EVENT_NAME, pts]
 			var rew := _event_rewards()
 			if rew != "":
@@ -456,16 +458,47 @@ func _rival_visit() -> void:
 
 # ---------- salvare ----------
 func save_game() -> void:
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(save_dict()))
+
+
+func save_dict() -> Dictionary:
 	last_save_unix = Time.get_unix_time_from_system()
-	var d := {
+	return {
 		"v": SAVE_VERSION, "coins": coins, "xp": xp, "b": levels, "mis": missions,
 		"t": last_save_unix, "q": quality, "snd": sound, "bl": blast_level,
 		"en": energy, "et": energy_t, "mult": mult, "pos": pos, "sh": shields, "isl": island,
 		"rv": rival, "cards": cards, "ev": event_pts, "evs": event_step,
 	}
-	var f := FileAccess.open(save_path, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
+
+
+## Mesaje de la server (alți jucători): atacuri, jafuri, cadouri, prieteni noi.
+func apply_remote(kind: String, data: Dictionary) -> void:
+	var who: String = str(data.get("from", "Cineva"))
+	match kind:
+		"attack":
+			if data.get("blocked", false):
+				shields = maxi(0, shields - 1)
+				toast.emit("%s te-a atacat, dar scutul tău a rezistat! 🛡️" % who)
+			else:
+				var b: String = str(data.get("building", ""))
+				if levels.has(b):
+					levels[b] = clampi(int(data.get("level", levels[b])), 1, MAX_LVL)
+					toast.emit("%s ți-a lovit %s! 🔨" % [who, building(b).n])
+		"raid":
+			var loss := mini(int(coins * 0.2), int(data.get("coins", 0)) / 2)
+			coins -= loss
+			toast.emit("%s ți-a făcut un jaf și a luat %d 🪙" % [who, loss])
+		"card":
+			var key: String = str(data.get("card", ""))
+			if key.contains(":"):
+				cards[key] = cards.get(key, 0) + 1
+				toast.emit("%s ți-a trimis o carte 🃏" % who)
+		"friend":
+			toast.emit("%s te-a adăugat ca prieten 👥" % who)
+	changed.emit()
+	save_game()
 
 
 func load_game() -> void:
