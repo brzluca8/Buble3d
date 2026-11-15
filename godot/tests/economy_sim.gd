@@ -9,6 +9,7 @@ func _initialize() -> void:
 	var runs := int(args[1]) if args.size() > 1 else 20
 	await process_frame
 	var g = root.get_node("Game")
+	g.save_path = "user://test_save.json"   # nu atinge salvarea reală
 	var totals := []
 	totals.resize(islands)
 	totals.fill(0.0)

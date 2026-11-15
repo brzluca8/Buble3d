@@ -33,6 +33,8 @@ var _t_yaw := HOME_YAW
 var _t_pitch := HOME_PITCH
 var _t_dist := HOME_DIST
 
+var rival_mode := false
+var _shake := 0.0
 var _touches := {}
 var _pinch_d := 0.0
 var _drag := 0.0
@@ -67,6 +69,8 @@ func focus(point: Vector3, height: float) -> void:
 
 
 func _on_selected(id: String) -> void:
+	if rival_mode:
+		return
 	if id == "":
 		reset_view()
 		return
@@ -88,7 +92,16 @@ func _apply(k: float) -> void:
 	var pos := target + dir * dist
 	# nu coborî sub nivelul insulei
 	pos.y = maxf(pos.y, target.y + 3.0)
-	look_at_from_position(pos, target)
+	var jitter := Vector3.ZERO
+	if _shake > 0.0:
+		jitter = Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.6
+		_shake = maxf(0.0, _shake - 0.04)
+	look_at_from_position(pos + jitter, target + jitter * 0.5)
+
+
+## Cutremur scurt al camerei (impact).
+func shake(amount: float) -> void:
+	_shake = amount
 
 
 # ---------------- intrare ----------------
@@ -153,6 +166,13 @@ func _pinch_dist() -> float:
 func _pick(screen: Vector2) -> void:
 	var from := project_ray_origin(screen)
 	var dir := project_ray_normal(screen)
+	# pe insula rivalului: atingerea alege o clădire de atacat sau o movilă de săpat
+	if rival_mode:
+		var rq := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, RivalIsland.LAYER)
+		var rh := get_world_3d().direct_space_state.intersect_ray(rq)
+		if rh and rh.collider and rh.collider.has_meta("rival"):
+			Game.rival_tapped.emit(rh.collider.get_meta("rival"))
+		return
 	# 1) selecție exactă: raza lovește triunghiurile reale ale clădirilor
 	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, Building.PICK_LAYER)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)

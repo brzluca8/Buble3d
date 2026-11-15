@@ -15,6 +15,7 @@ func check(ok: bool, what: String) -> void:
 func _initialize() -> void:
 	await process_frame
 	var game = root.get_node("Game")
+	game.save_path = "user://test_save.json"   # nu atinge salvarea reală
 	game.coins = 1000.0
 	game.levels = {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 	game.island = 1
@@ -171,8 +172,30 @@ func _initialize() -> void:
 		check(not play.busy, "aruncarea din interfață se termină (%.1f s)" % (frames * 0.05))
 		check(main.mascot.position.distance_to(main.board.stand_pos(game.pos)) < 1.6, "mascota a ajuns pe căsuța %d" % game.pos)
 
+	# atac și jaf pe insula rivalului (cu animații)
+	if "board" in main:
+		var play2 = hud.play
+		for flow in ["_attack_popup", "_raid_popup"]:
+			var c_before: float = game.coins
+			var st := {"done": false}
+			var run := func():
+				await play2.call(flow)
+				st.done = true
+			run.call()
+			var waited := 0
+			while not st.done and waited < 400:
+				for b in play2.popup.find_children("*", "Button", true, false):
+					if not b.disabled:
+						b.emit_signal("pressed")
+						break
+				await create_timer(0.05).timeout
+				waited += 1
+			check(st.done, "%s se termină (%.1f s)" % [flow, waited * 0.05])
+			check(game.coins > c_before or (flow == "_raid_popup" and game.coins >= c_before), "%s aduce monede" % flow)
+			check(main.island.visible and not main.rival.visible, "%s: revenire pe insula proprie" % flow)
+
 	game.save_game()
-	var saved := FileAccess.get_file_as_string(game.SAVE_PATH)
+	var saved := FileAccess.get_file_as_string(game.save_path)
 	check(saved.contains("\"isl\":2") and saved.contains("\"pos\""), "salvarea conține progresul (insula, poziția pe traseu)")
 	print("REZULTAT: %s" % ("TOATE TESTELE AU TRECUT" if fails == 0 else "%d EȘECURI" % fails))
 	quit(1 if fails else 0)

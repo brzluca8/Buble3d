@@ -14,8 +14,10 @@ signal mascot_jump                   # mascota sare (upgrade, întoarcere din Bu
 signal quality_changed(q: String)
 signal board_moved(from: int, to: int, d1: int, d2: int)
 signal island_completed(index: int)
+signal rival_tapped(what: String)    # atingere pe insula rivalului: "b:<clădire>" sau "m:<movilă>"
 
 const SAVE_PATH := "user://save.json"
+var save_path := SAVE_PATH            # testele folosesc alt fișier
 const SAVE_VERSION := 2
 const MAX_LVL := 5
 const OFFLINE_MAX_S := 3600.0
@@ -461,15 +463,15 @@ func save_game() -> void:
 		"en": energy, "et": energy_t, "mult": mult, "pos": pos, "sh": shields, "isl": island,
 		"rv": rival, "cards": cards, "ev": event_pts, "evs": event_step,
 	}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
 
 
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path):
 		return
-	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	var d = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if typeof(d) != TYPE_DICTIONARY:
 		return
 	coins = float(d.get("coins", coins))

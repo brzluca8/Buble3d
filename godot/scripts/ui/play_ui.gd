@@ -16,6 +16,7 @@ var dice: Control
 var dice_lbls: Array[Label] = []
 var float_lbl: Label
 var popup: Control
+var wipe_rect: Control
 var busy := false
 var auto_roll := false
 
@@ -29,7 +30,13 @@ func _ready() -> void:
 	_float_label()
 	popup = K.full_rect(Control.new())
 	popup.visible = false
+	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE   # lasă atingerile să ajungă la lumea 3D
 	add_child(popup)
+	wipe_rect = K.full_rect(ColorRect.new())
+	(wipe_rect as ColorRect).color = Color("eef3ff")
+	wipe_rect.modulate.a = 0.0
+	wipe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(wipe_rect)
 	Game.changed.connect(_refresh)
 	Game.island_completed.connect(_on_island_completed)
 	_refresh()
@@ -295,7 +302,136 @@ func _close_popup() -> void:
 signal _popup_done
 
 
+## Ascunde / arată comenzile principale (pe insula rivalului nu se aruncă zarurile).
+func _controls(on: bool) -> void:
+	for c in [roll_btn, mult_btn, timer_lbl]:
+		c.visible = on
+
+
+## Tranziție „prin nori": ecranul se albește, se schimbă lumea, apoi revine.
+func _wipe(change: Callable) -> void:
+	wipe_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	var tw := create_tween()
+	tw.tween_property(wipe_rect, "modulate:a", 1.0, 0.35)
+	await tw.finished
+	change.call()
+	await get_tree().process_frame
+	var back := create_tween()
+	back.tween_property(wipe_rect, "modulate:a", 0.0, 0.45)
+	await back.finished
+	wipe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## Panou jos, peste lumea 3D (fără întunecarea ecranului), pentru alegeri pe insula rivalului.
+func _bottom_panel(title: String) -> VBoxContainer:
+	for c in popup.get_children():
+		c.queue_free()
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", K.box(Color(0.125, 0.1, 0.37, 0.9), 34, K.GOLD, 3, 10, 18))
+	K.place(p, false, 136, 0, 16, 16)
+	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	popup.add_child(p)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	p.add_child(vb)
+	_text(vb, title, 24)
+	popup.visible = true
+	return vb
+
+
 func _attack_popup() -> void:
+	if not (world and world.has_method("visit_rival")):
+		await _attack_card()
+		return
+	await _wipe(func():
+		_controls(false)
+		world.visit_rival(true))
+	var vb := _bottom_panel("🔨 Atinge o clădire a lui %s ca s-o lovești" % Game.RIVAL)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	vb.add_child(grid)
+	var st := {"id": ""}
+	for b in Game.BUILDINGS:
+		var id: String = b.id
+		var lvl: int = Game.rival[id]
+		var btn := K.button("%s %s" % [b.n.split(" ")[0], "●".repeat(lvl)], 19, K.box(Color(1, 1, 1, 0.12), 18, Color(1, 1, 1, 0.3), 2, 0, 8))
+		btn.custom_minimum_size = Vector2(205, 56)
+		btn.disabled = lvl <= 0
+		btn.pressed.connect(func(): st.id = id)
+		grid.add_child(btn)
+	var on_tap := func(what: String):
+		if what.begins_with("b:") and Game.rival.get(what.substr(2), 0) > 0:
+			st.id = what.substr(2)
+	Game.rival_tapped.connect(on_tap)
+	while st.id == "":
+		await get_tree().process_frame
+	Game.rival_tapped.disconnect(on_tap)
+	_close_popup()
+	var before: int = Game.rival[st.id]
+	var r := Game.attack(st.id)
+	await world.rival.hit(st.id, r.blocked, before if r.blocked else before - 1, world.cam)
+	_float(("Scutul Contelui a parat! +%d 🪙" if r.blocked else "Lovitură! +%d 🪙") % r.coins)
+	Sfx.play("coin")
+	await get_tree().create_timer(1.2).timeout
+	await _wipe(func():
+		world.visit_rival(false)
+		_controls(true))
+
+
+func _raid_popup() -> void:
+	if not (world and world.has_method("visit_rival")):
+		await _raid_card()
+		return
+	await _wipe(func():
+		_controls(false)
+		world.visit_rival(true))
+	world.rival.make_mounds()
+	Game.start_raid()
+	var vb := _bottom_panel("🕳️ Sapă în 3 movile – sub unele sunt comori!")
+	var info := _text(vb, "Atinge o movilă (0/3)", 22, Color("ffe08a"))
+	var grid := GridContainer.new()
+	grid.columns = 9
+	grid.add_theme_constant_override("h_separation", 6)
+	vb.add_child(grid)
+	var st := {"picks": 0, "total": 0, "busy": false, "dug": {}}
+	var btns := []
+	var dig := func(i: int):
+		if st.busy or st.picks >= 3 or st.dug.has(i):
+			return
+		st.busy = true
+		st.dug[i] = true
+		btns[i].disabled = true
+		var v := Game.raid_pick(i)
+		st.picks += 1
+		st.total += v
+		Sfx.play("coin" if v > 0 else "click")
+		await world.rival.dig(i, v)
+		info.text = "Ai găsit %d 🪙  (%d/3)" % [st.total, st.picks]
+		st.busy = false
+	for i in 9:
+		var b := K.button(str(i + 1), 22, K.box(Color(1, 1, 1, 0.12), 14, Color(1, 1, 1, 0.3), 2))
+		b.custom_minimum_size = Vector2(66, 56)
+		b.pressed.connect(func(): dig.call(i))
+		grid.add_child(b)
+		btns.append(b)
+	var on_tap := func(what: String):
+		if what.begins_with("m:"):
+			dig.call(int(what.substr(2)))
+	Game.rival_tapped.connect(on_tap)
+	while st.picks < 3 or st.busy:
+		await get_tree().process_frame
+	Game.rival_tapped.disconnect(on_tap)
+	_close_popup()
+	_float("Jaf reușit! +%d 🪙" % st.total)
+	await get_tree().create_timer(1.3).timeout
+	await _wipe(func():
+		world.visit_rival(false)
+		_controls(true))
+
+
+func _attack_card() -> void:
 	var vb := _card("🔨 Atac asupra %s" % Game.RIVAL_ISLAND)
 	_text(vb, "Alege o clădire a lui %s:" % Game.RIVAL, 24, Color(1, 1, 1, 0.85))
 	var grid := GridContainer.new()
@@ -320,7 +456,7 @@ func _attack_popup() -> void:
 	await _popup_done
 
 
-func _raid_popup() -> void:
+func _raid_card() -> void:
 	var cells := Game.start_raid()
 	var vb := _card("🕳️ Jaf la %s" % Game.RIVAL_ISLAND)
 	var info := _text(vb, "Alege 3 nori – sub unii sunt comori!", 24, Color(1, 1, 1, 0.85))

@@ -375,10 +375,37 @@ const THEMES := [
 		"roof": "ff74ac", "grass": "a0f080", "stone": "fff8f0", "rock": "c8a8b8", "cloud": "ffffff"},
 ]
 var sky_mat: ProceduralSkyMaterial
+const STORM := {"sky": ["2a2550", "8a7aa8", "4a4470"], "fog": "8a84a8", "sun": "d8c8ff", "amb": "6a6090",
+	"roof": "5a3a8a", "grass": "6a8a60", "stone": "a8a0b8", "rock": "6a6080", "cloud": "b8b0d0"}
+var rival: RivalIsland
+
+
+## Arată insula rivalului (true) sau insula jucătorului (false).
+func visit_rival(on: bool) -> void:
+	if on and rival == null:
+		rival = RivalIsland.new()
+		add_child(rival)
+	island.visible = not on
+	if rival:
+		rival.visible = on
+		if on:
+			rival.refresh()
+	cam.rival_mode = on
+	if on:
+		Game.select("")
+		cam.reset_view()
+		_apply_theme_dict(STORM)
+	else:
+		if rival:
+			rival.clear_mounds()
+		apply_theme(Game.island)
 
 
 func apply_theme(index: int) -> void:
-	var th: Dictionary = THEMES[(index - 1) % THEMES.size()]
+	_apply_theme_dict(THEMES[(index - 1) % THEMES.size()])
+
+
+func _apply_theme_dict(th: Dictionary) -> void:
 	if sky_mat:
 		sky_mat.sky_top_color = Color(th.sky[0])
 		sky_mat.sky_horizon_color = Color(th.sky[1])

@@ -5,6 +5,8 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out: String = args[0] if args.size() > 0 else "user://shot.png"
 	root.size = Vector2i(720, 1280)
+	root.get_node("Game").save_path = "user://shot_save.json"
+	root.get_node("Game").load_game()
 	var main = load(ProjectSettings.get_setting("application/run/main_scene")).instantiate()
 	root.add_child(main)
 	for i in 30:
@@ -24,13 +26,26 @@ func _initialize() -> void:
 		var g = root.get_node("Game")
 		g.add_cards(14)
 		match args[1]:
-			"attack": hud.play._attack_popup()
+			"attack":
+				hud.play._attack_popup()
+				for i in 40:
+					await process_frame
+				var btn = hud.play.popup.find_children("*", "Button", true, false)[0]
+				btn.emit_signal("pressed")
+				for i in 4:
+					await process_frame
+				root.get_texture().get_image().save_png(out.replace(".png", "_hit.png"))
 			"raid":
 				hud.play._raid_popup()
 				await process_frame
 				var bs = hud.play.popup.find_children("*", "Button", true, false)
+				for i in 40:
+					await process_frame
+				bs = hud.play.popup.find_children("*", "Button", true, false)
 				bs[1].emit_signal("pressed")
-				bs[5].emit_signal("pressed")
+				for i in 30:
+					await process_frame
+				bs[4].emit_signal("pressed")
 			"album": hud._open_modal("album")
 			"noenergy": hud.play._no_energy()
 	elif args.size() > 1 and args[1] != "-":
