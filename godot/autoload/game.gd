@@ -15,7 +15,10 @@ signal quality_changed(q: String)
 signal board_moved(from: int, to: int, d1: int, d2: int)
 signal island_completed(index: int)
 signal event_points(pts: int)           # puncte de eveniment câștigate (pentru echipă, online)
-signal rival_tapped(what: String)    # atingere pe insula rivalului: "b:<clădire>" sau "m:<movilă>"
+signal rival_tapped(what: String)
+signal friend_signal(id: int)          # un prieten te-a vizitat / ți-a trimis un cadou
+signal blast_finished(won: bool)
+signal friend_bubble_tapped(slot: int)    # atingere pe insula rivalului: "b:<clădire>" sau "m:<movilă>"
 
 const SAVE_PATH := "user://save.json"
 var save_path := SAVE_PATH            # testele folosesc alt fișier
@@ -75,7 +78,11 @@ var coins: float = 300.0
 var xp: int = 0
 var levels := {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 var missions := {"up": false, "blast": false}
-var quality := "inalta"
+var quality := "mediu"                 # "mic" | "mediu" | "mare"
+var passive_income := true             # venit pasiv (ca în prototip), maximum 1 h offline
+var gift_days := {}                    # id prieten -> ziua ultimului cadou trimis
+var friend_flags := {}                 # id prieten -> {"visit": bool, "gift": bool}
+var invite_rewards := 0                # recompense primite pentru prieteni invitați
 var sound := true
 var blast_level := 1
 var energy := ENERGY_MAX
@@ -101,6 +108,11 @@ func _ready() -> void:
 	_rival_visit()
 	_tick_energy()
 	save_game()
+	var t := Timer.new()
+	t.wait_time = INCOME_EVERY_S
+	t.autostart = true
+	t.timeout.connect(_on_income)
+	add_child(t)
 	var e := Timer.new()
 	e.wait_time = 1.0
 	e.autostart = true
@@ -209,6 +221,7 @@ func blast_reward(score: int, won: bool) -> int:
 	missions.blast = true
 	if won:
 		blast_level += 1
+	blast_finished.emit(won)
 	changed.emit()
 	save_game()
 	return co
@@ -425,13 +438,15 @@ func add_cards(n: int) -> Array:
 
 # ---------- venit pasiv, offline, rival ----------
 func _on_income() -> void:
+	if not passive_income:
+		return
 	add_coins(sum_levels())
 	save_game()
 
 
 ## Venitul pasiv a fost scos: energia (bulele) este resursa care se reface în timp.
 func _collect_offline() -> int:
-	if true:
+	if not passive_income:
 		return 0
 	if last_save_unix <= 0.0:
 		return 0
@@ -470,6 +485,7 @@ func save_dict() -> Dictionary:
 		"t": last_save_unix, "q": quality, "snd": sound, "bl": blast_level,
 		"en": energy, "et": energy_t, "mult": mult, "pos": pos, "sh": shields, "isl": island,
 		"rv": rival, "cards": cards, "ev": event_pts, "evs": event_step,
+		"gd": gift_days, "ff": friend_flags, "ir": invite_rewards,
 	}
 
 
@@ -496,7 +512,32 @@ func apply_remote(kind: String, data: Dictionary) -> void:
 				cards[key] = cards.get(key, 0) + 1
 				toast.emit("%s ți-a trimis o carte 🃏" % who)
 		"friend":
-			toast.emit("%s te-a adăugat ca prieten 👥" % who)
+			# recompensă pentru invitație (primii 10 prieteni)
+			if invite_rewards < 10:
+				invite_rewards += 1
+				coins += 200
+				toast.emit("%s a intrat în Buble cu codul tău! +200 🪙" % who)
+			else:
+				toast.emit("%s te-a adăugat ca prieten 👥" % who)
+		"visit":
+			var fid := int(data.get("from_id", -1))
+			var fl: Dictionary = friend_flags.get(str(fid), {})
+			fl["visit"] = true
+			friend_flags[str(fid)] = fl
+			friend_signal.emit(fid)
+			toast.emit("%s ți-a vizitat orașul 👋" % who)
+		"gift":
+			var gid := int(data.get("from_id", -1))
+			var gf: Dictionary = friend_flags.get(str(gid), {})
+			gf["gift"] = true
+			friend_flags[str(gid)] = gf
+			if data.get("kind", "") == "card" and str(data.get("card", "")).contains(":"):
+				cards[str(data.card)] = cards.get(str(data.card), 0) + 1
+				toast.emit("%s ți-a lăsat o carte 🃏" % who)
+			else:
+				coins += int(data.get("coins", 0))
+				toast.emit("%s ți-a lăsat %d 🪙" % [who, int(data.get("coins", 0))])
+			friend_signal.emit(gid)
 	changed.emit()
 	save_game()
 
@@ -519,8 +560,12 @@ func load_game() -> void:
 	sound = bool(d.get("snd", true))
 	blast_level = maxi(1, int(d.get("bl", 1)))
 	var q: String = str(d.get("q", quality))
-	if q in ["inalta", "scazuta"]:
+	q = {"inalta": "mare", "scazuta": "mic"}.get(q, q)
+	if q in ["mic", "mediu", "mare"]:
 		quality = q
+	gift_days = d.get("gd", {}) if typeof(d.get("gd", {})) == TYPE_DICTIONARY else {}
+	friend_flags = d.get("ff", {}) if typeof(d.get("ff", {})) == TYPE_DICTIONARY else {}
+	invite_rewards = int(d.get("ir", 0))
 	energy = maxi(0, int(d.get("en", ENERGY_MAX)))
 	energy_t = float(d.get("et", 0.0))
 	mult = int(d.get("mult", 1)) if int(d.get("mult", 1)) in MULTS else 1

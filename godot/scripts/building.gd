@@ -19,7 +19,7 @@ func setup(info: Dictionary) -> void:
 
 
 func _on_upgraded(b: String) -> void:
-	if b == id:
+	if b == id and level_override < 1:
 		_apply_level(true)
 
 
@@ -27,8 +27,16 @@ var _visual: Node3D
 var _lvl := -1
 
 ## Încarcă modelul nivelului curent (clădirea crește și își schimbă forma).
+## Arată clădirea la un nivel anume (ex. orașul unui prieten); -1 = nivelul tău.
+var level_override := -1
+
+func show_level(l: int) -> void:
+	level_override = l
+	_apply_level(false)
+
+
 func _apply_level(animate: bool) -> void:
-	var lvl: int = Game.levels[id]
+	var lvl: int = level_override if level_override >= 1 else Game.levels[id]
 	if lvl != _lvl:
 		_lvl = lvl
 		if _visual:

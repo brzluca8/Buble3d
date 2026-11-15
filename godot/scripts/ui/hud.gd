@@ -37,7 +37,11 @@ func _ready() -> void:
 	_sheet()
 	_nav()
 	_settings_button()
-	_play_ui()
+	# ecranul cu zaruri (insula) are interfața ARUNCĂ; globul are butonul auriu Buble Blast
+	if "board" in get_parent():
+		_play_ui()
+	else:
+		_blast_button()
 	_toast()
 	_modal()
 	_ad_overlay()
@@ -175,9 +179,10 @@ func _title() -> void:
 	K.place(vb, true, 214, 70, 100, 100)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", -2)
-	var t1 := K.label(Game.island_name(), 34, Color.WHITE, 900, 9, Color(0.1, 0.05, 0.3, 0.55))
+	var globe := not ("board" in get_parent())
+	var t1 := K.label("Orașul din bulă" if globe else Game.island_name(), 34, Color.WHITE, 900, 9, Color(0.1, 0.05, 0.3, 0.55))
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var t2 := K.label("Aruncă zarurile, adună monede, construiește insula", 19, Color(1, 1, 1, 0.92), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
+	var t2 := K.label("Atinge o clădire ca s-o dezvolți • atinge o bulă ca să vizitezi" if globe else "Aruncă zarurile, adună monede, construiește insula", 19, Color(1, 1, 1, 0.92), 600, 6, Color(0.1, 0.05, 0.3, 0.5))
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t1)
 	vb.add_child(t2)
@@ -399,7 +404,7 @@ func show_toast(msg: String, secs := 2.2) -> void:
 func _refresh() -> void:
 	coins_lbl.text = "🪙 " + _fmt(int(Game.coins))
 	lvl_lbl.text = str(Game.player_level())
-	prog_lbl.text = "🏝️ %s • %d/25" % [Game.island_name(), Game.sum_levels()]
+	prog_lbl.text = ("🫧 Orașul tău • %d/25" if not ("board" in get_parent()) else "🏝️ " + Game.island_name() + " • %d/25") % Game.sum_levels()
 	xp_bar.value = Game.xp % 100
 	if blast_sub:
 		blast_sub.text = "NIVELUL %d • JOACĂ ȘI CÂȘTIGĂ MONEDE" % Game.blast_level
@@ -635,7 +640,7 @@ func _settings() -> void:
 	modal_box.add_child(K.label("Calitate grafică", 30, Color.WHITE, 900))
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 12)
-	for q in [["inalta", "Înaltă"], ["scazuta", "Scăzută"]]:
+	for q in [["mic", "Mic"], ["mediu", "Mediu"], ["mare", "Mare"]]:
 		var on: bool = Game.quality == q[0]
 		var b := K.button(q[1], 26, K.box(Color("7a5ad8") if on else Color(1, 1, 1, 0.1), 22, K.GOLD if on else Color(1, 1, 1, 0.27), 3, 0, 16))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -645,7 +650,7 @@ func _settings() -> void:
 			_open_modal("settings"))
 		hb.add_child(b)
 	modal_box.add_child(hb)
-	_p("Calitatea înaltă activează strălucirea (bloom), umbre fine și anti-aliasing. Pe telefoane lente, alege „Scăzută”.")
+	_p("Mic: fără strălucire și umbre, randare la 75%. Mediu (implicit): strălucire, umbre moi. Mare: umbre fine, anti-aliasing, mai multe bule și stele.")
 	modal_box.add_child(K.label("Sunet", 30, Color.WHITE, 900))
 	var hs := HBoxContainer.new()
 	hs.add_theme_constant_override("separation", 12)

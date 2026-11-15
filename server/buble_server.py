@@ -267,6 +267,35 @@ class Api:
         self.notify(to, "card", {"from": p["name"], "card": card})
         return 200, {"ok": True}
 
+    def visit(self, body, p):
+        to = int(body.get("target_id", 0))
+        if not self.store.q("SELECT 1 FROM friends WHERE a=? AND b=?", (p["id"], to), one=True):
+            return 403, {"error": "doar prietenilor"}
+        self.notify(to, "visit", {"from": p["name"], "from_id": p["id"]})
+        return 200, {"ok": True}
+
+    def gift(self, body, p):
+        """Cadou zilnic (monede sau o carte) pentru un prieten, o dată pe zi."""
+        to = int(body.get("to_id", 0))
+        if not self.store.q("SELECT 1 FROM friends WHERE a=? AND b=?", (p["id"], to), one=True):
+            return 403, {"error": "doar prietenilor"}
+        day = int(time.time() // 86400)
+        key = f"gift:{p['id']}:{to}:{day}"
+        if self.store.q("SELECT 1 FROM inbox WHERE kind='gift_mark' AND data=?", (key,), one=True):
+            return 429, {"error": "ai lăsat deja un cadou azi"}
+        self.store.x("INSERT INTO inbox (player, kind, data, created) VALUES (?,?,?,?)", (-1, "gift_mark", key, time.time()))
+        kind = body.get("kind", "coins")
+        data = {"from": p["name"], "from_id": p["id"], "kind": kind}
+        if kind == "card":
+            card = str(body.get("card", ""))
+            if not card or len(card) > 16:
+                return 400, {"error": "carte invalidă"}
+            data["card"] = card
+        else:
+            data["coins"] = unit(p["island"], json.loads(p["levels"])) * 5
+        self.notify(to, "gift", data)
+        return 200, {"ok": True}
+
     def team_join(self, _b, p):
         wk = week_id()
         row = self.store.q("SELECT tm.team FROM team_members tm JOIN teams t ON t.id = tm.team WHERE tm.player=? AND t.week=?", (p["id"], wk), one=True)
@@ -317,6 +346,8 @@ class Api:
         ("POST", "/v1/raid/pick"): ("raid_pick", True),
         ("GET", "/v1/inbox"): ("inbox", True),
         ("POST", "/v1/cards/gift"): ("gift_card", True),
+        ("POST", "/v1/visit"): ("visit", True),
+        ("POST", "/v1/gift"): ("gift", True),
         ("POST", "/v1/team/join"): ("team_join", True),
         ("POST", "/v1/team/points"): ("team_points", True),
         ("GET", "/v1/team"): ("team_get", True),

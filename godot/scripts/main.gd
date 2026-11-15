@@ -109,7 +109,7 @@ func _build_environment() -> void:
 
 
 func _apply_quality() -> void:
-	var high := Game.quality == "inalta"
+	var high := Game.quality != "mic"
 	env.glow_enabled = high
 	sun.shadow_blur = 2.0 if high else 1.0
 	RenderingServer.directional_shadow_atlas_set_size(2048 if high else 1024, true)

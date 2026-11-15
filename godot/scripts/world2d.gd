@@ -345,7 +345,7 @@ func _sparks() -> void:
 
 
 func _apply_quality() -> void:
-	var high := Game.quality == "inalta"
+	var high := Game.quality != "mic"
 	var dust := world.get_node_or_null("Praf") as CPUParticles2D
 	if dust:
 		dust.amount = 36 if high else 14

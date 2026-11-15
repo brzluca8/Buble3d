@@ -25,6 +25,12 @@ const DAMP := 6.0
 
 var home_target := HOME_TARGET
 var home_dist := HOME_DIST
+var home_pitch := HOME_PITCH
+var pitch_min := PITCH_MIN
+var pitch_max := PITCH_MAX
+var auto_rotate := false               # rotire lentă când nu atingi ecranul
+var _idle := 0.0
+var _time := 0.0
 var target := HOME_TARGET
 var yaw := HOME_YAW
 var pitch := HOME_PITCH
@@ -57,7 +63,7 @@ func _ready() -> void:
 func reset_view() -> void:
 	_t_target = home_target
 	_t_yaw = HOME_YAW
-	_t_pitch = HOME_PITCH
+	_t_pitch = home_pitch
 	_t_dist = home_dist
 
 
@@ -68,10 +74,23 @@ func set_home(t: Vector3, d: float) -> void:
 	reset_view()
 
 
+## Vederea implicită completă (țintă, distanță, unghi, limite de înclinare).
+func set_view(t: Vector3, d: float, pitch_deg: float, pmin_deg: float, pmax_deg: float) -> void:
+	home_pitch = deg_to_rad(pitch_deg)
+	pitch_min = deg_to_rad(pmin_deg)
+	pitch_max = deg_to_rad(pmax_deg)
+	set_home(t, d)
+	target = t
+	pitch = home_pitch
+	dist = d
+
+
 ## Apropie camera lin de un punct (clădirea selectată).
+var focus_dist := FOCUS_DIST
+
 func focus(point: Vector3, height: float) -> void:
 	_t_target = point + Vector3(0, height * 0.42, 0)
-	_t_dist = FOCUS_DIST
+	_t_dist = focus_dist
 	_t_pitch = deg_to_rad(36.0)
 	# păstrează orientarea curentă, dar o aduce puțin spre clădire
 	_t_yaw = clampf(atan2(point.x, 12.0) * 0.6, -YAW_LIMIT, YAW_LIMIT)
@@ -89,6 +108,10 @@ func _on_selected(id: String) -> void:
 
 
 func _process(dt: float) -> void:
+	_time += dt
+	_idle += dt
+	if auto_rotate and _idle > 4.0 and Game.sel == "" and not rival_mode:
+		_t_yaw = sin(_time * 0.12) * YAW_LIMIT * 0.7
 	_apply(1.0 - exp(-DAMP * dt))
 
 
@@ -115,6 +138,8 @@ func shake(amount: float) -> void:
 
 # ---------------- intrare ----------------
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventScreenTouch or e is InputEventMouseButton or e is InputEventScreenDrag:
+		_idle = 0.0
 	if e is InputEventScreenTouch:
 		if e.pressed:
 			_touches[e.index] = e.position
@@ -153,7 +178,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 		var r: Vector2 = e.relative
 		_t_yaw = clampf(_t_yaw - r.x * 0.004, -YAW_LIMIT, YAW_LIMIT)
-		_t_pitch = clampf(_t_pitch + r.y * 0.003, PITCH_MIN, PITCH_MAX)
+		_t_pitch = clampf(_t_pitch + r.y * 0.003, pitch_min, pitch_max)
 		_drag += absf(r.x) + absf(r.y)
 	elif e is InputEventMagnifyGesture:
 		_zoom(1.0 / e.factor)
@@ -181,6 +206,12 @@ func _pick(screen: Vector2) -> void:
 		var rh := get_world_3d().direct_space_state.intersect_ray(rq)
 		if rh and rh.collider and rh.collider.has_meta("rival"):
 			Game.rival_tapped.emit(rh.collider.get_meta("rival"))
+		return
+	# bulele de prieteni (în jurul globului)
+	var fq := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, FriendBubble.LAYER)
+	var fh := get_world_3d().direct_space_state.intersect_ray(fq)
+	if fh and fh.collider and fh.collider.has_meta("friend"):
+		Game.friend_bubble_tapped.emit(int(fh.collider.get_meta("friend")))
 		return
 	# 1) selecție exactă: raza lovește triunghiurile reale ale clădirilor
 	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, Building.PICK_LAYER)

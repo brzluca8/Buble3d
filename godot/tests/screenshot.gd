@@ -26,7 +26,8 @@ func _initialize() -> void:
 			g.levels[k] = int(args[1].substr(5))
 		for b in main.island.get_node("Buildings").get_children():
 			b._apply_level(false)
-		if args.size() > 2 and args[2] == "insula":
+		g.changed.emit()
+		if args.size() > 2 and args[2] == "insula" and main.has_method("set_mode"):
 			main.set_mode("insula")
 	elif args.size() > 1 and args[1].begins_with("tema"):
 		main.apply_theme(int(args[1].substr(4)))

@@ -75,6 +75,12 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/v1/cards/gift", {"to_id": b["player_id"], "card": "0:3"}, a["token"])[0], 200)
         c = self.player("device-cccc", "Cristi")
         self.assertEqual(self.call("POST", "/v1/cards/gift", {"to_id": b["player_id"], "card": "0:3"}, c["token"])[0], 403)
+        # vizită și cadou zilnic (o dată pe zi)
+        self.assertEqual(self.call("POST", "/v1/visit", {"target_id": b["player_id"]}, a["token"])[0], 200)
+        self.assertEqual(self.call("POST", "/v1/gift", {"to_id": b["player_id"], "kind": "coins"}, a["token"])[0], 200)
+        self.assertEqual(self.call("POST", "/v1/gift", {"to_id": b["player_id"], "kind": "coins"}, a["token"])[0], 429)
+        msgs = self.call("GET", "/v1/inbox", token=b["token"])[1]["messages"]
+        self.assertEqual(sorted(m["kind"] for m in msgs), ["card", "gift", "visit"])
         # echipe de 4
         for p in (a, b, c):
             self.assertEqual(self.call("POST", "/v1/team/join", token=p["token"])[0], 200)

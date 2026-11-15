@@ -33,6 +33,12 @@ func _ready() -> void:
 	place_on(Game.pos)
 
 
+## Pune mascota într-un punct fix (ex. în orașul din glob, fără traseu).
+func set_home(p: Vector3) -> void:
+	_base = p
+	position = p
+
+
 func place_on(i: int) -> void:
 	if board:
 		_base = board.stand_pos(i)

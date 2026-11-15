@@ -26,7 +26,43 @@ func _initialize() -> void:
 	root.add_child(main)
 	for i in 10:
 		await process_frame
-	if "pieces" in main:
+	if "friends" in main and "repo" in main:
+		# ---- orașul din glob ----
+		check(main.city.get_node("Buildings").get_child_count() == 5, "5 clădiri în glob")
+		check(main.friends.size() == 6, "6 bule de prieteni în jurul globului")
+		await create_timer(0.3).timeout
+		var empty_slots: int = main.friends.filter(func(f): return f.friend.is_empty()).size()
+		check(main.repo.is_demo() and empty_slots == 6, "fără server: doar sloturi goale DEMO (fără jucători simulați)")
+		for id in ["palat", "obs", "turn", "mag", "sera"]:
+			var b = main.city.get_node("Buildings/" + id)
+			var sp: Vector2 = main.cam.unproject_position(b.global_position + Vector3(0, Models.HEIGHT[id] * 0.25, 0))
+			main.cam._pick(sp)
+			check(game.sel == id, "atingerea în glob selectează %s (%s)" % [id, game.sel])
+		game.select("")
+		# atingerea unei bule goale deschide invitația
+		var hud0 = main.get_children().filter(func(n): return n.has_method("show_toast"))[0]
+		var fsp: Vector2 = main.cam.unproject_position(main.friends[0].global_position)
+		main.cam._pick(fsp)
+		await process_frame
+		check(hud0.modal.visible, "atingerea unei bule goale deschide „Invită un prieten”")
+		hud0._nav_to("home")
+		# vizită (prieten real, prin repository de test)
+		main.repo = load("res://tests/test_friends_repo.gd").new()
+		await main.refresh_friends()
+		check(main.friends[0].friend.get("name", "") == "Test", "prietenul apare în bulă")
+		await main.visit(main.friends[0].friend)
+		check(main.city.get_node("Buildings/palat")._lvl == 4 and main.visit_ui != null, "vizita arată orașul prietenului (palat nivel 4)")
+		main.end_visit()
+		check(main.city.get_node("Buildings/palat")._lvl == game.levels.palat, "înapoi acasă: orașul tău")
+		var tier0: int = main.city_tier()
+		for k in game.levels:
+			game.levels[k] = 5
+		game.changed.emit()
+		check(main.city_tier() > tier0 and main.rings[0].visible, "nivelul orașului aprinde inele aurii pe glob")
+		game.levels = {"palat": 1, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
+		game.changed.emit()
+		game.select("palat")
+	elif "pieces" in main:
 		# lumea 2.5D pictată
 		check(main.pieces.size() == 5, "5 clădiri create")
 		main.pick(main.world_to_screen(main.hot["palat"].get_center()))

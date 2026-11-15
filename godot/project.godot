@@ -6,7 +6,7 @@ config_version=5
 
 config/name="Buble 3D"
 config/description="Insula plutitoare Buble – joc casual 3D"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/globe.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 boot_splash/bg_color=Color(0.165, 0.337, 0.776, 1)
