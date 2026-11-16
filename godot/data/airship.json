@@ -1,0 +1,20 @@
+{
+  "_info": "Atelierul dirijabilului: îmbunătățiri care deschid globurile. requires_level = nivelul minim. cost_units = cost în unități de pariu ale nivelului curent.",
+  "upgrades": [
+    {"id": "motoare_1", "name": "Motoare de cupru", "requires_level": 10, "cost_units": 40, "opens_globe": 0},
+    {"id": "baloane_1", "name": "Baloane întărite", "requires_level": 10, "cost_units": 40, "opens_globe": 2, "requires": "motoare_1"},
+    {"id": "motoare_2", "name": "Motoare de aur", "requires_level": 20, "cost_units": 60, "opens_globe": 0},
+    {"id": "baloane_2", "name": "Baloane de mătase", "requires_level": 20, "cost_units": 60, "opens_globe": 3, "requires": "motoare_2"},
+    {"id": "carma_aur", "name": "Cârma de aur", "requires_level": 30, "cost_units": 80, "opens_globe": 0, "trophy": "capitan"}
+  ],
+  "companion": {
+    "name": "Lumi",
+    "stages": [
+      {"level": 1, "name": "Sămânță de lumină", "bonus": 0.01},
+      {"level": 8, "name": "Mugur luminos", "bonus": 0.02},
+      {"level": 16, "name": "Floare de stele", "bonus": 0.03},
+      {"level": 24, "name": "Lumi", "bonus": 0.05}
+    ],
+    "_bonus": "procent de monede în plus din rotiri"
+  }
+}

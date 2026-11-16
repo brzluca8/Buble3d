@@ -120,7 +120,7 @@ func sync() -> void:
 	if not online:
 		return
 	var r := await request(HTTPClient.METHOD_PUT, "/v1/island", {
-		"island": Game.island, "levels": Game.levels, "shields": Game.shields,
+		"island": Game.globe, "levels": Game.levels, "shields": Game.shields,
 		"coins": int(Game.coins), "name": player_name})
 	if r._code == 0:
 		_set_online(false)

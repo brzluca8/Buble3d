@@ -1,12 +1,14 @@
 class_name Mascot
 extends Node3D
-## Mascota este „pionul" de pe traseu: sare din căsuță în căsuță după aruncarea zarurilor
-## și sare de bucurie la upgrade / întoarcerea din Buble Blast.
-## Dacă res://assets/models/mascota.glb are animații, se folosesc clipurile „idle", „walk"/„run", „jump".
+## Mascota (varianta „cască de bulă"): stă, salută, se bucură la upgrade și la câștigurile mari.
+## Dacă res://assets/models/mascota.glb are animații, se folosesc clipurile „idle", „walk",
+## „wave" (salut), „joy" (bucurie); altfel animația e procedurală (săritură, rotire).
 
 const HOP_TIME := 0.26
 
-var board: Board
+var board: Node3D                   # (opțional) un traseu cu stand_pos(i)
+var _action := ""
+var _action_t := 0.0
 var _hops: Array = []
 var _hop_from := Vector3.ZERO
 var _hop_t := 0.0
@@ -28,9 +30,72 @@ func _ready() -> void:
 		visual = Proc.mascot()
 		_mouth = visual.get_node("Mouth")
 	add_child(visual)
-	Game.mascot_jump.connect(func(): _jump = 1.0)
-	Game.selected.connect(func(id): if id != "": _jump = 0.5)
-	place_on(Game.pos)
+	apply_cosmetics()
+	Game.mascot_jump.connect(joy)
+	Game.selected.connect(_on_selected)
+	get_tree().create_timer(1.2).timeout.connect(wave)
+
+
+func _on_selected(id: String) -> void:
+	if id != "":
+		_jump = 0.5
+
+
+## Garderoba: aplică piesele echipate (culoarea corpului, eșarfa, casca, ochelarii).
+const BODY := {"corp_crem": Color("f4ead8"), "corp_perlat": Color("eef2fa"), "corp_lavanda": Color("dccbf2")}
+const SCARF := {"esarfa_violet": Color("6a3fb8"), "esarfa_turcoaz": Color("1fa8a6"), "esarfa_aur": Color("e8b040")}
+var _extras: Array[Node3D] = []
+
+func apply_cosmetics() -> void:
+	var eq: Dictionary = Game.equipped
+	_tint("Blana", BODY.get(eq.get("corp", ""), BODY.corp_crem), 0.25 if eq.get("corp", "") == "corp_perlat" else 0.0)
+	_tint("Violet", SCARF.get(eq.get("esarfa", ""), SCARF.esarfa_violet), 0.6 if eq.get("esarfa", "") == "esarfa_aur" else 0.0)
+	for x in _extras:
+		x.queue_free()
+	_extras.clear()
+	var casca := find_child("Casca", true, false) as Node3D
+	if casca:
+		casca.scale = Vector3(1, 1.18, 1) if eq.get("casca", "") == "casca_inalta" else Vector3.ONE
+		if eq.get("casca", "") == "casca_inel":
+			var r := Proc.add(casca, Proc.htor(0.88, 0.035, 48, 8), Proc.M("gold"))
+			r.position = Vector3(0, 1.0, 0)
+			r.rotation.x = 0.25
+			_extras.append(r)
+	if eq.get("ochelari", "") == "ochelari_aur":
+		var g := Node3D.new()
+		var body := find_child("Corp", true, false) as Node3D
+		(body if body else self).add_child(g)
+		for sx in [-1.0, 1.0]:
+			Proc.rot(Proc.add(g, Proc.htor(0.12, 0.018, 24, 6), Proc.M("gold"), Vector3(sx * 0.22, 0.86, 0.6)), PI / 2, 0, 0)
+		_extras.append(g)
+
+
+func _tint(mat_name: String, col: Color, metal: float) -> void:
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		if m3.mesh == null:
+			continue
+		for i in m3.mesh.get_surface_count():
+			var m := m3.mesh.surface_get_material(i)
+			if m and m.resource_name.get_slice(".", 0) == mat_name:
+				var c := (m as BaseMaterial3D).duplicate() as BaseMaterial3D
+				c.albedo_color = col
+				c.metallic = metal
+				c.roughness = 0.3 if metal > 0.0 else c.roughness
+				m3.set_surface_override_material(i, c)
+
+
+## Salut (clip „wave" sau rotire ușoară).
+func wave() -> void:
+	_action = "wave"
+	_action_t = 0.0
+
+
+## Bucurie: săritură cu o rotire completă (clip „joy" dacă există).
+func joy() -> void:
+	_jump = 1.0
+	_action = "joy"
+	_action_t = 0.0
 
 
 ## Pune mascota într-un punct fix (ex. în orașul din glob, fără traseu).
@@ -104,10 +169,21 @@ func _process(dt: float) -> void:
 			_jump -= dt * 1.4
 		position = _base + Vector3(0, y, 0)
 	rotation.y = _ry
+	if _action != "":
+		_action_t += dt
+		if _action == "joy":
+			rotation.y = _ry + minf(_action_t / 0.8, 1.0) * TAU
+			if _action_t > 0.8:
+				_action = ""
+		elif _action == "wave":
+			rotation.z = sin(_action_t * 9.0) * 0.08
+			if _action_t > 2.0:
+				_action = ""
+				rotation.z = 0.0
 	if _mouth:
 		_mouth.scale.y = 0.5 + maxf(_jump, 0.0) * 1.5
 	if _anim:
-		_play("jump" if (moving or _jump > 0.0) else "idle")
+		_play(_action if _action != "" else ("walk" if moving else ("jump" if _jump > 0.0 else "idle")))
 
 
 func _play(want: String) -> void:

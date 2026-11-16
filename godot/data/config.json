@@ -1,0 +1,39 @@
+{
+  "_info": "Parametrii generali ai economiei. Se modifică aici, fără cod. Timpuri în secunde.",
+  "energy": {"cap": 50, "start": 50, "regen_s": 600},
+  "multipliers": [1, 2, 3, 5],
+  "multiplier_unlock_level": 5,
+  "shield_max": 3,
+  "builders": 1,
+  "reservoir": {"units_per_upgrade_per_hour": 0.25, "cap_hours": 4},
+  "chests": {
+    "slots": 3,
+    "kinds": {
+      "comun": {"name": "Cufăr comun", "weight": 70, "open_s": 900, "units": 6, "cards": 1, "energy": 0, "perle": 0},
+      "rar": {"name": "Cufăr rar", "weight": 25, "open_s": 3600, "units": 15, "cards": 2, "energy": 5, "perle": 0},
+      "epic": {"name": "Cufăr epic", "weight": 5, "open_s": 10800, "units": 40, "cards": 3, "energy": 15, "perle": 2}
+    },
+    "globe_reward": "epic"
+  },
+  "streak": [
+    {"day": 1, "energy": 10},
+    {"day": 2, "units": 5},
+    {"day": 3, "energy": 15},
+    {"day": 4, "cards": 2},
+    {"day": 5, "units": 10},
+    {"day": 6, "energy": 20},
+    {"day": 7, "chest": "epic", "perle": 5}
+  ],
+  "event": {
+    "id": "festivalul_luminilor", "name": "Festivalul luminilor", "duration_days": 7,
+    "points": {"atac": 3, "raid": 3, "jackpot": 5, "sac": 2, "cufar": 2, "default": 1},
+    "stages": [
+      {"points": 20, "energy": 10}, {"points": 50, "units": 8}, {"points": 100, "cards": 2},
+      {"points": 170, "energy": 25}, {"points": 260, "chest": "rar"}, {"points": 380, "units": 30},
+      {"points": 520, "perle": 5}, {"points": 700, "chest": "epic", "cosmetic": "efect_bule"}
+    ]
+  },
+  "notifications": {"max_per_day": 2, "kinds": ["energie_plina", "cufar_gata"]},
+  "skip_perle_per_10_min": 1,
+  "card_set_reward": {"energy": 25, "perle": 3}
+}

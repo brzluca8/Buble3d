@@ -13,6 +13,8 @@ boot_splash/bg_color=Color(0.165, 0.337, 0.776, 1)
 
 [autoload]
 
+Analytics="*res://autoload/analytics.gd"
+Notifier="*res://autoload/notifier.gd"
 Game="*res://autoload/game.gd"
 Net="*res://autoload/net.gd"
 Monetization="*res://autoload/monetization.gd"

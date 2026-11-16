@@ -24,8 +24,18 @@ func _ready() -> void:
 		"lose": _tone([[440.0, 440.0, 0.18], [330.0, 300.0, 0.35]], 0.35, "triangle"),
 		"coin": _tone([[988.0, 988.0, 0.07], [1319.0, 1319.0, 0.18]], 0.35, "square"),
 		"click": _tone([[1200.0, 1000.0, 0.03]], 0.25, "sine"),
+		"tick": _tone([[1800.0, 1500.0, 0.015]], 0.18, "sine"),
+		"reel_stop": _tone([[420.0, 300.0, 0.06]], 0.4, "triangle"),
+		"bigwin": _tone([[523.0, 523.0, 0.09], [659.0, 659.0, 0.09], [784.0, 784.0, 0.09], [1046.0, 1046.0, 0.09], [1318.0, 1318.0, 0.35]], 0.4, "sine"),
+		"build": _tone([[300.0, 260.0, 0.05], [300.0, 260.0, 0.05], [420.0, 380.0, 0.08]], 0.35, "square"),
 		"upgrade": _tone([[392.0, 392.0, 0.08], [523.0, 523.0, 0.08], [659.0, 659.0, 0.08], [784.0, 1046.0, 0.25]], 0.4, "square"),
 	}
+
+
+## Vibrație scurtă (dacă jucătorul nu a oprit-o în Setări).
+func buzz(ms := 40) -> void:
+	if Game.vibration:
+		Input.vibrate_handheld(ms)
 
 
 func play(name: String, pitch := 1.0) -> void:

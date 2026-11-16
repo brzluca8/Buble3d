@@ -1,0 +1,16 @@
+{
+  "_info": "Structura magazinului (PLĂȚI DEZACTIVATE). O singură monedă premium: Perle. Prețurile în lei sunt afișate întreg, fără ambiguități.",
+  "premium_name": "Perle",
+  "perle_packs": [
+    {"id": "perle_80", "perle": 80, "price": "9,99 lei"},
+    {"id": "perle_200", "perle": 200, "price": "22,99 lei"},
+    {"id": "perle_550", "perle": 550, "price": "54,99 lei"}
+  ],
+  "items": [
+    {"id": "energie_50", "name": "50 de energie", "perle": 20, "grant": {"energy": 50}},
+    {"id": "energie_150", "name": "150 de energie", "perle": 55, "grant": {"energy": 150}},
+    {"id": "cufar_rar", "name": "Cufăr rar (conținut afișat)", "perle": 15, "grant": {"chest": "rar"}},
+    {"id": "scut", "name": "Un scut", "perle": 10, "grant": {"shield": 1}}
+  ],
+  "note": "Conținutul cuferelor și șansele mașinii sunt vizibile în ecranul Șanse."
+}

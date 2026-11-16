@@ -1,5 +1,5 @@
 extends Node3D
-## Ecranul principal v2: orașul dintr-un glob de sticlă (vezi BUBLE_HANDOFF_v2.md).
+## Ecranul principal: orașul dintr-un glob de sticlă (vezi BUBLE_HANDOFF.md).
 ## Globul stă pe un piedestal violet cu inele aurii și rune turcoaz; înăuntru e orașul
 ## (aceleași clădiri pe niveluri, piața, mascota), bule care urcă; în jur plutesc bulele
 ## prietenilor. Cer de amurg cu stele. Totul e 3D real; nimic nu e imagine statică.
@@ -32,6 +32,9 @@ var ring_sel: MeshInstance3D
 var visiting := {}                              # prietenul vizitat ({} = acasă)
 var visit_ui: Control
 var t := 0.0
+var target_view := {}                           # ținta unui atac / raid ({} = acasă)
+var targets: TargetsRepository = TrainingTargets.new()
+var raid_spots: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -52,16 +55,19 @@ func _ready() -> void:
 	cam.set_view(C + Vector3(0, -0.6, 0), 33.0, 16.0, 6.0, 38.0)
 	cam.auto_rotate = true
 	cam.focus_dist = 21.0
-	add_child(preload("res://scripts/ui/hud.gd").new())
+	add_child(preload("res://scripts/ui/hud_v2.gd").new())
 	Game.selected.connect(_on_selected)
 	Game.upgraded.connect(_on_upgraded)
 	Game.changed.connect(_update_rings)
-	Game.blast_finished.connect(_on_blast)
+	Game.big_win.connect(_on_big_win)
+	Game.traveled.connect(_on_traveled)
+	Game.level_up.connect(func(_l): _update_rings())
 	Game.friend_bubble_tapped.connect(_on_friend_tapped)
 	Game.friend_signal.connect(func(_id): refresh_friends())
 	Game.quality_changed.connect(func(_q): _apply_quality())
 	Net.status_changed.connect(_on_net)
 	_apply_quality()
+	apply_theme(Game.globe)
 	_update_rings()
 	refresh_friends()
 
@@ -376,8 +382,8 @@ func visit(f: Dictionary) -> void:
 	cam._t_dist = 8.0
 	await get_tree().create_timer(0.6).timeout
 	var hud := _hud()
-	if hud and hud.play:
-		await hud.play._wipe(func(): _show_city(city_d.get("levels", {})))
+	if hud:
+		await hud.wipe(func(): _show_city(city_d.get("levels", {})))
 	else:
 		_show_city(city_d.get("levels", {}))
 	cam.reset_view()
@@ -387,7 +393,7 @@ func visit(f: Dictionary) -> void:
 
 func _show_city(levels: Dictionary) -> void:
 	for b in city.get_node("Buildings").get_children():
-		b.show_level(int(levels.get(b.id, 1)) if not levels.is_empty() else -1)
+		b.show_level(int(levels.get(b.id, 0)) if not levels.is_empty() else -1)
 	mascot.visible = levels.is_empty()
 
 
@@ -409,17 +415,17 @@ func _visit_panel(f: Dictionary) -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	visit_ui.add_child(vb)
-	var title := K.label("🏙️ Orașul lui %s" % f.get("name", "?"), 30, Color.WHITE, 900)
+	var title := K.label("Orașul lui %s" % f.get("name", "?"), 30, Color.WHITE, 900)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	var can := repo.can_gift_today(int(f.id))
-	var hint := K.label("Lasă-i un cadou (o dată pe zi):" if can else "Ai lăsat deja un cadou azi 🎁", 22, Color(1, 1, 1, 0.85), 700)
+	var hint := K.label("Lasă-i un cadou (o dată pe zi):" if can else "Ai lăsat deja un cadou azi", 22, Color(1, 1, 1, 0.85), 700)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(hint)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 10)
 	vb.add_child(hb)
-	for g in [["coins", "🪙 Monede"], ["card", "🃏 Carte"]]:
+	for g in [["coins", "Monede"], ["card", "Carte"]]:
 		var b := K.gold_button(g[1], 24)
 		b.custom_minimum_size = Vector2(0, 66)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -433,7 +439,7 @@ func _visit_panel(f: Dictionary) -> void:
 				for c in hb.get_children():
 					(c as Button).disabled = true)
 		hb.add_child(b)
-	var back := K.button("⬅ Înapoi acasă", 24, K.box(Color(1, 1, 1, 0.12), 30, Color(1, 1, 1, 0.3), 2, 0, 12))
+	var back := K.button("Înapoi acasă", 24, K.box(Color(1, 1, 1, 0.12), 30, Color(1, 1, 1, 0.3), 2, 0, 12))
 	back.pressed.connect(func():
 		Sfx.play("click")
 		end_visit())
@@ -474,15 +480,17 @@ func _on_upgraded(id: String) -> void:
 	burst.restart()
 
 
-func _on_blast(won: bool) -> void:
-	if won:
-		burst.position = C + Vector3(0, -GROUND + 0.5, 0)
-		burst.restart()
+## Câștig mare la mașina de bule: explozie de bule în glob și mascota se bucură.
+func _on_big_win(_kind: String) -> void:
+	burst.position = C + Vector3(0, -GROUND + 0.5, 0)
+	burst.restart()
+	mascot.joy()
 
 
-## Nivelul orașului: la fiecare 4 niveluri de clădiri se aprinde un inel auriu și globul crește puțin.
+## Nivelul orașului în globul curent: la fiecare 2 niveluri se aprinde un inel auriu și globul crește.
 func city_tier() -> int:
-	return clampi((Game.sum_levels() - 5) / 4, 0, rings.size())
+	var done_in_globe := clampi(Game.level - 1 - (Game.globe - 1) * 10, 0, 10)
+	return clampi(done_in_globe / 2, 0, rings.size())
 
 
 func _update_rings() -> void:
@@ -517,3 +525,165 @@ func _process(dt: float) -> void:
 	var rs := R * globe.scale.x
 	glints[0].global_position = gc + (v * 0.82 + up * 0.42 + side * 0.32).normalized() * rs * 1.01
 	glints[1].global_position = gc + (v * 0.9 - up * 0.3 - side * 0.3).normalized() * rs * 1.01
+
+
+# ---------------- teme: cele 3 globuri ----------------
+const THEMES := [
+	{"sky": ["070624", "2a1d7a", "2b2486", "0e5a7a"], "fog": "2e2470", "amb": "a99ad8", "sun": "ffd9a8", "roof": "", "grass": "ffffff", "stone": "ffffff"},
+	# Orașul de cristal: noapte rece, acoperișuri de gheață, iarbă argintie
+	{"sky": ["040a2a", "1c3a8a", "2a5ab0", "6aa8d8"], "fog": "2a4a8a", "amb": "9ab8e8", "sun": "dfefff", "roof": "8fc8ff", "grass": "b8e0d8", "stone": "e8f0ff"},
+	# Portul de amurg: apus cald, acoperișuri de coral
+	{"sky": ["1a0a3a", "8a3a7a", "e07a5a", "f0b070"], "fog": "8a4a6a", "amb": "d8a088", "sun": "ffc080", "roof": "e8806a", "grass": "c8d880", "stone": "fff0dc"},
+]
+
+
+func apply_theme(g: int) -> void:
+	var th: Dictionary = THEMES[clampi(g - 1, 0, THEMES.size() - 1)]
+	sky_mat.sky_top_color = Color(th.sky[0])
+	sky_mat.sky_horizon_color = Color(th.sky[1])
+	sky_mat.ground_horizon_color = Color(th.sky[2])
+	sky_mat.ground_bottom_color = Color(th.sky[3])
+	env.fog_light_color = Color(th.fog)
+	env.ambient_light_color = Color(th.amb)
+	sun.light_color = Color(th.sun)
+	var map := {"AcoperisTurcoaz": [th.roof, true], "Iarba": [th.grass, false], "Piatra": [th.stone, false], "Soclu": [th.stone, false], "Pavaj": [th.stone, false]}
+	for key in map:
+		for m in Models.registry.get(key, []):
+			var base := Color(m.get_meta("base"))
+			var col: String = map[key][0]
+			(m as BaseMaterial3D).albedo_color = base if col == "" else (Color(col) if map[key][1] else base * Color(col))
+
+
+## Călătoria cu dirijabilul spre globul următor: albire „prin nori", tema nouă, orașul de la zero.
+func _on_traveled(g: int) -> void:
+	var hud := _hud()
+	if hud:
+		await hud.wipe(func(): apply_theme(g))
+	else:
+		apply_theme(g)
+	_update_rings()
+	cam.reset_view()
+
+
+# ---------------- atac și raid (în orașul țintei) ----------------
+## Arată orașul țintei în glob. Întoarce ținta (cu etichetă dacă e de antrenament).
+func show_target() -> Dictionary:
+	target_view = await targets.pick_target()
+	Game.select("")
+	cam.rival_mode = true
+	_show_city(target_view.get("levels", {}))
+	cam.reset_view()
+	return target_view
+
+
+func end_target() -> void:
+	target_view = {}
+	for s in raid_spots:
+		s.queue_free()
+	raid_spots.clear()
+	_show_city({})
+	cam.rival_mode = false
+	cam.reset_view()
+
+
+## Lovitura: ciocanul cade pe clădire; scutul țintei se consumă dacă există.
+func attack_building(id: String) -> Dictionary:
+	var r: Dictionary = await targets.hit(int(target_view.id), id)
+	var b := _building(id)
+	var top := b.global_position + Vector3(0, 9.0, 1.0)
+	var impact := b.global_position + Vector3(0, Models.HEIGHT.get(id, 4.0) * CITY_SCALE * 0.8, 0.4)
+	var hammer := Node3D.new()
+	Proc.add(hammer, Proc.cyl(0.08, 0.08, 1.7, 10), Proc.M("brown"), Vector3(0, 0.6, 0))
+	Proc.add(hammer, Proc.box(1.0, 0.55, 0.55), Proc.M("gold"), Vector3(0, 1.55, 0))
+	add_child(hammer)
+	hammer.global_position = top
+	hammer.rotation = Vector3(0, 0, -1.2)
+	var tw := create_tween()
+	tw.tween_property(hammer, "global_position", impact, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(hammer, "rotation:z", 0.5, 0.4)
+	await tw.finished
+	if r.blocked:
+		var sh := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 2.2
+		sm.height = 4.4
+		sh.mesh = sm
+		var mat := ShaderMaterial.new()
+		mat.shader = preload("res://shaders/glass_globe.gdshader")
+		mat.set_shader_parameter("tint", Color(0.5, 0.8, 1.0))
+		mat.set_shader_parameter("pulse", 1.0)
+		sh.material_override = mat
+		add_child(sh)
+		sh.global_position = b.global_position + Vector3(0, 1.2, 0)
+		Sfx.play("pop")
+		var bt := create_tween()
+		bt.tween_property(hammer, "global_position", impact + Vector3(2.0, 3.0, 2.0), 0.45)
+		bt.parallel().tween_property(sh, "scale", Vector3.ONE * 1.15, 0.2)
+		bt.tween_property(sh, "scale", Vector3.ZERO, 0.3)
+		await bt.finished
+		sh.queue_free()
+	else:
+		Sfx.play("bomb")
+		Sfx.buzz(80)
+		cam.shake(0.5)
+		burst.position = globe.to_local(impact)
+		burst.restart()
+		b.show_level(int(r.levels.get(id, 0)))
+	var out := create_tween()
+	out.tween_property(hammer, "scale", Vector3.ZERO, 0.25)
+	await out.finished
+	hammer.queue_free()
+	return r
+
+
+## Patru locuri de săpat în piața țintei.
+func make_raid_spots() -> void:
+	var pts := [Vector3(-2.3, 0, 2.0), Vector3(2.3, 0, 2.0), Vector3(-2.6, 0, -1.4), Vector3(2.6, 0, -1.4)]
+	for i in pts.size():
+		var g := Node3D.new()
+		var dirt := Proc.add(g, Proc.sph(0.7, 14, 7), Proc.mat(Color("8a5a36"), {"rough": 0.95}))
+		dirt.scale = Vector3(1.0, 0.4, 1.0)
+		dirt.name = "Dirt"
+		var l := Label3D.new()
+		l.text = str(i + 1)
+		l.font = UiKit.font(900)
+		l.font_size = 80
+		l.pixel_size = 0.012
+		l.outline_size = 12
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.no_depth_test = true
+		l.position = Vector3(0, 1.0, 0)
+		l.name = "Label"
+		g.add_child(l)
+		var body := StaticBody3D.new()
+		body.collision_layer = RivalLayer.LAYER
+		body.collision_mask = 0
+		body.set_meta("rival", "s:%d" % i)
+		var cs := CollisionShape3D.new()
+		var sh := SphereShape3D.new()
+		sh.radius = 0.9
+		cs.shape = sh
+		body.add_child(cs)
+		g.add_child(body)
+		city.add_child(g)
+		g.position = pts[i]
+		raid_spots.append(g)
+
+
+func dig(i: int, value: int) -> void:
+	var g := raid_spots[i]
+	var dirt: Node3D = g.get_node("Dirt")
+	var tw := create_tween()
+	tw.tween_property(dirt, "scale", Vector3(1.3, 0.1, 1.3), 0.25)
+	await tw.finished
+	(g.get_node("Label") as Label3D).text = Game.fmt(value) if value > 0 else "–"
+	if value > 0:
+		var chest := Node3D.new()
+		Proc.add(chest, Proc.box(0.9, 0.55, 0.6), Proc.M("brown"), Vector3(0, 0.28, 0))
+		Proc.add(chest, Proc.box(0.94, 0.12, 0.64), Proc.M("gold"), Vector3(0, 0.58, 0))
+		g.add_child(chest)
+		chest.scale = Vector3.ONE * 0.2
+		var up := create_tween()
+		up.tween_property(chest, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK)
+		burst.position = globe.to_local(g.global_position) + Vector3(0, 0.8, 0)
+		burst.restart()

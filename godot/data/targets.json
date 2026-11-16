@@ -1,0 +1,9 @@
+{
+  "_info": "Ținte de antrenament (fără backend). NU sunt jucători reali și sunt etichetate vizibil ca atare.",
+  "label": "Țintă de antrenament – nu este un jucător real",
+  "targets": [
+    {"id": 1, "name": "Manechinul de cristal", "shields": 1},
+    {"id": 2, "name": "Turnul de exercițiu", "shields": 0},
+    {"id": 3, "name": "Orașul-machetă", "shields": 2}
+  ]
+}

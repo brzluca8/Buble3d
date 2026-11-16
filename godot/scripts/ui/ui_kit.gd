@@ -11,16 +11,59 @@ const CARD := Color("2a2278")
 static var _fonts := {}
 
 
+## Fontul Nunito (OFL), cu subsetul latin-ext pentru ș/ț. Greutăți: 600, 700, 800, 900.
 static func font(weight := 700) -> Font:
-	if not _fonts.has(weight):
-		var emoji := SystemFont.new()
-		emoji.font_names = PackedStringArray(["Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Twemoji"])
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray(["Nunito", "Roboto", "Noto Sans", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"])
-		f.font_weight = weight
-		f.fallbacks = [emoji]
-		_fonts[weight] = f
-	return _fonts[weight]
+	var w := clampi(int(round(weight / 100.0)) * 100, 600, 900)
+	if not _fonts.has(w):
+		var ext := load("res://assets/fonts/nunito-latin-ext-%d-normal.woff2" % w) as FontFile
+		var base := load("res://assets/fonts/nunito-latin-%d-normal.woff2" % w) as FontFile
+		var f: Font = base
+		if base == null:
+			var sf := SystemFont.new()
+			sf.font_weight = w
+			f = sf
+		if ext:
+			f.fallbacks = [ext]
+		_fonts[w] = f
+	return _fonts[w]
+
+
+static var _icons := {}
+
+## Iconiță albă (Lucide, ISC) din res://assets/icons; se colorează cu modulate.
+static func icon(name: String) -> Texture2D:
+	if not _icons.has(name):
+		_icons[name] = load("res://assets/icons/%s.png" % name) if ResourceLoader.exists("res://assets/icons/%s.png" % name) else null
+	return _icons[name]
+
+
+static func icon_rect(name: String, size := 40.0, col := Color.WHITE) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = icon(name)
+	t.custom_minimum_size = Vector2(size, size)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.modulate = col
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+## Panou „sticlă" premium: indigo translucid, margine aurie fină.
+static func glass(radius := 28, pad := 16, alpha := 0.82) -> StyleBoxFlat:
+	var s := box(Color(0.08, 0.06, 0.24, alpha), radius, Color(0.96, 0.77, 0.27, 0.75), 2, 10, pad)
+	return s
+
+
+## Buton cu iconiță și text (fără emoji).
+static func icon_button(icon_name: String, text: String, size := 24, style: StyleBox = null, col := Color.WHITE, icon_size := 34.0) -> Button:
+	var b := button(text, size, style if style else glass(22, 10), col)
+	b.icon = icon(icon_name)
+	b.expand_icon = true
+	b.add_theme_constant_override("icon_max_width", int(icon_size))
+	b.add_theme_color_override("icon_normal_color", col)
+	b.add_theme_color_override("icon_pressed_color", col)
+	b.add_theme_color_override("icon_hover_color", col)
+	return b
 
 
 static func theme() -> Theme:

@@ -84,7 +84,16 @@ static func _apply_textures(n: Node) -> void:
 				if m == null:
 					continue
 				var key := m.resource_name.get_slice(".", 0)
-				if TEXTURED.has(key):
+				if key == "CascaSticla":
+					# domul mascotei: aceeași sticlă Fresnel irizată ca globul
+					var gm := ShaderMaterial.new()
+					gm.shader = load("res://shaders/glass_globe.gdshader")
+					gm.set_shader_parameter("rim_power", 2.0)
+					gm.set_shader_parameter("base_alpha", 0.05)
+					gm.render_priority = 2
+					mi.set_surface_override_material(i, gm)
+					mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				elif TEXTURED.has(key):
 					var base: StandardMaterial3D = Proc.M(TEXTURED[key])
 					var src := m as BaseMaterial3D
 					if src:

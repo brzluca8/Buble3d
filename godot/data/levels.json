@@ -1,0 +1,889 @@
+{
+ "_info": "Generat de tools/balance.py – modifică parametrii acolo sau direct aici.",
+ "globes": [
+  {
+   "id": 1,
+   "name": "Grădina dintre nori"
+  },
+  {
+   "id": 2,
+   "name": "Orașul de cristal"
+  },
+  {
+   "id": 3,
+   "name": "Portul de amurg"
+  }
+ ],
+ "levels": [
+  {
+   "level": 1,
+   "globe": 1,
+   "bet_unit": 20,
+   "spins_target": 8.9,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 1,
+     "cost": 290,
+     "time_s": 0
+    },
+    {
+     "building": "obs",
+     "stage": 1,
+     "cost": 290,
+     "time_s": 0
+    }
+   ],
+   "reward": {
+    "units": 5,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 2,
+   "globe": 1,
+   "bet_unit": 23,
+   "spins_target": 20.3,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 1,
+     "cost": 750,
+     "time_s": 0
+    },
+    {
+     "building": "mag",
+     "stage": 1,
+     "cost": 750,
+     "time_s": 0
+    }
+   ],
+   "reward": {
+    "units": 5,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 3,
+   "globe": 1,
+   "bet_unit": 27,
+   "spins_target": 29.2,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 1,
+     "cost": 1200,
+     "time_s": 0
+    },
+    {
+     "building": "palat",
+     "stage": 2,
+     "cost": 1400,
+     "time_s": 0
+    }
+   ],
+   "reward": {
+    "units": 6,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 4,
+   "globe": 1,
+   "bet_unit": 31,
+   "spins_target": 37.1,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 2,
+     "cost": 1900,
+     "time_s": 0
+    },
+    {
+     "building": "turn",
+     "stage": 2,
+     "cost": 1900,
+     "time_s": 0
+    }
+   ],
+   "reward": {
+    "units": 6,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 5,
+   "globe": 1,
+   "bet_unit": 36,
+   "spins_target": 44.4,
+   "upgrades": [
+    {
+     "building": "mag",
+     "stage": 2,
+     "cost": 1700,
+     "time_s": 0
+    },
+    {
+     "building": "sera",
+     "stage": 2,
+     "cost": 1700,
+     "time_s": 0
+    },
+    {
+     "building": "palat",
+     "stage": 3,
+     "cost": 1800,
+     "time_s": 0
+    }
+   ],
+   "reward": {
+    "units": 6,
+    "energy": 10,
+    "perle": 1,
+    "chest": ""
+   }
+  },
+  {
+   "level": 6,
+   "globe": 1,
+   "bet_unit": 42,
+   "spins_target": 51.2,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 3,
+     "cost": 2300,
+     "time_s": 60
+    },
+    {
+     "building": "turn",
+     "stage": 3,
+     "cost": 2300,
+     "time_s": 60
+    },
+    {
+     "building": "mag",
+     "stage": 3,
+     "cost": 2300,
+     "time_s": 60
+    }
+   ],
+   "reward": {
+    "units": 7,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 7,
+   "globe": 1,
+   "bet_unit": 49,
+   "spins_target": 57.7,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 3,
+     "cost": 2800,
+     "time_s": 120
+    },
+    {
+     "building": "palat",
+     "stage": 4,
+     "cost": 3100,
+     "time_s": 120
+    },
+    {
+     "building": "obs",
+     "stage": 4,
+     "cost": 3100,
+     "time_s": 120
+    }
+   ],
+   "reward": {
+    "units": 7,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 8,
+   "globe": 1,
+   "bet_unit": 57,
+   "spins_target": 63.9,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 4,
+     "cost": 3900,
+     "time_s": 180
+    },
+    {
+     "building": "mag",
+     "stage": 4,
+     "cost": 3900,
+     "time_s": 180
+    },
+    {
+     "building": "sera",
+     "stage": 4,
+     "cost": 3900,
+     "time_s": 180
+    }
+   ],
+   "reward": {
+    "units": 7,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 9,
+   "globe": 1,
+   "bet_unit": 66,
+   "spins_target": 69.8,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 5,
+     "cost": 7400,
+     "time_s": 240
+    },
+    {
+     "building": "obs",
+     "stage": 5,
+     "cost": 7400,
+     "time_s": 240
+    }
+   ],
+   "reward": {
+    "units": 8,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 10,
+   "globe": 1,
+   "bet_unit": 76,
+   "spins_target": 75.6,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 5,
+     "cost": 6200,
+     "time_s": 300
+    },
+    {
+     "building": "mag",
+     "stage": 5,
+     "cost": 6200,
+     "time_s": 300
+    },
+    {
+     "building": "sera",
+     "stage": 5,
+     "cost": 6200,
+     "time_s": 300
+    }
+   ],
+   "reward": {
+    "units": 8,
+    "energy": 25,
+    "perle": 1,
+    "chest": "epic"
+   }
+  },
+  {
+   "level": 11,
+   "globe": 2,
+   "bet_unit": 88,
+   "spins_target": 81.1,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 1,
+     "cost": 12000,
+     "time_s": 390
+    },
+    {
+     "building": "obs",
+     "stage": 1,
+     "cost": 12000,
+     "time_s": 390
+    }
+   ],
+   "reward": {
+    "units": 8,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 12,
+   "globe": 2,
+   "bet_unit": 102,
+   "spins_target": 86.5,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 1,
+     "cost": 14000,
+     "time_s": 480
+    },
+    {
+     "building": "mag",
+     "stage": 1,
+     "cost": 14000,
+     "time_s": 480
+    }
+   ],
+   "reward": {
+    "units": 9,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 13,
+   "globe": 2,
+   "bet_unit": 119,
+   "spins_target": 91.8,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 1,
+     "cost": 17000,
+     "time_s": 570
+    },
+    {
+     "building": "palat",
+     "stage": 2,
+     "cost": 19000,
+     "time_s": 570
+    }
+   ],
+   "reward": {
+    "units": 9,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 14,
+   "globe": 2,
+   "bet_unit": 138,
+   "spins_target": 97.0,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 2,
+     "cost": 22000,
+     "time_s": 660
+    },
+    {
+     "building": "turn",
+     "stage": 2,
+     "cost": 22000,
+     "time_s": 660
+    }
+   ],
+   "reward": {
+    "units": 9,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 15,
+   "globe": 2,
+   "bet_unit": 160,
+   "spins_target": 102.0,
+   "upgrades": [
+    {
+     "building": "mag",
+     "stage": 2,
+     "cost": 17000,
+     "time_s": 750
+    },
+    {
+     "building": "sera",
+     "stage": 2,
+     "cost": 17000,
+     "time_s": 750
+    },
+    {
+     "building": "palat",
+     "stage": 3,
+     "cost": 19000,
+     "time_s": 750
+    }
+   ],
+   "reward": {
+    "units": 10,
+    "energy": 10,
+    "perle": 1,
+    "chest": ""
+   }
+  },
+  {
+   "level": 16,
+   "globe": 2,
+   "bet_unit": 185,
+   "spins_target": 107.0,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 3,
+     "cost": 21000,
+     "time_s": 840
+    },
+    {
+     "building": "turn",
+     "stage": 3,
+     "cost": 21000,
+     "time_s": 840
+    },
+    {
+     "building": "mag",
+     "stage": 3,
+     "cost": 21000,
+     "time_s": 840
+    }
+   ],
+   "reward": {
+    "units": 10,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 17,
+   "globe": 2,
+   "bet_unit": 215,
+   "spins_target": 111.9,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 3,
+     "cost": 24000,
+     "time_s": 930
+    },
+    {
+     "building": "palat",
+     "stage": 4,
+     "cost": 27000,
+     "time_s": 930
+    },
+    {
+     "building": "obs",
+     "stage": 4,
+     "cost": 27000,
+     "time_s": 930
+    }
+   ],
+   "reward": {
+    "units": 10,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 18,
+   "globe": 2,
+   "bet_unit": 249,
+   "spins_target": 116.6,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 4,
+     "cost": 31000,
+     "time_s": 1020
+    },
+    {
+     "building": "mag",
+     "stage": 4,
+     "cost": 31000,
+     "time_s": 1020
+    },
+    {
+     "building": "sera",
+     "stage": 4,
+     "cost": 31000,
+     "time_s": 1020
+    }
+   ],
+   "reward": {
+    "units": 11,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 19,
+   "globe": 2,
+   "bet_unit": 289,
+   "spins_target": 121.3,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 5,
+     "cost": 57000,
+     "time_s": 1110
+    },
+    {
+     "building": "obs",
+     "stage": 5,
+     "cost": 57000,
+     "time_s": 1110
+    }
+   ],
+   "reward": {
+    "units": 11,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 20,
+   "globe": 2,
+   "bet_unit": 336,
+   "spins_target": 125.9,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 5,
+     "cost": 46000,
+     "time_s": 1200
+    },
+    {
+     "building": "mag",
+     "stage": 5,
+     "cost": 46000,
+     "time_s": 1200
+    },
+    {
+     "building": "sera",
+     "stage": 5,
+     "cost": 46000,
+     "time_s": 1200
+    }
+   ],
+   "reward": {
+    "units": 11,
+    "energy": 25,
+    "perle": 1,
+    "chest": "epic"
+   }
+  },
+  {
+   "level": 21,
+   "globe": 3,
+   "bet_unit": 389,
+   "spins_target": 130.5,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 1,
+     "cost": 82000,
+     "time_s": 1440
+    },
+    {
+     "building": "obs",
+     "stage": 1,
+     "cost": 82000,
+     "time_s": 1440
+    }
+   ],
+   "reward": {
+    "units": 12,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 22,
+   "globe": 3,
+   "bet_unit": 451,
+   "spins_target": 135.0,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 1,
+     "cost": 98000,
+     "time_s": 1680
+    },
+    {
+     "building": "mag",
+     "stage": 1,
+     "cost": 98000,
+     "time_s": 1680
+    }
+   ],
+   "reward": {
+    "units": 12,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 23,
+   "globe": 3,
+   "bet_unit": 524,
+   "spins_target": 139.4,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 1,
+     "cost": 110000,
+     "time_s": 1920
+    },
+    {
+     "building": "palat",
+     "stage": 2,
+     "cost": 130000,
+     "time_s": 1920
+    }
+   ],
+   "reward": {
+    "units": 12,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 24,
+   "globe": 3,
+   "bet_unit": 608,
+   "spins_target": 143.8,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 2,
+     "cost": 140000,
+     "time_s": 2160
+    },
+    {
+     "building": "turn",
+     "stage": 2,
+     "cost": 140000,
+     "time_s": 2160
+    }
+   ],
+   "reward": {
+    "units": 13,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 25,
+   "globe": 3,
+   "bet_unit": 705,
+   "spins_target": 148.1,
+   "upgrades": [
+    {
+     "building": "mag",
+     "stage": 2,
+     "cost": 110000,
+     "time_s": 2400
+    },
+    {
+     "building": "sera",
+     "stage": 2,
+     "cost": 110000,
+     "time_s": 2400
+    },
+    {
+     "building": "palat",
+     "stage": 3,
+     "cost": 120000,
+     "time_s": 2400
+    }
+   ],
+   "reward": {
+    "units": 13,
+    "energy": 10,
+    "perle": 1,
+    "chest": ""
+   }
+  },
+  {
+   "level": 26,
+   "globe": 3,
+   "bet_unit": 817,
+   "spins_target": 152.4,
+   "upgrades": [
+    {
+     "building": "obs",
+     "stage": 3,
+     "cost": 130000,
+     "time_s": 2640
+    },
+    {
+     "building": "turn",
+     "stage": 3,
+     "cost": 130000,
+     "time_s": 2640
+    },
+    {
+     "building": "mag",
+     "stage": 3,
+     "cost": 130000,
+     "time_s": 2640
+    }
+   ],
+   "reward": {
+    "units": 13,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 27,
+   "globe": 3,
+   "bet_unit": 948,
+   "spins_target": 156.6,
+   "upgrades": [
+    {
+     "building": "sera",
+     "stage": 3,
+     "cost": 150000,
+     "time_s": 2880
+    },
+    {
+     "building": "palat",
+     "stage": 4,
+     "cost": 160000,
+     "time_s": 2880
+    },
+    {
+     "building": "obs",
+     "stage": 4,
+     "cost": 160000,
+     "time_s": 2880
+    }
+   ],
+   "reward": {
+    "units": 14,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 28,
+   "globe": 3,
+   "bet_unit": 1100,
+   "spins_target": 160.8,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 4,
+     "cost": 190000,
+     "time_s": 3120
+    },
+    {
+     "building": "mag",
+     "stage": 4,
+     "cost": 190000,
+     "time_s": 3120
+    },
+    {
+     "building": "sera",
+     "stage": 4,
+     "cost": 190000,
+     "time_s": 3120
+    }
+   ],
+   "reward": {
+    "units": 14,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 29,
+   "globe": 3,
+   "bet_unit": 1276,
+   "spins_target": 164.9,
+   "upgrades": [
+    {
+     "building": "palat",
+     "stage": 5,
+     "cost": 340000,
+     "time_s": 3360
+    },
+    {
+     "building": "obs",
+     "stage": 5,
+     "cost": 340000,
+     "time_s": 3360
+    }
+   ],
+   "reward": {
+    "units": 14,
+    "energy": 10,
+    "perle": 0,
+    "chest": ""
+   }
+  },
+  {
+   "level": 30,
+   "globe": 3,
+   "bet_unit": 1480,
+   "spins_target": 169.0,
+   "upgrades": [
+    {
+     "building": "turn",
+     "stage": 5,
+     "cost": 270000,
+     "time_s": 3600
+    },
+    {
+     "building": "mag",
+     "stage": 5,
+     "cost": 270000,
+     "time_s": 3600
+    },
+    {
+     "building": "sera",
+     "stage": 5,
+     "cost": 270000,
+     "time_s": 3600
+    }
+   ],
+   "reward": {
+    "units": 15,
+    "energy": 25,
+    "perle": 1,
+    "chest": "epic"
+   }
+  }
+ ]
+}

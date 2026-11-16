@@ -1,0 +1,17 @@
+{
+  "_info": "Rezultatele mașinii de bule. weight = șansa din 1000. units = câștigul în unități de pariu (vezi bet_unit în levels.json), înmulțit cu multiplicatorul. Modifică aici, fără cod.",
+  "symbols": ["coin", "bag", "gem", "energy", "shield", "hammer", "shovel", "chest", "card"],
+  "outcomes": [
+    {"id": "nimic", "name": "Fără câștig", "weight": 120, "reels": "mix", "type": "none"},
+    {"id": "monede_mici", "name": "Două monede", "weight": 290, "reels": ["coin", "coin", "*"], "type": "coins", "units": 1},
+    {"id": "monede", "name": "Trei monede", "weight": 150, "reels": ["coin", "coin", "coin"], "type": "coins", "units": 3},
+    {"id": "sac", "name": "Trei saci", "weight": 70, "reels": ["bag", "bag", "bag"], "type": "coins", "units": 8},
+    {"id": "jackpot", "name": "Trei perle", "weight": 10, "reels": ["gem", "gem", "gem"], "type": "coins", "units": 30, "big": true},
+    {"id": "energie", "name": "Energie", "weight": 40, "reels": ["energy", "energy", "energy"], "type": "energy", "amount": 5},
+    {"id": "scut", "name": "Scut", "weight": 85, "reels": ["shield", "shield", "shield"], "type": "shield", "units_if_full": 2},
+    {"id": "atac", "name": "Atac", "weight": 95, "reels": ["hammer", "hammer", "hammer"], "type": "attack", "units": 6, "units_blocked": 2},
+    {"id": "raid", "name": "Raid", "weight": 50, "reels": ["shovel", "shovel", "shovel"], "type": "raid", "spots_units": [10, 5, 2, 0], "picks": 3},
+    {"id": "cufar", "name": "Cufăr", "weight": 45, "reels": ["chest", "chest", "chest"], "type": "chest"},
+    {"id": "carte", "name": "Carte de album", "weight": 45, "reels": ["card", "card", "card"], "type": "card", "amount": 1}
+  ]
+}

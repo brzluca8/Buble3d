@@ -202,10 +202,13 @@ func _pick(screen: Vector2) -> void:
 	var dir := project_ray_normal(screen)
 	# pe insula rivalului: atingerea alege o clădire de atacat sau o movilă de săpat
 	if rival_mode:
-		var rq := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, RivalIsland.LAYER)
+		var rq := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, RivalLayer.LAYER | Building.PICK_LAYER)
 		var rh := get_world_3d().direct_space_state.intersect_ray(rq)
-		if rh and rh.collider and rh.collider.has_meta("rival"):
-			Game.rival_tapped.emit(rh.collider.get_meta("rival"))
+		if rh and rh.collider:
+			if rh.collider.has_meta("rival"):
+				Game.target_tapped.emit(rh.collider.get_meta("rival"))
+			elif rh.collider.has_meta("building"):
+				Game.target_tapped.emit("b:" + str(rh.collider.get_meta("building")))
 		return
 	# bulele de prieteni (în jurul globului)
 	var fq := PhysicsRayQueryParameters3D.create(from, from + dir * 500.0, FriendBubble.LAYER)
