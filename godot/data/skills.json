@@ -8,7 +8,7 @@
   "skills": [
     {"id": "noroc_1", "branch": "noroc", "name": "Mână norocoasă", "desc": "+5% monede din rotiri", "cost": 1, "effect": "spin_coins", "value": 0.05},
     {"id": "noroc_2", "branch": "noroc", "name": "Cufere bogate", "desc": "+25% monede din cufere", "cost": 1, "requires": "noroc_1", "effect": "chest_coins", "value": 0.25},
-    {"id": "noroc_3", "branch": "noroc", "name": "Ochi de vultur", "desc": "Raidurile aduc +20%", "cost": 2, "requires": "noroc_2", "effect": "raid_coins", "value": 0.2},
+    {"id": "noroc_3", "branch": "noroc", "name": "Ochi de vultur", "desc": "Spargerile aduc +20%", "cost": 2, "requires": "noroc_2", "effect": "raid_coins", "value": 0.2},
     {"id": "noroc_4", "branch": "noroc", "name": "Stea norocoasă", "desc": "+10% monede din rotiri", "cost": 2, "requires": "noroc_3", "effect": "spin_coins", "value": 0.1},
     {"id": "noroc_5", "branch": "noroc", "name": "Comoara cerului", "desc": "Cuferele se deschid cu 30% mai repede", "cost": 3, "requires": "noroc_4", "effect": "chest_speed", "value": 0.3},
     {"id": "constructor_1", "branch": "constructor", "name": "Planuri bune", "desc": "Upgrade-uri cu 5% mai ieftine", "cost": 1, "effect": "upgrade_discount", "value": 0.05},
@@ -16,7 +16,7 @@
     {"id": "constructor_3", "branch": "constructor", "name": "Rezervor mare", "desc": "Rezervorul produce cu 30% mai mult", "cost": 2, "requires": "constructor_2", "effect": "reservoir_rate", "value": 0.3},
     {"id": "constructor_4", "branch": "constructor", "name": "Al doilea constructor", "desc": "Două construcții în paralel", "cost": 2, "requires": "constructor_3", "effect": "builders", "value": 1},
     {"id": "constructor_5", "branch": "constructor", "name": "Arhitect", "desc": "Upgrade-uri cu încă 10% mai ieftine", "cost": 3, "requires": "constructor_4", "effect": "upgrade_discount", "value": 0.1},
-    {"id": "aparare_1", "branch": "aparare", "name": "Sticlă călită", "desc": "Atacurile țintelor parate aduc +50%", "cost": 1, "effect": "blocked_bonus", "value": 0.5},
+    {"id": "aparare_1", "branch": "aparare", "name": "Sticlă călită", "desc": "Sabotajele parate de ținte aduc +50%", "cost": 1, "effect": "blocked_bonus", "value": 0.5},
     {"id": "aparare_2", "branch": "aparare", "name": "Scut în plus", "desc": "Poți ține 4 scuturi", "cost": 1, "requires": "aparare_1", "effect": "shield_cap", "value": 1},
     {"id": "aparare_3", "branch": "aparare", "name": "Rezerve ascunse", "desc": "Pierderi cu 30% mai mici la atacuri (online)", "cost": 2, "requires": "aparare_2", "effect": "loss_reduce", "value": 0.3},
     {"id": "aparare_4", "branch": "aparare", "name": "Respirație lungă", "desc": "Energia se reface cu 15% mai repede", "cost": 2, "requires": "aparare_3", "effect": "energy_regen", "value": 0.15},

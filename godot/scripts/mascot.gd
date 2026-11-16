@@ -42,31 +42,34 @@ func _on_selected(id: String) -> void:
 
 
 ## Garderoba: aplică piesele echipate (culoarea corpului, eșarfa, casca, ochelarii).
-const BODY := {"corp_crem": Color("f4ead8"), "corp_perlat": Color("eef2fa"), "corp_lavanda": Color("dccbf2")}
-const SCARF := {"esarfa_violet": Color("6a3fb8"), "esarfa_turcoaz": Color("1fa8a6"), "esarfa_aur": Color("e8b040")}
+## Nox (asistentul robot): carcasa (perlată / crom / grafit), lumina inelului de la gât
+## (magenta / turcoaz / aurie), antena (scurtă / înaltă / cu halou), vizorul auriu.
+const BODY := {"corp_crem": Color("eef0f6"), "corp_perlat": Color("c8ced8"), "corp_lavanda": Color("23252e")}
+const SCARF := {"esarfa_violet": Color("ff3fa4"), "esarfa_turcoaz": Color("37e8f5"), "esarfa_aur": Color("ffc94a")}
 var _extras: Array[Node3D] = []
 
 func apply_cosmetics() -> void:
 	var eq: Dictionary = Game.equipped
-	_tint("Blana", BODY.get(eq.get("corp", ""), BODY.corp_crem), 0.25 if eq.get("corp", "") == "corp_perlat" else 0.0)
+	_tint("Blana", BODY.get(eq.get("corp", ""), BODY.corp_crem), 0.9 if eq.get("corp", "") == "corp_perlat" else 0.0)
 	_tint("Violet", SCARF.get(eq.get("esarfa", ""), SCARF.esarfa_violet), 0.6 if eq.get("esarfa", "") == "esarfa_aur" else 0.0)
 	for x in _extras:
 		x.queue_free()
 	_extras.clear()
 	var casca := find_child("Casca", true, false) as Node3D
 	if casca:
-		casca.scale = Vector3(1, 1.18, 1) if eq.get("casca", "") == "casca_inalta" else Vector3.ONE
+		casca.scale = Vector3(1, 1.9, 1) if eq.get("casca", "") == "casca_inalta" else Vector3.ONE   # antenă înaltă
 		if eq.get("casca", "") == "casca_inel":
-			var r := Proc.add(casca, Proc.htor(0.88, 0.035, 48, 8), Proc.M("gold"))
-			r.position = Vector3(0, 1.0, 0)
-			r.rotation.x = 0.25
+			var r := Proc.add(casca, Proc.htor(0.3, 0.02, 40, 6), Proc.mat(Color("ff3fa4"), {"emit": Color("ff3fa4"), "energy": 3.0}))
+			r.position = Vector3(0, 0.12, 0)
 			_extras.append(r)
 	if eq.get("ochelari", "") == "ochelari_aur":
 		var g := Node3D.new()
 		var body := find_child("Corp", true, false) as Node3D
 		(body if body else self).add_child(g)
-		for sx in [-1.0, 1.0]:
-			Proc.rot(Proc.add(g, Proc.htor(0.12, 0.018, 24, 6), Proc.M("gold"), Vector3(sx * 0.22, 0.86, 0.6)), PI / 2, 0, 0)
+		# ramă aurie în jurul vizorului
+		var v := Proc.add(g, Proc.htor(0.34, 0.02, 40, 6), Proc.M("gold"), Vector3(0, 1.38, 0.33))
+		v.rotation.x = PI / 2
+		v.scale = Vector3(1.1, 1.0, 0.66)
 		_extras.append(g)
 
 
@@ -80,6 +83,8 @@ func _tint(mat_name: String, col: Color, metal: float) -> void:
 			if m and m.resource_name.get_slice(".", 0) == mat_name:
 				var c := (m as BaseMaterial3D).duplicate() as BaseMaterial3D
 				c.albedo_color = col
+				if c.emission_enabled:
+					c.emission = col
 				c.metallic = metal
 				c.roughness = 0.3 if metal > 0.0 else c.roughness
 				m3.set_surface_override_material(i, c)

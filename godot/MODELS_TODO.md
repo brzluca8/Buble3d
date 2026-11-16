@@ -10,7 +10,8 @@ procedurală (rezervă). Modelele se scalează automat la înălțimea țintă, 
 | `turn.glb`, `turn_1…5.glb` | Turnul | 5,3 | 30.000 |
 | `magazin.glb`, `magazin_1…5.glb` | Magazinul | 3 | 30.000 |
 | `sera.glb`, `sera_1…5.glb` | Sera | 3 | 30.000 |
-| `mascota.glb` | Mascota „cască de bulă", cu animații | 1,6 | 15.000 |
+| `mascota.glb` | Nox, asistentul robot (Neon noir), cu animații; generat de `art/blender/asistent.py` | 1,6 | 15.000 |
+| `mecanism.glb` | Automatul de rotiri (fără role), noduri „Maneta” și „Roata0..2”; `art/blender/mecanism.py`. Unități reale, fereastra rolelor la (0, 2.05), 2,6 × 1,44 | 4,6 | 20.000 |
 | `piedestal.glb` | Piedestalul globului | – (coordonate fixe, rază ~5) | 15.000 |
 | `plaza.glb` | Piața și vegetația orașului | – (coordonate fixe) | 25.000 |
 

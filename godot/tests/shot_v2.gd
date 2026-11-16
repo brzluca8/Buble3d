@@ -1,7 +1,7 @@
 extends SceneTree
 ## Capturi pentru comparația cu referințele:
 ##   godot --path godot -s res://tests/shot_v2.gd -- <dosar> [scenariu...]
-## Scenarii: acasa, nivel5, selectie, atac, raid, dirijabil, observator, garderoba, sanse, glob2, glob3
+## Scenarii: acasa, mecanism, nivel5, selectie, atac, raid, dirijabil, observator, garderoba, sanse, glob2, glob3
 
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -19,7 +19,7 @@ func _initialize() -> void:
 	g.levels = {"palat": 2, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 	g.chests = [{"kind": "rar", "end": Time.get_unix_time_from_system() + 2400}, {"kind": "comun", "end": 0.0}]
 	g.streak = {"day": 1, "last": g.today()}
-	for sc in ["acasa", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
+	for sc in ["acasa", "mecanism", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
 		if not only.is_empty() and not sc in only:
 			continue
 		await _shot(g, sc, out + "/" + sc + ".png")
@@ -32,7 +32,7 @@ func _wait(n: int) -> void:
 
 
 func _shot(g, sc: String, path: String) -> void:
-	var scene := "res://scenes/airship.tscn" if sc in ["dirijabil", "observator", "garderoba"] else "res://scenes/globe.tscn"
+	var scene := "res://scenes/airship.tscn" if sc in ["dirijabil", "observator", "garderoba"] else ("res://scenes/mecanism.tscn" if sc in ["mecanism", "sanse"] else "res://scenes/globe.tscn")
 	if sc == "nivel5":
 		for b in g.levels:
 			g.levels[b] = 5
@@ -72,8 +72,13 @@ func _shot(g, sc: String, path: String) -> void:
 			hud.open("observator")
 		"garderoba":
 			hud.open("garderoba")
-	if sc == "acasa":
-		hud.slot.spin()
+	if sc == "mecanism":
+		g.level = 7
+		var res: Dictionary = await w.spin()
+		while res.type in ["attack", "raid"] or res.coins <= 0:
+			res = await w.spin()
+		hud._show_result(res)
+		g.energy = 42
 	await _wait(90)
 	print("STATISTICI %s: apeluri de desenare=%d, primitive=%d" % [sc, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
 	root.get_texture().get_image().save_png(path)

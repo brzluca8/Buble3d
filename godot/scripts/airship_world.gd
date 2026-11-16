@@ -48,35 +48,44 @@ func _ready() -> void:
 
 func _environment() -> void:
 	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Color("1f4fc4")
-	sm.sky_horizon_color = Color("9ccaff")
-	sm.ground_horizon_color = Color("b8d8ff")
-	sm.ground_bottom_color = Color("eaf5ff")
+	# noapte deasupra orașului (Neon noir): cer aproape negru, orizont violet-magenta
+	sm.sky_top_color = Color("030308")
+	sm.sky_horizon_color = Color("2a0f3a")
+	sm.ground_horizon_color = Color("1a0c2a")
+	sm.ground_bottom_color = Color("05040c")
+	sm.sun_angle_max = 0.0
 	var sky := Sky.new()
 	sky.sky_material = sm
 	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.55
+	env.ambient_light_energy = 0.9
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = Game.quality != "mic"
-	env.glow_intensity = 0.6
-	env.glow_hdr_threshold = 1.0
+	env.glow_intensity = 0.9
+	env.glow_hdr_threshold = 0.85
 	env.fog_enabled = true
-	env.fog_light_color = Color("cfe4ff")
+	env.fog_light_color = Color("1c0e2e")
 	env.fog_density = 0.0012
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.light_color = Color("fff0d0")
-	sun.light_energy = 1.8
+	sun.light_color = Color("d0c8ff")
+	sun.light_energy = 1.1
 	sun.shadow_enabled = Game.quality != "mic"
 	sun.shadow_blur = 2.0
 	sun.directional_shadow_max_distance = 40.0
 	add_child(sun)
 	sun.look_at_from_position(Vector3(8, 14, 10), Vector3.ZERO)
+	for it in [[Vector3(-7, 3, 4), Color("ff3fa4")], [Vector3(7, 4, 4), Color("37e8f5")]]:
+		var o := OmniLight3D.new()
+		o.light_color = it[1]
+		o.light_energy = 3.0
+		o.omni_range = 12.0
+		o.position = it[0]
+		add_child(o)
 
 
 func _m(c: String, o := {}) -> StandardMaterial3D:
@@ -219,7 +228,7 @@ func _clouds() -> void:
 		s.pixel_size = (14.0 + randf() * 14.0) / 512.0
 		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		s.shaded = false
-		s.modulate = Color(1, 1, 1, 0.75)
+		s.modulate = Color(0.32, 0.22, 0.45, 0.7) if i % 2 else Color(0.2, 0.3, 0.42, 0.7)   # nori de noapte, luminați de oraș
 		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if i < 10:
 			s.position = Vector3(randf_range(-30, 30), randf_range(-6, -2), randf_range(-10, 14))

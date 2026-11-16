@@ -41,6 +41,7 @@ func _ready() -> void:
 	repo = NetFriendsRepository.new() if Net.online else LocalDemoRepository.new()
 	_environment()
 	_stars()
+	_skyline()
 	globe = Node3D.new()
 	globe.name = "Glob"
 	add_child(globe)
@@ -88,8 +89,8 @@ func _environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("a99ad8")
-	env.ambient_light_energy = 0.6
+	env.ambient_light_color = Color("8a86c0")
+	env.ambient_light_energy = 0.5
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 1.0
@@ -111,8 +112,8 @@ func _environment() -> void:
 	add_child(we)
 	# soare cald (cheie) + lumină albastră de umplere
 	sun = DirectionalLight3D.new()
-	sun.light_color = Color("ffd9a8")
-	sun.light_energy = 1.9
+	sun.light_color = Color("d0c8ff")
+	sun.light_energy = 1.3
 	sun.shadow_enabled = true
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.2
@@ -122,12 +123,14 @@ func _environment() -> void:
 	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 	add_child(sun)
 	sun.look_at_from_position(Vector3(-10, 18, 9), C)
-	var fill := DirectionalLight3D.new()
-	fill.light_color = Color("7fb4ff")
-	fill.light_energy = 0.7
-	fill.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
-	add_child(fill)
-	fill.look_at_from_position(Vector3(10, 4, 8), C)
+	# neon: magenta din stânga, turcoaz din dreapta (contururi colorate pe glob și oraș)
+	for it in [[Vector3(-12, 5, 4), Color("ff3fa4"), 0.9], [Vector3(12, 6, 3), Color("37e8f5"), 0.9]]:
+		var l := DirectionalLight3D.new()
+		l.light_color = it[1]
+		l.light_energy = it[2]
+		l.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+		add_child(l)
+		l.look_at_from_position(it[0], C)
 
 
 func _stars() -> void:
@@ -140,7 +143,7 @@ func _stars() -> void:
 	mm.mesh = q
 	mm.instance_count = n
 	Proc.reseed(77)
-	var cols := [Color(1, 1, 1), Color("9ff4ff"), Color("d6b8ff"), Color("ffe8b0")]
+	var cols := [Color(1, 1, 1), Color("9ff8ff"), Color("ffb0dc"), Color(0.7, 0.7, 0.9)]
 	for i in n:
 		var a := Proc.rnd() * TAU
 		var el := lerpf(-0.45, 1.35, Proc.rnd())
@@ -168,6 +171,46 @@ func _stars() -> void:
 	add_child(stars)
 
 
+## Orașul de noapte din jurul globului: turnuri negre cu ferestre aprinse, câteva firme de neon.
+func _skyline() -> void:
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color.BLACK)
+	Proc.reseed(5)
+	for gy in 8:
+		for gx in 8:
+			if Proc.rnd() < 0.3:
+				var c := Color(1, 1, 1) * (0.4 + Proc.rnd() * 0.6)
+				for y in range(gy * 8 + 2, gy * 8 + 6):
+					for x in range(gx * 8 + 2, gx * 8 + 5):
+						img.set_pixel(x, y, c)
+	img.generate_mipmaps()
+	var win := ImageTexture.create_from_image(img)
+	var mats := []
+	for col in [Color("ffc890"), Color("9ff0ff"), Color("ffb0dc")]:
+		var wm := StandardMaterial3D.new()
+		wm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		wm.albedo_texture = win
+		wm.albedo_color = col * 0.9
+		wm.uv1_triplanar = true
+		wm.uv1_scale = Vector3(0.25, 0.25, 0.25)
+		wm.disable_fog = false
+		mats.append(wm)
+	var neon := [Proc.mat(Color("ff3fa4"), {"emit": Color("ff3fa4"), "energy": 3.0, "unshaded": true}),
+		Proc.mat(Color("37e8f5"), {"emit": Color("37e8f5"), "energy": 3.0, "unshaded": true})]
+	Proc.reseed(21)
+	for i in 46:
+		var a := i / 46.0 * TAU + Proc.rnd() * 0.08
+		var r := 58.0 + Proc.rnd() * 18.0
+		var w := 4.0 + Proc.rnd() * 6.0
+		var h := 14.0 + Proc.rnd() * 30.0
+		var t := Proc.add(self, Proc.box(w, h, w), mats[i % 3], Vector3(sin(a) * r, h * 0.5 - 14.0, cos(a) * r))
+		t.rotation.y = a
+		t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if i % 4 == 0:
+			var n := Proc.add(self, Proc.box(w * 0.7, 0.35, 0.2), neon[i % 2], Vector3(sin(a) * (r - w * 0.55), h - 14.0 - 2.0, cos(a) * (r - w * 0.55)))
+			n.rotation.y = a
+
+
 # ---------------- piedestal, glob, oraș ----------------
 func _pedestal() -> void:
 	var p := Models.instance("piedestal")
@@ -177,7 +220,29 @@ func _pedestal() -> void:
 		for y in [0.45, 1.25]:
 			Proc.add(p, Proc.htor(4.75, 0.07, 96, 8), Proc.M("gold"), Vector3(0, y, 0))
 	p.scale = Vector3(1.0, 0.8, 1.0)
+	_neon_pedestal(p)
 	globe.add_child(p)
+
+
+## Piedestalul în stil Neon noir: grafit și crom în loc de violet și auriu; runele rămân turcoaz.
+func _neon_pedestal(p: Node) -> void:
+	var map := {"Piedestal": [Color("17181f"), 0.4, 0.3], "PiedestalInchis": [Color("08090d"), 0.2, 0.15], "Auriu": [Color("d8dde6"), 1.0, 0.15]}
+	for mi in p.find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		for i in m3.mesh.get_surface_count():
+			var m := m3.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null:
+				continue
+			var key := m.resource_name.get_slice(".", 0)
+			if map.has(key):
+				var c := m.duplicate() as BaseMaterial3D
+				c.albedo_color = map[key][0]
+				c.metallic = map[key][1]
+				c.roughness = map[key][2]
+				m3.set_surface_override_material(i, c)
+	# o bandă de neon magenta pe marginea de sus
+	var ring := Proc.add(p, Proc.htor(4.62, 0.035, 128, 6), Proc.mat(Color("ff3fa4"), {"emit": Color("ff3fa4"), "energy": 3.0}), Vector3(0, 1.42, 0))
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _city() -> void:
@@ -189,7 +254,7 @@ func _city() -> void:
 		var y := lerpf(-R * 0.97, -GROUND, float(i) / 8.0)
 		pts.append(Vector2(sqrt(maxf(R * R * 0.95 - y * y, 0.0)), y))
 	pts.append(Vector2(0.0, -GROUND))
-	var soil := Proc.add(globe, Proc.lathe(pts, 48), Proc.mat(Color("7b5ad0"), {"emit": Color("4a2a9a"), "energy": 0.25, "rough": 0.5}), Vector3(0, C.y, 0))
+	var soil := Proc.add(globe, Proc.lathe(pts, 48), Proc.mat(Color("17141f"), {"emit": Color("3a0c2a"), "energy": 0.35, "rough": 0.4, "metal": 0.4}), Vector3(0, C.y, 0))
 	soil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	Proc.add(globe, Proc.cyl(top_r, top_r, 0.12, 64), Proc.M("grass"), Vector3(0, gy - 0.05, 0))
 	Proc.add(globe, Proc.htor(top_r, 0.08, 96, 8), Proc.M("stone"), Vector3(0, gy, 0))
@@ -223,6 +288,13 @@ func _city() -> void:
 	ring_sel = Proc.add(city, Proc.htor(1.0, 0.035, 64, 8), Proc.mat(Color("ffd86b"), {"emit": Color("ffc040"), "energy": 3.0}))
 	ring_sel.visible = false
 	ring_sel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for it in [[Vector3(-5.0, 2.0, 2.0), Color("ff3fa4")], [Vector3(5.0, 2.0, 1.0), Color("37e8f5")]]:
+		var nl := OmniLight3D.new()
+		nl.light_color = it[1]
+		nl.light_energy = 1.6
+		nl.omni_range = 7.0
+		nl.position = it[0]
+		city.add_child(nl)
 	var warm := OmniLight3D.new()
 	warm.light_color = Color("ffb060")
 	warm.light_energy = 1.4
@@ -529,11 +601,12 @@ func _process(dt: float) -> void:
 
 # ---------------- teme: cele 3 globuri ----------------
 const THEMES := [
-	{"sky": ["070624", "2a1d7a", "2b2486", "0e5a7a"], "fog": "2e2470", "amb": "a99ad8", "sun": "ffd9a8", "roof": "", "grass": "ffffff", "stone": "ffffff"},
-	# Orașul de cristal: noapte rece, acoperișuri de gheață, iarbă argintie
-	{"sky": ["040a2a", "1c3a8a", "2a5ab0", "6aa8d8"], "fog": "2a4a8a", "amb": "9ab8e8", "sun": "dfefff", "roof": "8fc8ff", "grass": "b8e0d8", "stone": "e8f0ff"},
-	# Portul de amurg: apus cald, acoperișuri de coral
-	{"sky": ["1a0a3a", "8a3a7a", "e07a5a", "f0b070"], "fog": "8a4a6a", "amb": "d8a088", "sun": "ffc080", "roof": "e8806a", "grass": "c8d880", "stone": "fff0dc"},
+	# Neon noir: noapte adâncă, lumină de lună rece, neon magenta și turcoaz pe margini
+	{"sky": ["030308", "1a0c2a", "0c0814", "020205"], "fog": "1c0e2e", "amb": "8a86c0", "sun": "d0c8ff", "roof": "", "grass": "c8d8c8", "stone": "e8e4f0"},
+	# Orașul de cristal: noapte albastră, acoperișuri de gheață, iarbă argintie
+	{"sky": ["020410", "0c1c3a", "081020", "020205"], "fog": "0e1c30", "amb": "8ab0e0", "sun": "cfe8ff", "roof": "8fc8ff", "grass": "a8c8c8", "stone": "e8f0ff"},
+	# Portul de amurg: noapte magenta, acoperișuri de coral
+	{"sky": ["06020a", "3a0c2a", "120814", "020205"], "fog": "2a0c20", "amb": "c09ab8", "sun": "ffc0dc", "roof": "e8806a", "grass": "b8c890", "stone": "fff0e8"},
 ]
 
 
@@ -641,9 +714,13 @@ func make_raid_spots() -> void:
 	var pts := [Vector3(-2.3, 0, 2.0), Vector3(2.3, 0, 2.0), Vector3(-2.6, 0, -1.4), Vector3(2.6, 0, -1.4)]
 	for i in pts.size():
 		var g := Node3D.new()
-		var dirt := Proc.add(g, Proc.sph(0.7, 14, 7), Proc.mat(Color("8a5a36"), {"rough": 0.95}))
-		dirt.scale = Vector3(1.0, 0.4, 1.0)
+		# un seif mic de oțel negru cu cadran auriu
+		var dirt := Node3D.new()
 		dirt.name = "Dirt"
+		g.add_child(dirt)
+		Proc.add(dirt, Proc.box(0.9, 0.9, 0.8), Proc.mat(Color("1a1d24"), {"metal": 0.6, "rough": 0.35}), Vector3(0, 0.45, 0))
+		Proc.rot(Proc.add(dirt, Proc.cyl(0.18, 0.18, 0.06, 20), Proc.M("gold"), Vector3(0, 0.5, 0.42)), PI / 2, 0, 0)
+		Proc.add(dirt, Proc.box(0.94, 0.05, 0.84), Proc.M("gold"), Vector3(0, 0.9, 0))
 		var l := Label3D.new()
 		l.text = str(i + 1)
 		l.font = UiKit.font(900)
@@ -674,7 +751,8 @@ func dig(i: int, value: int) -> void:
 	var g := raid_spots[i]
 	var dirt: Node3D = g.get_node("Dirt")
 	var tw := create_tween()
-	tw.tween_property(dirt, "scale", Vector3(1.3, 0.1, 1.3), 0.25)
+	tw.tween_property(dirt, "rotation:y", -1.2, 0.25)
+	tw.tween_property(dirt, "scale", Vector3(1.0, 0.25, 1.0), 0.2)
 	await tw.finished
 	(g.get_node("Label") as Label3D).text = Game.fmt(value) if value > 0 else "–"
 	if value > 0:

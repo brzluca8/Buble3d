@@ -1,16 +1,92 @@
 {
-  "_info": "Garderoba mascotei. slot = unde se pune. unlock = cum se câștigă (prin joc). Implicitele nu se numără printre cele 10 piese.",
-  "defaults": {"casca": "casca_clasica", "ochelari": "fara", "esarfa": "esarfa_violet", "corp": "corp_crem", "efect": "fara"},
+  "_info": "Garderoba lui Nox (asistentul robot). slot = unde se pune. unlock = cum se câștigă (prin joc). Implicitele (antenă scurtă, lumină magenta, carcasă perlată) nu se numără printre cele 10 piese.",
+  "defaults": {
+    "casca": "casca_clasica",
+    "ochelari": "fara",
+    "esarfa": "esarfa_violet",
+    "corp": "corp_crem",
+    "efect": "fara"
+  },
   "items": [
-    {"id": "casca_inalta", "slot": "casca", "name": "Cupolă înaltă", "unlock": {"level": 4}},
-    {"id": "casca_inel", "slot": "casca", "name": "Cască cu inel auriu", "unlock": {"level": 12}},
-    {"id": "ochelari_aur", "slot": "ochelari", "name": "Ochelari rotunzi aurii", "unlock": {"level": 7}},
-    {"id": "esarfa_turcoaz", "slot": "esarfa", "name": "Eșarfă turcoaz", "unlock": {"streak_day": 3}},
-    {"id": "esarfa_aur", "slot": "esarfa", "name": "Eșarfă aurie", "unlock": {"level": 20}},
-    {"id": "corp_perlat", "slot": "corp", "name": "Corp perlat", "unlock": {"jackpots": 3}},
-    {"id": "corp_lavanda", "slot": "corp", "name": "Corp lavandă", "unlock": {"album_sets": 1}},
-    {"id": "efect_scantei", "slot": "efect", "name": "Scântei aurii la rotire", "unlock": {"spins": 200}},
-    {"id": "efect_bule", "slot": "efect", "name": "Bule la rotire", "unlock": {"event": "festivalul_luminilor"}},
-    {"id": "efect_stele", "slot": "efect", "name": "Stele la rotire", "unlock": {"level": 30}}
+    {
+      "id": "casca_inalta",
+      "slot": "casca",
+      "name": "Antenă înaltă",
+      "unlock": {
+        "level": 4
+      }
+    },
+    {
+      "id": "casca_inel",
+      "slot": "casca",
+      "name": "Halou de neon",
+      "unlock": {
+        "level": 12
+      }
+    },
+    {
+      "id": "ochelari_aur",
+      "slot": "ochelari",
+      "name": "Vizor cu ramă aurie",
+      "unlock": {
+        "level": 7
+      }
+    },
+    {
+      "id": "esarfa_turcoaz",
+      "slot": "esarfa",
+      "name": "Lumină turcoaz",
+      "unlock": {
+        "streak_day": 3
+      }
+    },
+    {
+      "id": "esarfa_aur",
+      "slot": "esarfa",
+      "name": "Lumină aurie",
+      "unlock": {
+        "level": 20
+      }
+    },
+    {
+      "id": "corp_perlat",
+      "slot": "corp",
+      "name": "Carcasă crom",
+      "unlock": {
+        "jackpots": 3
+      }
+    },
+    {
+      "id": "corp_lavanda",
+      "slot": "corp",
+      "name": "Carcasă grafit",
+      "unlock": {
+        "album_sets": 1
+      }
+    },
+    {
+      "id": "efect_scantei",
+      "slot": "efect",
+      "name": "Scântei de neon la rotire",
+      "unlock": {
+        "spins": 200
+      }
+    },
+    {
+      "id": "efect_bule",
+      "slot": "efect",
+      "name": "Fum colorat la rotire",
+      "unlock": {
+        "event": "festivalul_luminilor"
+      }
+    },
+    {
+      "id": "efect_stele",
+      "slot": "efect",
+      "name": "Stele la rotire",
+      "unlock": {
+        "level": 30
+      }
+    }
   ]
 }

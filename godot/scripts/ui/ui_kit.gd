@@ -1,26 +1,36 @@
 class_name UiKit
 extends RefCounted
-## Stiluri și controale comune (culorile Buble: auriu, violet, cerneală).
+## Stiluri și controale comune – direcția Neon noir (18+): negru de noapte, neon turcoaz
+## și magenta, sticlă fumurie, colțuri teșite. Titluri cu Chakra Petch, text cu Montserrat (OFL).
 
-const GOLD := Color("f6c445")
-const VIO := Color("6d3fc0")
-const INK := Color("2a1766")
-const NAVY := Color("201a5e")
-const CARD := Color("2a2278")
+const GOLD := Color("37e8f5")          # accentul principal (neon turcoaz; numele vechi rămâne pentru cod)
+const GOLD_DK := Color("0f6f7a")
+const PINK := Color("ff3fa4")          # neon magenta: butonul principal
+const PINK_DK := Color("8a1458")
+const COIN := Color("ffc94a")          # monedele rămân aurii, ca să se recunoască
+const VIO := Color("7a3cff")
+const INK := Color("0a0b12")
+const NAVY := Color("07080e")
+const CARD := Color("12131c")
+const IVORY := Color("f2f4ff")
+const RUBY := Color("e0304a")
 
 static var _fonts := {}
 
 
-## Fontul Nunito (OFL), cu subsetul latin-ext pentru ș/ț. Greutăți: 600, 700, 800, 900.
+## Greutatea 900 = titluri (Chakra Petch 700); restul = Montserrat 600/700/800.
+## Fiecare are subsetul latin-ext ca rezervă, pentru ă/ș/ț.
 static func font(weight := 700) -> Font:
 	var w := clampi(int(round(weight / 100.0)) * 100, 600, 900)
 	if not _fonts.has(w):
-		var ext := load("res://assets/fonts/nunito-latin-ext-%d-normal.woff2" % w) as FontFile
-		var base := load("res://assets/fonts/nunito-latin-%d-normal.woff2" % w) as FontFile
+		var fam := "chakra-petch" if w >= 900 else "montserrat"
+		var fw := 700 if w >= 900 else w
+		var ext := load("res://assets/fonts/%s-latin-ext-%d-normal.woff2" % [fam, fw]) as FontFile
+		var base := load("res://assets/fonts/%s-latin-%d-normal.woff2" % [fam, fw]) as FontFile
 		var f: Font = base
 		if base == null:
 			var sf := SystemFont.new()
-			sf.font_weight = w
+			sf.font_weight = fw
 			f = sf
 		if ext:
 			f.fallbacks = [ext]
@@ -48,9 +58,10 @@ static func icon_rect(name: String, size := 40.0, col := Color.WHITE) -> Texture
 	return t
 
 
-## Panou „sticlă" premium: indigo translucid, margine aurie fină.
+## Panou de sticlă fumurie: negru translucid, filet de neon turcoaz, colțuri teșite.
 static func glass(radius := 28, pad := 16, alpha := 0.82) -> StyleBoxFlat:
-	var s := box(Color(0.08, 0.06, 0.24, alpha), radius, Color(0.96, 0.77, 0.27, 0.75), 2, 10, pad)
+	var s := box(Color(0.03, 0.035, 0.06, alpha), radius, Color(GOLD, 0.45), 2, 10, pad)
+	s.shadow_color = Color(GOLD, 0.12)
 	return s
 
 
@@ -76,7 +87,9 @@ static func theme() -> Theme:
 static func box(bg: Color, radius := 24, border := Color.TRANSPARENT, bw := 0, shadow := 0, pad := 0) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
-	s.set_corner_radius_all(radius)
+	# Art Deco: colțuri teșite (un singur segment), mai mici decât rotunjirile vechi
+	s.set_corner_radius_all(int(radius * 0.45))
+	s.corner_detail = 1
 	if bw > 0:
 		s.border_color = border
 		s.set_border_width_all(bw)
@@ -89,7 +102,7 @@ static func box(bg: Color, radius := 24, border := Color.TRANSPARENT, bw := 0, s
 	return s
 
 
-static func label(text: String, size := 26, color := Color.WHITE, weight := 700, outline := 0, outline_color := Color("4b2aa0")) -> Label:
+static func label(text: String, size := 26, color := Color.WHITE, weight := 700, outline := 0, outline_color := Color("0a0c12")) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_override("font", font(weight))
@@ -122,18 +135,18 @@ static func button(text: String, size := 26, normal: StyleBox = null, color := C
 	return b
 
 
-## Buton auriu principal (Îmbunătățește, Buble Blast...).
+## Butonul principal (Rotește, Construiește...): magenta neon, cu halou luminos.
 static func gold_button(text: String, size := 30) -> Button:
-	var n := box(Color("f8c548"), 60, Color("ffe38a"), 3)
-	n.border_width_bottom = 9
-	n.border_color = Color("b57400")
-	n.shadow_color = Color(0, 0, 0, 0.3)
-	n.shadow_size = 10
-	n.shadow_offset = Vector2(0, 6)
+	var n := box(PINK, 30, Color("ffb0dc"), 2)
+	n.border_width_bottom = 7
+	n.border_color = PINK_DK
+	n.shadow_color = Color(PINK, 0.45)
+	n.shadow_size = 18
+	n.shadow_offset = Vector2(0, 0)
 	var p := n.duplicate() as StyleBoxFlat
 	p.border_width_bottom = 4
 	p.content_margin_top = 5
-	return button(text, size, n, INK, p)
+	return button(text, size, n, Color.WHITE, p)
 
 
 static func full_rect(c: Control) -> Control:

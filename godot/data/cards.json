@@ -1,5 +1,5 @@
 {
-  "_info": "Album: 3 seturi a câte 9 cărți, câte unul pentru fiecare glob. Raritatea crește cu indexul.",
+  "_info": "Catalog: 3 seturi a câte 9 cărți, câte unul pentru fiecare glob. Raritatea crește cu indexul.",
   "sets": [
     {"globe": 1, "name": "Grădina dintre nori", "cards": ["Palatul Norilor", "Fântâna", "Observatorul", "Turnul", "Sera", "Magazinul", "Felinarul", "Lavanda", "Cristalul"]},
     {"globe": 2, "name": "Orașul de cristal", "cards": ["Poarta de cristal", "Prisma", "Clopotnița", "Podul de gheață", "Oglinda", "Candelabrul", "Sanie de argint", "Fulgul", "Inima de cuarț"]},

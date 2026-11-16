@@ -5,7 +5,7 @@ extends RefCounted
 
 const HEIGHT := {"palat": 8.0, "obs": 5.8, "turn": 6.6, "mag": 4.1, "sera": 3.7, "mascot": 2.7}
 const ISLAND_DIAMETER := 14.4
-const UNSCALED := ["plaza", "piedestal"]
+const UNSCALED := ["plaza", "piedestal", "mecanism"]
 
 
 ## Id-urile interne → numele fișierelor din handoff.

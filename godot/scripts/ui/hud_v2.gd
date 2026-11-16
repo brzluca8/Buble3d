@@ -1,12 +1,12 @@
 extends CanvasLayer
-## Interfața ecranului principal (orașul din glob): bară de sus, progresul nivelului, cufere,
-## rezervor, serie zilnică, mașina de bule, foaia de construcție, navigare și ferestre.
-## Fără emoji: iconițe Lucide (ISC) și fontul Nunito (OFL).
+## Interfața ecranului principal (orașul din glob): bară de sus, progresul nivelului, loturi,
+## rezervor, serie zilnică, butonul spre Mecanism, foaia de construcție, navigare și ferestre.
+## Rotirile au pagina lor (scenes/mecanism.tscn, scripts/ui/mechanism_ui.gd, care extinde clasa asta).
+## Fără emoji: iconițe Lucide (ISC), fonturile Playfair Display și Montserrat (OFL).
 
 const K := preload("res://scripts/ui/ui_kit.gd")
-const SlotMachine := preload("res://scripts/ui/slot_machine.gd")
 const NAV_H := 112.0
-const SLOT_H := 330.0
+const SLOT_H := 104.0                     # butonul „Mecanismul” de deasupra navigării
 
 var root: Control
 var coins_lbl: Label
@@ -44,7 +44,7 @@ func _ready() -> void:
 	_progress()
 	_side()
 	_title()
-	_slot()
+	_launcher()
 	_sheet()
 	_nav()
 	_toast()
@@ -56,7 +56,9 @@ func _ready() -> void:
 	Game.globe_completed.connect(_on_globe_completed)
 	Game.level_up.connect(func(l): _celebrate_level(l))
 	_refresh()
-	if Game.streak_available():
+	if not Game.pending_action.is_empty():
+		_run_pending.call_deferred()
+	elif Game.streak_available():
 		get_tree().create_timer(0.8).timeout.connect(func(): open_modal("serie"))
 
 
@@ -91,20 +93,20 @@ func _top_bar() -> void:
 	# avatar: cercul auriu cu inițiala jucătorului
 	var av := PanelContainer.new()
 	av.custom_minimum_size = Vector2(66, 66)
-	av.add_theme_stylebox_override("panel", K.box(Color("f3e9d6"), 33, K.GOLD, 4))
-	var ini := K.label("B", 34, K.INK, 900)
+	av.add_theme_stylebox_override("panel", K.box(K.INK, 33, K.GOLD, 2))
+	var ini := K.label("B", 34, K.GOLD, 900)
 	ini.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ini.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	av.add_child(ini)
 	hb.add_child(_ignore(av))
-	var logo := K.label("Buble", 44, Color.WHITE, 900, 8, Color(0.08, 0.05, 0.3, 0.7))
+	var logo := K.label("Buble", 44, Color.WHITE, 900, 8, Color(0, 0, 0, 0.6))
 	logo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	logo.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hb.add_child(logo)
-	coins_lbl = _chip(hb, "coins", K.GOLD)
-	perle_lbl = _chip(hb, "gem", Color("8ff4ec"))
+	coins_lbl = _chip(hb, "coins", K.COIN)
+	perle_lbl = _chip(hb, "gem", Color("9fd8c8"))
 	var badge := PanelContainer.new()
-	var bs := K.box(Color("4a2a9e"), 22, K.GOLD, 3, 0, 4)
+	var bs := K.box(K.INK, 22, K.GOLD, 2, 0, 4)
 	bs.corner_radius_bottom_left = 36
 	bs.corner_radius_bottom_right = 36
 	badge.add_theme_stylebox_override("panel", bs)
@@ -211,7 +213,7 @@ func _title() -> void:
 	var vb := VBoxContainer.new()
 	K.place(vb, true, 250, 70, 110, 110)
 	vb.add_theme_constant_override("separation", -2)
-	var t1 := K.label(Game.globe_name(), 32, Color.WHITE, 900, 8, Color(0.08, 0.05, 0.3, 0.6))
+	var t1 := K.label(Game.globe_name(), 32, Color.WHITE, 900, 8, Color(0, 0, 0, 0.55))
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t1.name = "Glob"
 	var t2 := K.label("Rotește, construiește, călătorește", 18, Color(1, 1, 1, 0.9), 700, 6, Color(0.08, 0.05, 0.3, 0.5))
@@ -223,20 +225,53 @@ func _title() -> void:
 	get_tree().create_timer(5.0).timeout.connect(func(): create_tween().tween_property(title, "modulate:a", 0.0, 1.2))
 
 
-# ---------------- mașina de bule ----------------
-func _slot() -> void:
-	slot = SlotMachine.new()
-	K.place(slot, false, NAV_H + 18, SLOT_H, 14, 14)
+# ---------------- butonul spre Mecanism ----------------
+var launch_energy: Label
+
+func _launcher() -> void:
+	var b := K.gold_button("", 30)
+	slot = b
+	K.place(slot, false, NAV_H + 18, SLOT_H, 40, 40)
+	var hb := HBoxContainer.new()
+	K.full_rect(hb)
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_theme_constant_override("separation", 14)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(K.icon_rect("cog", 46, Color.WHITE))
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", -4)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(K.label("Mecanismul", 36, Color.WHITE, 900))
+	launch_energy = K.label("", 18, Color(1, 1, 1, 0.85), 800)
+	vb.add_child(launch_energy)
+	hb.add_child(vb)
+	slot.add_child(hb)
+	b.pressed.connect(open_mechanism)
 	root.add_child(slot)
-	slot.result_ready.connect(_on_spin_result)
 
 
-func _on_spin_result(res: Dictionary) -> void:
-	match res.type:
+func open_mechanism() -> void:
+	Sfx.play("click")
+	Game.select("")
+	Game.save_game()
+	await wipe(func(): pass)
+	get_tree().change_scene_to_file("res://scenes/mecanism.tscn")
+
+
+## Sabotajul / spargerea pornite din Mecanism se joacă aici, apoi jucătorul se întoarce acolo.
+func _run_pending() -> void:
+	var p: Dictionary = Game.pending_action
+	Game.pending_action = {}
+	await get_tree().create_timer(0.3).timeout
+	match p.get("type", ""):
 		"attack":
-			await _attack_flow(res.mult)
+			await _attack_flow(int(p.get("mult", 1)))
 		"raid":
-			await _raid_flow(res.mult)
+			await _raid_flow(int(p.get("mult", 1)))
+	if p.get("from", "") == "mecanism":
+		await wipe(func(): pass)
+		get_tree().change_scene_to_file("res://scenes/mecanism.tscn")
 
 
 # ---------------- foaia de construcție ----------------
@@ -281,7 +316,7 @@ func _refresh_sheet() -> void:
 		var rem := Game.build_remaining(id)
 		_sheet_text("În construcție: %s" % Game.fmt_time(rem))
 		var sk := Game.skip_cost(id)
-		var btn := K.icon_button("gem", "Termină acum · %d perle" % sk, 22, K.glass(30, 10), Color("8ff4ec"), 26)
+		var btn := K.icon_button("gem", "Termină acum · %d perle" % sk, 22, K.glass(30, 10), Color("9fd8c8"), 26)
 		btn.custom_minimum_size = Vector2(0, 64)
 		btn.disabled = Game.perle < sk
 		btn.pressed.connect(func():
@@ -302,12 +337,12 @@ func _refresh_sheet() -> void:
 		hb.alignment = BoxContainer.ALIGNMENT_CENTER
 		hb.add_theme_constant_override("separation", 8)
 		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_child(K.label("Construiește", 28, K.INK, 900))
-		hb.add_child(K.icon_rect("coins", 28, K.INK))
-		hb.add_child(K.label(Game.fmt(u.cost), 28, K.INK, 900))
+		hb.add_child(K.label("Construiește", 28, Color.WHITE, 900))
+		hb.add_child(K.icon_rect("coins", 28, Color.WHITE))
+		hb.add_child(K.label(Game.fmt(u.cost), 28, Color.WHITE, 900))
 		up.add_child(hb)
 		var ok: bool = Game.coins >= u.cost
-		up.modulate = Color.WHITE if ok else Color(0.75, 0.72, 0.8)
+		up.modulate = Color.WHITE if ok else Color(0.6, 0.6, 0.62)
 		up.pressed.connect(func():
 			if Game.upgrade(id):
 				Sfx.play("build")
@@ -336,7 +371,7 @@ func _nav() -> void:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 2)
 	p.add_child(hb)
-	for it in [["acasa", "house", "Acasă"], ["album", "book-open", "Album"], ["dirijabil", "ship", "Dirijabil"], ["evenimente", "calendar", "Evenimente"], ["magazin", "store", "Magazin"]]:
+	for it in [["acasa", "house", "Oraș"], ["album", "book-marked", "Catalog"], ["evenimente", "gavel", "Licitația"], ["dirijabil", "ship", "Dirijabil"], ["magazin", "store", "Magazin"]]:
 		var b := K.button(it[2], 17, StyleBoxEmpty.new(), Color.WHITE)
 		b.icon = K.icon(it[1])
 		b.expand_icon = true
@@ -352,7 +387,7 @@ func _nav() -> void:
 
 
 func _set_nav(key: String) -> void:
-	var on := K.box(Color(0.45, 0.32, 0.85, 0.55), 30, K.GOLD, 2)
+	var on := K.box(Color(0.85, 0.71, 0.42, 0.16), 30, K.GOLD, 1)
 	for k in nav_buttons:
 		var b: Button = nav_buttons[k]
 		for s in ["normal", "hover", "pressed", "hover_pressed"]:
@@ -381,6 +416,8 @@ func _reset_view() -> void:
 
 # ---------------- actualizare ----------------
 func _refresh() -> void:
+	if launch_energy:
+		launch_energy.text = "Energie %d / %d%s" % [Game.energy, Game.energy_cap(), ("  ·  +1 în " + Game.fmt_time(Game.energy_next_in())) if Game.energy < Game.energy_cap() else ""]
 	coins_lbl.text = Game.fmt(int(Game.coins))
 	perle_lbl.text = str(Game.perle)
 	lvl_lbl.text = str(mini(Game.level, Game.max_level()))
@@ -400,12 +437,12 @@ func _refresh() -> void:
 			var info := Game.chest_info(c.kind)
 			b.modulate = Color(1, 1, 1, 1)
 			if c.end <= 0.0:
-				b.text = String(info.get("name", "")).replace("Cufăr ", "")
+				b.text = String(info.get("name", "")).replace("Lot ", "")
 			elif c.end > Time.get_unix_time_from_system():
 				b.text = Game.fmt_time(int(c.end - Time.get_unix_time_from_system())).replace(" s", "s")
 			else:
 				b.text = "Gata"
-			b.add_theme_color_override("icon_normal_color", {"comun": Color("e0c080"), "rar": Color("8fc8ff"), "epic": Color("d8a0ff")}.get(c.kind, Color.WHITE))
+			b.add_theme_color_override("icon_normal_color", {"comun": Color("c8a878"), "rar": Color("9fc0d8"), "epic": Color("e8c87a")}.get(c.kind, Color.WHITE))
 		else:
 			b.text = "liber"
 			b.modulate = Color(1, 1, 1, 0.5)
@@ -457,7 +494,7 @@ func show_toast(msg: String, secs := 2.4) -> void:
 func _wipe_rect() -> void:
 	wipe_rect = ColorRect.new()
 	K.full_rect(wipe_rect)
-	wipe_rect.color = Color("e8eeff")
+	wipe_rect.color = Color("07080c")
 	wipe_rect.modulate.a = 0.0
 	wipe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(wipe_rect)
@@ -512,7 +549,7 @@ func _action(title_txt: String, label_txt: String) -> VBoxContainer:
 	vb.add_child(t)
 	if label_txt != "":
 		var tag := PanelContainer.new()
-		tag.add_theme_stylebox_override("panel", K.box(Color("b8433f"), 12, Color.TRANSPARENT, 0, 0, 8))
+		tag.add_theme_stylebox_override("panel", K.box(K.RUBY, 12, Color.TRANSPARENT, 0, 0, 8))
 		tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var tl := K.label(label_txt, 18, Color.WHITE, 800)
 		tag.add_child(tl)
@@ -535,7 +572,7 @@ func _attack_flow(m: int) -> void:
 	var tg: Dictionary = {}
 	await wipe(func(): pass)
 	tg = await w.show_target()
-	var vb := _action("Atac: %s – atinge o clădire" % tg.get("name", "?"), tg.get("label", "") if tg.get("training", false) else "")
+	var vb := _action("Sabotaj: %s – atinge o clădire" % tg.get("name", "?"), tg.get("label", "") if tg.get("training", false) else "")
 	if int(tg.get("shields", 0)) > 0:
 		var sl := K.label("Ținta are %d %s" % [tg.shields, "scut" if tg.shields == 1 else "scuturi"], 20, Color("8fc8ff"), 800)
 		sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -585,8 +622,8 @@ func _raid_flow(m: int) -> void:
 	w.make_raid_spots()
 	var vals := Game.start_raid(m)
 	var picks := Game.raid_picks()
-	var vb := _action("Raid: %s – alege %d din %d locuri" % [tg.get("name", "?"), picks, vals.size()], tg.get("label", "") if tg.get("training", false) else "")
-	var info := K.label("Găsit: 0", 22, K.GOLD, 800)
+	var vb := _action("Spargere: %s – alege %d din %d seifuri" % [tg.get("name", "?"), picks, vals.size()], tg.get("label", "") if tg.get("training", false) else "")
+	var info := K.label("Luat: 0", 22, K.GOLD, 800)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(info)
 	var row := HBoxContainer.new()
@@ -606,10 +643,10 @@ func _raid_flow(m: int) -> void:
 		st.total += v
 		Sfx.play("coin" if v > 0 else "click")
 		await w.dig(i, v)
-		info.text = "Găsit: %s  (%d/%d)" % [Game.fmt(st.total), st.n, picks]
+		info.text = "Luat: %s  (%d/%d)" % [Game.fmt(st.total), st.n, picks]
 		st.busy = false
 	for i in vals.size():
-		var b := K.button("Locul %d" % (i + 1), 20, K.glass(16, 6), Color.WHITE)
+		var b := K.button("Seiful %d" % (i + 1), 20, K.glass(16, 6), Color.WHITE)
 		b.custom_minimum_size = Vector2(0, 58)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(func(): dig.call(i))
@@ -623,7 +660,7 @@ func _raid_flow(m: int) -> void:
 		await get_tree().process_frame
 	Game.target_tapped.disconnect(on_tap)
 	Analytics.log_event("raid", {"coins": st.total, "training": tg.get("training", false)})
-	show_toast("Raid: +%s monede" % Game.fmt(st.total))
+	show_toast("Spargere: +%s monede" % Game.fmt(st.total))
 	await get_tree().create_timer(1.3).timeout
 	_end_action()
 	await wipe(func(): w.end_target())
@@ -636,7 +673,7 @@ func _modal() -> void:
 	modal.visible = false
 	root.add_child(modal)
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.01, 0.08, 0.65)
+	dim.color = Color(0.0, 0.0, 0.02, 0.72)
 	K.full_rect(dim)
 	dim.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
@@ -681,8 +718,8 @@ func close_modal() -> void:
 func open_modal(kind: String) -> void:
 	for c in modal_box.get_children():
 		c.queue_free()
-	var titles := {"album": "Album", "evenimente": "Evenimente", "magazin": "Magazin", "setari": "Setări", "sanse": "Șanse",
-		"energie": "Fără energie", "serie": "Serie zilnică", "cufere": "Cufere", "glob": "Glob terminat", "prieteni": "Prieteni"}
+	var titles := {"album": "Catalog", "evenimente": "Licitația", "magazin": "Magazin", "setari": "Setări", "sanse": "Șanse",
+		"energie": "Fără energie", "serie": "Serie zilnică", "cufere": "Loturi", "glob": "Glob terminat", "prieteni": "Prieteni"}
 	modal_title.text = titles.get(kind, "")
 	call("_m_" + kind)
 	modal.visible = true
@@ -724,7 +761,7 @@ func _row(a: String, b: String, icon := "", action := Callable(), action_txt := 
 
 func _demo(t: String) -> void:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", K.box(Color("b8433f"), 12, Color.TRANSPARENT, 0, 0, 8))
+	p.add_theme_stylebox_override("panel", K.box(K.RUBY, 12, Color.TRANSPARENT, 0, 0, 8))
 	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	p.add_child(K.label(t, 17, Color.WHITE, 900))
 	modal_box.add_child(p)
@@ -732,7 +769,7 @@ func _demo(t: String) -> void:
 
 func _m_album() -> void:
 	var r: Dictionary = Game.cfg("card_set_reward", {})
-	_p("Cărțile vin din mașina de bule, din cufere și din premii. Un set complet dă +%d energie și +%d perle." % [int(r.get("energy", 0)), int(r.get("perle", 0))])
+	_p("Cărțile vin din Mecanism, din loturi și din premii. Un set complet dă +%d energie și +%d perle." % [int(r.get("energy", 0)), int(r.get("perle", 0))])
 	_demo("Schimburile de duplicate: DEMO – fără server")
 	var sets: Array = Game.D.cards.sets
 	for si in sets.size():
@@ -768,7 +805,7 @@ func _m_evenimente() -> void:
 	var name_ev: String = Game.cfg("event.name", "Eveniment")
 	_h(name_ev)
 	if Game.event_active():
-		_p("Se termină în %s. Punctele vin din rotiri (atac, raid, cufere, câștiguri mari valorează mai mult)." % Game.fmt_time(int(Game.event_end() - Time.get_unix_time_from_system())))
+		_p("Se termină în %s. Punctele vin din rotiri (sabotaj, spargere, loturi și câștigurile mari valorează mai mult)." % Game.fmt_time(int(Game.event_end() - Time.get_unix_time_from_system())))
 	else:
 		_p("Evenimentul s-a încheiat.")
 	_p("Puncte: %d" % int(Game.event.points), 24, K.GOLD)
@@ -791,7 +828,7 @@ func _reward_text(r: Dictionary) -> String:
 	if r.has("perle"):
 		p.append("%d perle" % int(r.perle))
 	if r.has("chest"):
-		p.append(Game.chest_info(r.chest).get("name", "cufăr"))
+		p.append(Game.chest_info(r.chest).get("name", "lot"))
 	if r.has("cosmetic"):
 		p.append("piesă de garderobă")
 	return ", ".join(p)
@@ -819,7 +856,7 @@ func _m_serie() -> void:
 func _m_magazin() -> void:
 	var shop: Dictionary = Monetization.shop()
 	_demo("Plăți reale dezactivate în versiunea de test")
-	_p("O singură monedă premium: %s. Ai %d perle (le câștigi la niveluri, din cufere epice, serie și evenimente)." % [shop.get("premium_name", "Perle"), Game.perle])
+	_p("O singură monedă premium: %s. Ai %d perle (le câștigi la niveluri, din loturile epice, din serie și din licitații)." % [shop.get("premium_name", "Perle"), Game.perle])
 	_h("Cu perle")
 	for it in shop.get("items", []):
 		var iid: String = it.id
@@ -841,7 +878,7 @@ func _m_sanse() -> void:
 	_p("Rezultatul fiecărei rotiri se alege din acest tabel (data/spin_table.json). Rolele doar îl afișează.")
 	for o in Game.spin_odds():
 		_row(o.name, "%.1f%%" % (o.p * 100.0))
-	_h("Cufere")
+	_h("Loturi")
 	var kinds: Dictionary = Game.cfg("chests.kinds", {})
 	var tot := 0
 	for k in kinds:
@@ -860,12 +897,12 @@ func _m_energie() -> void:
 
 
 func _m_cufere() -> void:
-	_p("Cuferele câștigate stau în 3 sloturi. Atinge un cufăr ca să pornești deschiderea (unul o dată), apoi atinge-l din nou când e gata. Dacă sloturile sunt pline, primești monedele pe loc.")
+	_p("Loturile câștigate stau în 3 sloturi. Atinge un lot ca să pornești deschiderea (unul o dată), apoi atinge-l din nou când e gata. Dacă sloturile sunt pline, primești monedele pe loc.")
 	_m_sanse()
 
 
 func _m_glob() -> void:
-	_p("Felicitări! Ai terminat globul. Ai primit un cufăr mare.")
+	_p("Felicitări! Ai terminat globul. Ai primit un lot mare.")
 	_p("Ca să călătorești spre globul următor, îmbunătățește dirijabilul în Atelier.", 24, K.GOLD)
 	var b := K.gold_button("Spre dirijabil", 28)
 	b.custom_minimum_size = Vector2(0, 80)
@@ -893,7 +930,7 @@ func _m_setari() -> void:
 		hb.add_child(b)
 	modal_box.add_child(hb)
 	_p("Mic: fără strălucire și umbre. Mediu (implicit): echilibrat. Mare: umbre fine, anti-aliasing.", 18, Color(1, 1, 1, 0.7))
-	for opt in [["sound", "Sunet"], ["vibration", "Vibrație"], ["notif_enabled", "Notificări (energie plină, cufăr gata; max. 2 pe zi)"]]:
+	for opt in [["sound", "Sunet"], ["vibration", "Vibrație"], ["notif_enabled", "Notificări (energie plină, lot gata; max. 2 pe zi)"]]:
 		var key: String = opt[0]
 		var val: bool = Game.get(key)
 		_row(opt[1], "", "", func():
@@ -901,4 +938,4 @@ func _m_setari() -> void:
 			Game.save_game()
 			open_modal("setari"), "Pornit" if val else "Oprit")
 	_h("Despre")
-	_p("Versiune de test pentru adulți. Fără plăți reale. Rezultatele mașinii de bule sunt aleatorii, cu șansele afișate în ecranul Șanse. Jocul simulează un mecanism de noroc fără bani reali.", 18, Color(1, 1, 1, 0.7))
+	_p("Versiune de test pentru adulți. Fără plăți reale. Rezultatele Mecanismului sunt aleatorii, cu șansele afișate în ecranul Șanse. Jocul simulează un mecanism de noroc fără bani reali.", 18, Color(1, 1, 1, 0.7))

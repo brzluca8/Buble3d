@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/mechanism_world.gd" id="1_mec"]
+
+[node name="Mecanism" type="Node3D"]
+script = ExtResource("1_mec")
