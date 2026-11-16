@@ -18,6 +18,9 @@ var spin_btn: Button
 var spin_cost: Label
 var auto_btn: Button
 var auto_sub: Label
+var fx: Control                                  # stratul efectelor de ecran (monede, texte, crăpături)
+var shown_coins := -1.0                         # contorul afișat în timpul animațiilor (-1 = valoarea reală)
+var _flying := 0
 
 
 func _ready() -> void:
@@ -28,11 +31,15 @@ func _ready() -> void:
 	add_child(root)
 	_apply_safe_area()
 	get_viewport().size_changed.connect(_apply_safe_area)
+	_vignette()
 	_mec_top()
 	_mec_resources()
 	_mec_banner()
 	_mec_event()
 	_mec_controls()
+	fx = K.full_rect(Control.new())
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(fx)
 	_toast()
 	_modal()
 	_wipe_rect()
@@ -243,24 +250,30 @@ func _side_btn(big: String, small: String, col: Color) -> Button:
 func do_spin() -> void:
 	if world.busy:
 		return
+	shown_coins = Game.coins            # contorul rămâne pe loc până zboară monedele
 	var res: Dictionary = await world.spin()
 	if res.is_empty():
+		shown_coins = -1.0
 		auto = false
 		_refresh()
 		Sfx.play("click")
 		open_modal("energie")
 		return
 	_show_result(res)
+	await world.present(res)
+	if _flying == 0:
+		shown_coins = -1.0
+		_refresh()
 	if res.type in ["attack", "raid"]:
 		auto = false
 		Game.pending_action = {"type": res.type, "mult": int(res.mult), "from": "mecanism"}
 		Game.save_game()
-		await get_tree().create_timer(1.1).timeout
+		await get_tree().create_timer(0.15).timeout
 		await wipe(func(): pass)
 		get_tree().change_scene_to_file("res://scenes/globe.tscn")
 		return
 	if auto:
-		await get_tree().create_timer(1.6 if res.big else 0.7).timeout
+		await get_tree().create_timer(0.5).timeout
 		if auto and is_inside_tree():
 			do_spin()
 
@@ -296,7 +309,7 @@ func go_home() -> void:
 
 # ---------------- actualizare ----------------
 func _refresh() -> void:
-	coins_lbl.text = Game.fmt(int(Game.coins))
+	coins_lbl.text = Game.fmt(int(shown_coins if shown_coins >= 0.0 else Game.coins))
 	perle_lbl.text = str(Game.perle)
 	energy_lbl.text = "%d / %d" % [Game.energy, Game.energy_cap()]
 	energy_sub.text = ("+1 în " + Game.fmt_time(Game.energy_next_in())) if Game.energy < Game.energy_cap() else "plin"
@@ -318,3 +331,195 @@ func _refresh() -> void:
 	else:
 		ev_bar.value = 100
 		ev_info.text = "încheiat" if not Game.event_active() else "toate etapele câștigate"
+
+
+# ---------------- efecte de ecran ----------------
+## Vigneta irizată de la margini: senzația că ești în interiorul globului de sticlă.
+func _vignette() -> void:
+	var v := ColorRect.new()
+	K.full_rect(v)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/screen_fx.gdshader")
+	m.set_shader_parameter("mode", 0)
+	v.material = m
+	root.add_child(v)
+
+
+func _chip_center(lbl: Label) -> Vector2:
+	var chip := lbl.get_parent().get_parent() as Control
+	return chip.get_global_rect().get_center()
+
+
+func _pulse_chip(lbl: Label) -> void:
+	var chip := lbl.get_parent().get_parent() as Control
+	chip.pivot_offset = chip.size / 2
+	var tw := create_tween()
+	tw.tween_property(chip, "scale", Vector2.ONE * 1.12, 0.05)
+	tw.tween_property(chip, "scale", Vector2.ONE, 0.12)
+
+
+## Monede care zboară din `from` spre contorul de sus; contorul crește cu fiecare monedă.
+func fly_coins(from: Vector2, n: int) -> void:
+	if shown_coins < 0.0:
+		shown_coins = Game.coins
+	var start := shown_coins
+	var target_val := float(Game.coins)
+	var to := _chip_center(coins_lbl) - fx.get_global_rect().position
+	from -= fx.get_global_rect().position
+	_flying += n
+	for i in n:
+		var c := K.icon_rect("coins", 46, K.GOLD)
+		c.size = Vector2(46, 46)
+		c.pivot_offset = Vector2(23, 23)
+		fx.add_child(c)
+		var p0 := from + Vector2(randf_range(-60, 60), randf_range(-30, 30))
+		var ctrl := Vector2(lerpf(p0.x, to.x, 0.3) + randf_range(-140, 140), minf(p0.y, to.y) - randf_range(60, 200))
+		c.position = p0 - c.size / 2
+		c.scale = Vector2.ZERO
+		var k := i
+		var tw := create_tween()
+		tw.tween_interval(k * 0.045)
+		tw.tween_property(c, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK)
+		tw.tween_method(func(u: float):
+			var a := p0.lerp(ctrl, u)
+			var b := ctrl.lerp(to, u)
+			c.position = a.lerp(b, u) - c.size / 2
+			c.rotation = u * 6.0
+			c.scale = Vector2.ONE * lerpf(1.0, 0.6, u), 0.0, 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			c.queue_free()
+			_flying -= 1
+			shown_coins = lerpf(start, target_val, float(k + 1) / n) if _flying > 0 else -1.0
+			_refresh()
+			_pulse_chip(coins_lbl)
+			Sfx.play("tick", 1.0 + k * 0.04))
+
+
+## Fulgere mici care zboară spre energie.
+func fly_energy(from: Vector2, n: int) -> void:
+	var to := _chip_center(energy_lbl) - fx.get_global_rect().position
+	from -= fx.get_global_rect().position
+	for i in n:
+		var c := K.icon_rect("zap", 40, Color("7ff0a0"))
+		c.size = Vector2(40, 40)
+		fx.add_child(c)
+		var p0 := from + Vector2(randf_range(-50, 50), randf_range(-20, 20))
+		c.position = p0
+		var tw := create_tween()
+		tw.tween_interval(i * 0.06)
+		tw.tween_property(c, "position", to - c.size / 2, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			c.queue_free()
+			_pulse_chip(energy_lbl))
+
+
+## Textul mare de câștig („CÂȘTIG MARE” / „SUPER CÂȘTIG”), care sare în ecran și apoi dispare.
+func big_text(txt: String, huge: bool) -> void:
+	var flash := ColorRect.new()
+	K.full_rect(flash)
+	flash.color = Color(1, 0.95, 0.8, 0.55 if huge else 0.3)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.add_child(flash)
+	create_tween().tween_property(flash, "color:a", 0.0, 0.4)
+	get_tree().create_timer(0.5).timeout.connect(flash.queue_free)
+	var l := K.label(txt, 84 if huge else 72, Color("ffd34a"), 900, 18, Color("3a1680"))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_constant_override("shadow_offset_y", 8)
+	l.add_theme_color_override("font_shadow_color", Color(0.1, 0.02, 0.25, 0.6))
+	fx.add_child(l)
+	l.size = Vector2(fx.size.x, 120)
+	l.position = Vector2(0, fx.size.y * 0.36)
+	l.pivot_offset = l.size / 2
+	l.scale = Vector2.ONE * 0.2
+	l.rotation = -0.08
+	var tw := create_tween()
+	tw.tween_property(l, "scale", Vector2.ONE * 1.18, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "rotation", 0.03, 0.22)
+	tw.tween_property(l, "scale", Vector2.ONE, 0.15)
+	tw.parallel().tween_property(l, "rotation", 0.0, 0.15)
+	if huge:
+		for k in 6:
+			tw.tween_property(l, "modulate", Color(1.3, 0.85, 1.2) if k % 2 == 0 else Color(1.2, 1.2, 0.9), 0.14)
+	else:
+		tw.tween_interval(0.9)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35)
+	tw.parallel().tween_property(l, "scale", Vector2.ONE * 1.12, 0.35)
+	tw.tween_callback(l.queue_free)
+
+
+## Contorul din banderolă numără animat până la suma câștigată.
+func count_banner(coins: int, dur: float) -> void:
+	var tw := create_tween()
+	tw.tween_method(func(v: float): banner_msg.text = "+%s monede" % Game.fmt(int(v)), 0.0, float(coins), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	banner.pivot_offset = banner.size / 2
+	tw.tween_property(banner, "scale", Vector2.ONE * 1.08, 0.1)
+	tw.tween_property(banner, "scale", Vector2.ONE, 0.15)
+
+
+class Crack:
+	extends Control
+	var at := Vector2.ZERO
+	var lines := []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for k in 14:
+			var a := k / 14.0 * TAU + randf_range(-0.15, 0.15)
+			var pts := PackedVector2Array([at])
+			var p := at
+			var len := randf_range(180.0, 520.0)
+			var segs := 6
+			for s in segs:
+				a += randf_range(-0.35, 0.35)
+				p += Vector2(cos(a), sin(a)) * len / segs
+				pts.append(p)
+			lines.append(pts)
+
+	func _draw() -> void:
+		for pts in lines:
+			draw_polyline(pts, Color(0.1, 0.05, 0.2, 0.55), 6.0, true)
+			draw_polyline(pts, Color(1, 1, 1, 0.9), 2.5, true)
+		for r in [40.0, 95.0, 160.0]:
+			var ring := PackedVector2Array()
+			for k in 25:
+				var a := k / 24.0 * TAU
+				ring.append(at + Vector2(cos(a), sin(a)) * r * randf_range(0.85, 1.15))
+			draw_polyline(ring, Color(1, 1, 1, 0.55), 1.8, true)
+		draw_circle(at, 22.0, Color(1, 1, 1, 0.8))
+
+
+## Ecranul se crapă în punctul de impact (atac).
+func crack(at: Vector2) -> void:
+	var flash := ColorRect.new()
+	K.full_rect(flash)
+	flash.color = Color(1, 1, 1, 0.7)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.add_child(flash)
+	create_tween().tween_property(flash, "color:a", 0.0, 0.25)
+	var c := Crack.new()
+	c.at = at - fx.get_global_rect().position
+	K.full_rect(c)
+	fx.add_child(c)
+	get_tree().create_timer(2.0).timeout.connect(func():
+		if is_instance_valid(c):
+			c.queue_free())
+
+
+## Irisul se închide spre punctul dat (raid: „intrăm” în orașul țintei).
+func iris(center: Vector2) -> void:
+	var r := ColorRect.new()
+	K.full_rect(r)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/screen_fx.gdshader")
+	m.set_shader_parameter("mode", 1)
+	var sz := fx.size
+	m.set_shader_parameter("center", (center - fx.get_global_rect().position) / sz)
+	m.set_shader_parameter("aspect", sz.x / maxf(sz.y, 1.0))
+	m.set_shader_parameter("r", 1.6)
+	r.material = m
+	fx.add_child(r)
+	var tw := create_tween()
+	tw.tween_method(func(v: float): m.set_shader_parameter("r", v), 1.6, 0.0, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tw.finished

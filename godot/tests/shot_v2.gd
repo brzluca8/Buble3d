@@ -19,7 +19,7 @@ func _initialize() -> void:
 	g.levels = {"palat": 2, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 	g.chests = [{"kind": "rar", "end": Time.get_unix_time_from_system() + 2400}, {"kind": "comun", "end": 0.0}]
 	g.streak = {"day": 1, "last": g.today()}
-	for sc in ["acasa", "mecanism", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
+	for sc in ["acasa", "mecanism", "mec_rotire", "mec_super", "mec_mare", "mec_atac", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
 		if not only.is_empty() and not sc in only:
 			continue
 		await _shot(g, sc, out + "/" + sc + ".png")
@@ -32,7 +32,7 @@ func _wait(n: int) -> void:
 
 
 func _shot(g, sc: String, path: String) -> void:
-	var scene := "res://scenes/airship.tscn" if sc in ["dirijabil", "observator", "garderoba"] else ("res://scenes/mecanism.tscn" if sc in ["mecanism", "sanse"] else "res://scenes/globe.tscn")
+	var scene := "res://scenes/airship.tscn" if sc in ["dirijabil", "observator", "garderoba"] else ("res://scenes/mecanism.tscn" if sc in ["mecanism", "sanse"] or sc.begins_with("mec_") else "res://scenes/globe.tscn")
 	if sc == "nivel5":
 		for b in g.levels:
 			g.levels[b] = 5
@@ -56,6 +56,15 @@ func _shot(g, sc: String, path: String) -> void:
 	root.add_child(w)
 	await _wait(40)
 	var hud = w.get_children().filter(func(x): return x.has_method("show_toast") or x.has_method("open"))[0]
+	if sc.begins_with("mec_"):
+		g.level = 7
+		await _mec_moment(g, w, hud, sc)
+		root.get_texture().get_image().save_png(path)
+		print("STATISTICI %s: apeluri de desenare=%d, primitive=%d" % [sc, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
+		Engine.time_scale = 1.0
+		w.queue_free()
+		await _wait(3)
+		return
 	match sc:
 		"selectie":
 			g.select("palat")
@@ -84,3 +93,31 @@ func _shot(g, sc: String, path: String) -> void:
 	root.get_texture().get_image().save_png(path)
 	w.queue_free()
 	await _wait(3)
+
+
+## Momente din animațiile Mecanismului: rotire (blur), câștig mare, super câștig, intrarea atacului.
+func _mec_moment(g, w, hud, sc: String) -> void:
+	var gem: int = w.syms.find("gem")
+	match sc:
+		"mec_rotire":
+			hud.do_spin()
+			await create_timer(1.75, true, false, true).timeout
+		"mec_super", "mec_mare":
+			var sym := "gem" if sc == "mec_super" else "coin"
+			for i in 3:
+				w.reels[i].rotation.x = w.syms.find(sym) * w.step
+			var res := {"id": "jackpot" if sc == "mec_super" else "monede", "name": "Trei perle" if sc == "mec_super" else "Trei monede",
+				"type": "coins", "reels": [sym, sym, sym], "mult": 1, "coins": 6200 if sc == "mec_super" else 620,
+				"energy": 0, "big": sc == "mec_super", "msg": "+6.200 monede" if sc == "mec_super" else "+620 monede"}
+			hud.shown_coins = g.coins
+			hud._show_result(res)
+			w.present(res)
+			await create_timer(1.25 if sc == "mec_super" else 0.62, true, false, true).timeout
+		"mec_atac":
+			var h: int = w.syms.find("hammer")
+			for i in 3:
+				w.reels[i].rotation.x = h * w.step
+			var res := {"id": "atac", "name": "Atac", "type": "attack", "reels": ["hammer", "hammer", "hammer"], "mult": 1, "coins": 0, "energy": 0, "big": false, "msg": "Atac!"}
+			hud._show_result(res)
+			w.present(res)
+			await create_timer(0.86, true, false, true).timeout

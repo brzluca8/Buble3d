@@ -29,6 +29,19 @@ func _ready() -> void:
 		"bigwin": _tone([[523.0, 523.0, 0.09], [659.0, 659.0, 0.09], [784.0, 784.0, 0.09], [1046.0, 1046.0, 0.09], [1318.0, 1318.0, 0.35]], 0.4, "sine"),
 		"build": _tone([[300.0, 260.0, 0.05], [300.0, 260.0, 0.05], [420.0, 380.0, 0.08]], 0.35, "square"),
 		"upgrade": _tone([[392.0, 392.0, 0.08], [523.0, 523.0, 0.08], [659.0, 659.0, 0.08], [784.0, 1046.0, 0.25]], 0.4, "square"),
+		# mașina de bule
+		"lever": _ratchet(6, 0.035, 0.5),
+		"spin": _whoosh(0.5, 0.35, true),
+		"whoosh": _whoosh(0.35, 0.4, false),
+		"anticip": _sweep(240.0, 920.0, 1.7, 0.32),
+		"win_small": _tone([[784.0, 784.0, 0.07], [1046.0, 1046.0, 0.07], [1318.0, 1318.0, 0.16]], 0.33, "sine"),
+		"win_big": _tone([[523.0, 523.0, 0.08], [659.0, 659.0, 0.08], [784.0, 784.0, 0.08], [1046.0, 1046.0, 0.08], [784.0, 784.0, 0.08], [1046.0, 1046.0, 0.08], [1318.0, 1318.0, 0.45]], 0.38, "triangle"),
+		"win_huge": _tone([[392.0, 392.0, 0.12], [523.0, 523.0, 0.12], [659.0, 659.0, 0.12], [784.0, 784.0, 0.12], [659.0, 659.0, 0.1], [784.0, 784.0, 0.1], [1046.0, 1046.0, 0.14], [1318.0, 1318.0, 0.14], [1568.0, 1568.0, 0.6]], 0.4, "triangle"),
+		"shrug": _tone([[330.0, 300.0, 0.14], [262.0, 190.0, 0.3]], 0.32, "triangle"),
+		"smash": _shatter(0.6, 0.6),
+		"chest": _tone([[880.0, 880.0, 0.05], [1175.0, 1175.0, 0.05], [1480.0, 1480.0, 0.05], [1760.0, 2200.0, 0.25]], 0.3, "sine"),
+		"shield": _sweep(520.0, 780.0, 0.6, 0.3),
+		"zap": _tone([[1600.0, 400.0, 0.12], [1400.0, 300.0, 0.12]], 0.3, "square"),
 	}
 
 
@@ -69,6 +82,69 @@ func _tone(notes: Array, vol: float, wave: String) -> AudioStreamWAV:
 				_: v = sin(phase * TAU)
 			var env := minf(1.0, t * 20.0) * pow(1.0 - t, 1.6)
 			_put(data, v * env * vol * (0.6 if wave == "square" else 1.0))
+	return _wav(data)
+
+
+## Clicuri de clichet (maneta trasă), tot mai joase, apoi o bufnitură scurtă.
+func _ratchet(n: int, gap: float, vol: float) -> AudioStreamWAV:
+	var data := PackedByteArray()
+	for k in n:
+		var count := int(gap * RATE)
+		for i in count:
+			var t := float(i) / count
+			var v := sin(TAU * (2200.0 - k * 180.0) * i / RATE) * pow(1.0 - t, 8.0) + randf_range(-1.0, 1.0) * pow(1.0 - t, 14.0) * 0.6
+			_put(data, v * vol)
+	var count2 := int(0.12 * RATE)
+	for i in count2:
+		var t := float(i) / count2
+		_put(data, sin(TAU * lerpf(160.0, 70.0, t) * i / RATE) * pow(1.0 - t, 2.0) * vol)
+	return _wav(data)
+
+
+## Foșnet de aer (rotirea rolelor / un obiect care zboară); `rising` = urcă în frecvență.
+func _whoosh(dur: float, vol: float, rising: bool) -> AudioStreamWAV:
+	var data := PackedByteArray()
+	var count := int(dur * RATE)
+	var lp := 0.0
+	for i in count:
+		var t := float(i) / count
+		var k := lerpf(0.05, 0.45, t) if rising else lerpf(0.45, 0.05, t)
+		lp = lerpf(lp, randf_range(-1.0, 1.0), k)
+		var env := sin(PI * t)
+		_put(data, lp * env * vol)
+	return _wav(data)
+
+
+## Ton care urcă, cu tremolo (anticiparea: „muzica urcă”).
+func _sweep(f0: float, f1: float, dur: float, vol: float) -> AudioStreamWAV:
+	var data := PackedByteArray()
+	var count := int(dur * RATE)
+	var phase := 0.0
+	var phase2 := 0.0
+	for i in count:
+		var t := float(i) / count
+		var f := lerpf(f0, f1, t * t)
+		phase += f / RATE
+		phase2 += f * 1.5 / RATE
+		var trem := 0.65 + 0.35 * sin(TAU * lerpf(6.0, 16.0, t) * i / RATE)
+		var env := minf(1.0, t * 8.0) * minf(1.0, (1.0 - t) * 12.0)
+		_put(data, (sin(phase * TAU) * 0.7 + sin(phase2 * TAU) * 0.3) * trem * env * vol)
+	return _wav(data)
+
+
+## Sticlă spartă: zgomot strălucitor cu clinchete scurte, peste o bufnitură.
+func _shatter(dur: float, vol: float) -> AudioStreamWAV:
+	var data := PackedByteArray()
+	var count := int(dur * RATE)
+	var prev := 0.0
+	for i in count:
+		var t := float(i) / count
+		var n := randf_range(-1.0, 1.0)
+		var hp := n - prev
+		prev = n
+		var ting := sin(TAU * (3100.0 + 900.0 * sin(i * 0.002)) * i / RATE) * (0.5 if int(t * 40.0) % 3 == 0 else 0.0)
+		var boom := sin(TAU * lerpf(110.0, 45.0, t) * i / RATE) * pow(1.0 - t, 3.0)
+		_put(data, (hp * 0.5 * pow(1.0 - t, 1.5) + ting * pow(1.0 - t, 2.0) + boom * 0.7) * vol)
 	return _wav(data)
 
 

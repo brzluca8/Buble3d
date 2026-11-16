@@ -253,6 +253,30 @@ func _initialize() -> void:
 	var mui = mec.hud
 	mui._show_result(res)
 	check(mui.banner_msg.text != "", "banderola arată rezultatul: %s" % mui.banner_msg.text)
+	# maneta trasă cu degetul pornește o rotire
+	await mec.present(res)
+	g.energy = 20
+	var e1: int = g.energy
+	var sp: Vector2 = mec.cam.unproject_position(mec.lever_ball.global_position)
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = sp
+	mec._unhandled_input(ev)
+	var mv := InputEventMouseMotion.new()
+	mv.position = sp + Vector2(0, 200)
+	mec._unhandled_input(mv)
+	var up := ev.duplicate()
+	up.pressed = false
+	up.position = sp + Vector2(0, 200)
+	mec._unhandled_input(up)
+	await process_frame
+	check(g.energy < e1, "trasul manetei cu degetul pornește rotirea")
+	var w2 := 0
+	while mec.busy and w2 < 200:
+		await create_timer(0.05).timeout
+		w2 += 1
+	check(mec.tier({"type": "coins", "id": "sac", "mult": 1, "big": true}) == "huge" and mec.tier({"type": "coins", "id": "monede_mici", "mult": 1, "big": false}) == "small", "nivelurile de câștig (mic / mare / super)")
 	g.energy = 0
 	var empty: Dictionary = await mec.spin()
 	check(empty.is_empty(), "fără energie mașina nu pornește")
