@@ -32,7 +32,7 @@ const BUILDINGS := [
 ]
 const MAX_STAGE := 5
 const TROPHIES := [
-	{"id": "prima_rotire", "name": "Prima rotire", "desc": "Ai pornit Mecanismul"},
+	{"id": "prima_rotire", "name": "Prima rotire", "desc": "Ai rotit mașina de bule"},
 	{"id": "jackpot", "name": "Trei perle", "desc": "Ai prins jackpotul"},
 	{"id": "atacator", "name": "Strateg", "desc": "10 atacuri reușite"},
 	{"id": "raider", "name": "Căutător de comori", "desc": "10 raiduri"},
@@ -82,7 +82,7 @@ var last_save := 0.0
 var gift_days := {}
 var friend_flags := {}
 var sel := ""
-var pending_action := {}               # sabotaj/spargere pornite din Mecanism: {"type", "mult", "from"}
+var pending_action := {}               # atac/raid pornite din pagina mașinii de bule: {"type", "mult", "from"}
 var _raid := []
 var _w_total := 0
 
@@ -466,7 +466,7 @@ func spin() -> Dictionary:
 			var got := add_cards(int(o.get("amount", 1)) * (1 if mult < 3 else 2))
 			res.msg = "Carte nouă: %s" % card_name(got[0])
 		"attack", "raid":
-			res.msg = "Sabotaj!" if o.type == "attack" else "Spargere!"
+			res.msg = "Atac!" if o.type == "attack" else "Raid!"
 		_:
 			res.msg = "Fără câștig"
 	coins += res.coins
@@ -588,10 +588,10 @@ func add_chest(kind: String) -> String:
 	if chests.size() < int(cfg("chests.slots", 3)):
 		chests.append({"kind": kind, "end": 0.0})
 		changed.emit()
-		return "%s adăugat" % info.get("name", "Lot")
+		return "%s adăugat" % info.get("name", "Cufăr")
 	var c := int(round(float(info.get("units", 5)) * bet_unit()))
 	add_coins(c)
-	return "Sloturi pline: %s deschis pe loc, +%s monede" % [info.get("name", "Lot"), fmt(c)]
+	return "Sloturi pline: %s deschis pe loc, +%s monede" % [info.get("name", "Cufăr"), fmt(c)]
 
 
 func chest_open_time(kind: String) -> int:
@@ -612,11 +612,11 @@ func chest_action(i: int) -> String:
 	var c: Dictionary = chests[i]
 	if c.end <= 0.0:
 		if chest_unlocking() >= 0:
-			return "Se deschide deja un lot"
+			return "Se deschide deja un cufăr"
 		c.end = _now() + chest_open_time(c.kind)
 		changed.emit()
 		save_game()
-		return "Lotul se deschide"
+		return "Cufărul se deschide"
 	if c.end > _now():
 		return "Mai sunt %s" % fmt_time(int(c.end - _now()))
 	chests.remove_at(i)

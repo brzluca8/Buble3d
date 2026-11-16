@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://b20p2kjrhcjev"
-path="res://.godot/imported/montserrat-latin-ext-800-normal.woff2-66cb1b979a5b3df65cec5def00be503f.fontdata"
+uid="uid://daj4ogr6vtbtj"
+path="res://.godot/imported/nunito-latin-ext-900-normal.woff2-d6ef5636654c65f4a7e45f99a00cbee6.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/montserrat-latin-ext-800-normal.woff2"
-dest_files=["res://.godot/imported/montserrat-latin-ext-800-normal.woff2-66cb1b979a5b3df65cec5def00be503f.fontdata"]
+source_file="res://assets/fonts/nunito-latin-ext-900-normal.woff2"
+dest_files=["res://.godot/imported/nunito-latin-ext-900-normal.woff2-d6ef5636654c65f4a7e45f99a00cbee6.fontdata"]
 
 [params]
 

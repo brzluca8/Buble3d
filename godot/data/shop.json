@@ -9,8 +9,8 @@
   "items": [
     {"id": "energie_50", "name": "50 de energie", "perle": 20, "grant": {"energy": 50}},
     {"id": "energie_150", "name": "150 de energie", "perle": 55, "grant": {"energy": 150}},
-    {"id": "cufar_rar", "name": "Lot rar (conținut afișat)", "perle": 15, "grant": {"chest": "rar"}},
+    {"id": "cufar_rar", "name": "Cufăr rar (conținut afișat)", "perle": 15, "grant": {"chest": "rar"}},
     {"id": "scut", "name": "Un scut", "perle": 10, "grant": {"shield": 1}}
   ],
-  "note": "Conținutul loturilor și șansele Mecanismului sunt vizibile în ecranul Șanse."
+  "note": "Conținutul cuferelor și șansele mașinii sunt vizibile în ecranul Șanse."
 }

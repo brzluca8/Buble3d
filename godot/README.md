@@ -2,15 +2,13 @@
 
 Godot 4.7, Android, portret, interfață în română. Branch: `buble-v2`.
 
-- **Stil vizual: Neon noir** (18+): noapte, ploaie, neon magenta și turcoaz, grafit și crom.
-  Fonturi Chakra Petch (titluri) și Montserrat (text), ambele OFL. Paleta e în `scripts/ui/ui_kit.gd`.
-- **Ecran principal**: orașul din glob de sticlă, pe un piedestal de grafit, într-un oraș de noapte (`scenes/globe.tscn`).
-- **Mecanismul** (rotirile, pagină separată): automat neon pe o stradă udă, cu 3 role 3D
-  (`scenes/mecanism.tscn`, `scripts/mechanism_world.gd`, `scripts/ui/mechanism_ui.gd`). Sabotajul și
-  spargerea se joacă în glob (`Game.pending_action`), apoi jocul revine în Mecanism.
-- **Nox**: asistentul robot (înlocuiește mascota), `art/blender/asistent.py` → `assets/models/mascota.glb`.
-- **Denumiri**: Sabotaj (fost atac), Spargere (fost raid), Lot (fost cufăr), Catalog (fost album),
-  Licitația (fost eveniment).
+- **Ecran principal**: orașul din glob de sticlă (`scenes/globe.tscn`), cu butonul „Mașina de bule”.
+- **Mașina de bule** (rotirile, pagină separată): automatul violet cu alamă și dom de sticlă, pe o
+  platformă printre nori, cu 3 role 3D (`scenes/mecanism.tscn`, `scripts/mechanism_world.gd`,
+  `scripts/ui/mechanism_ui.gd`, modelul din `art/blender/masina_bule.py`). Atacul și raidul se joacă
+  în glob (`Game.pending_action`), apoi jocul revine pe pagina mașinii.
+- Variantele de stil încercate și abandonate (Art Deco, Neon noir) au rămas doar ca scripturi Blender
+  în `art/blender/` (`mecanism_artdeco.py`, `mecanism_neon.py`, `majordom.py`, `asistent.py`).
 - **Dirijabilul**: Observator (abilități), Garderobă, Atelier, Seră, Salon (`scenes/airship.tscn`).
 - **Economie din date**: `data/*.json` (vezi `../BALANCE.md`, generat de `../tools/balance.py`).
 - **Teste**: `godot --headless --path godot -s res://tests/smoke_v2.gd` · capturi: `tests/shot_v2.gd`.

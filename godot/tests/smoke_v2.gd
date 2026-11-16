@@ -137,7 +137,7 @@ func _initialize() -> void:
 	check(g.chests.size() == 3 and g.coins > c1, "sloturi pline: monedele vin pe loc (%s)" % m)
 	g.chest_action(0)
 	check(g.chests[0].end > now, "deschiderea cufărului pornește")
-	check(g.chest_action(1) == "Se deschide deja un lot", "un singur lot se deschide o dată")
+	check(g.chest_action(1) == "Se deschide deja un cufăr", "un singur cufăr se deschide o dată")
 	g.chests[0].end = now - 1
 	g.chest_action(0)
 	check(g.chests.size() == 2 and g.stats.chests == 1, "cufărul gata dă premiul")
@@ -212,7 +212,7 @@ func _initialize() -> void:
 	check(globe.city.get_node("Buildings").get_child_count() == 5, "globul are 5 clădiri")
 	check(globe.friends.filter(func(f): return f.friend.is_empty()).size() == 6, "bulele prietenilor: doar sloturi DEMO")
 	var hud = globe.get_children().filter(func(x): return x.has_method("show_toast"))[0]
-	check(hud.slot is Button and hud.slot.visible, "orașul are butonul spre Mecanism (rotirile au pagina lor)")
+	check(hud.slot is Button and hud.slot.visible, "orașul are butonul spre mașina de bule (rotirile au pagina lor)")
 	# atac din interfață
 	var st := {"done": false}
 	var run := func():
@@ -240,7 +240,7 @@ func _initialize() -> void:
 	root.add_child(mec)
 	for i in 10:
 		await process_frame
-	check(mec.reels.size() == 3, "Mecanismul are 3 role 3D")
+	check(mec.reels.size() == 3, "mașina de bule are 3 role 3D")
 	var e0: int = g.energy
 	var t0 := Time.get_ticks_msec()
 	var res: Dictionary = await mec.spin()
@@ -248,14 +248,14 @@ func _initialize() -> void:
 	for i in 3:
 		var k: int = int(round(fposmod(mec.reels[i].rotation.x, TAU) / mec.step)) % mec.syms.size()
 		shown = shown and mec.syms[k] == res.reels[i]
-	check(not res.is_empty() and not mec.busy and g.energy < e0 + 6, "rotire completă în Mecanism (%.1f s)" % ((Time.get_ticks_msec() - t0) / 1000.0))
+	check(not res.is_empty() and not mec.busy and g.energy < e0 + 6, "rotire completă pe pagina mașinii (%.1f s)" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	check(shown, "rolele arată exact simbolurile rezultatului (%s)" % ", ".join(res.reels))
 	var mui = mec.hud
 	mui._show_result(res)
 	check(mui.banner_msg.text != "", "banderola arată rezultatul: %s" % mui.banner_msg.text)
 	g.energy = 0
 	var empty: Dictionary = await mec.spin()
-	check(empty.is_empty(), "fără energie Mecanismul nu pornește")
+	check(empty.is_empty(), "fără energie mașina nu pornește")
 	mec.queue_free()
 	await process_frame
 	var air = load("res://scenes/airship.tscn").instantiate()

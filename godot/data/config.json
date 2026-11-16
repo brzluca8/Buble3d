@@ -9,9 +9,9 @@
   "chests": {
     "slots": 3,
     "kinds": {
-      "comun": {"name": "Lot comun", "weight": 70, "open_s": 900, "units": 6, "cards": 1, "energy": 0, "perle": 0},
-      "rar": {"name": "Lot rar", "weight": 25, "open_s": 3600, "units": 15, "cards": 2, "energy": 5, "perle": 0},
-      "epic": {"name": "Lot epic", "weight": 5, "open_s": 10800, "units": 40, "cards": 3, "energy": 15, "perle": 2}
+      "comun": {"name": "Cufăr comun", "weight": 70, "open_s": 900, "units": 6, "cards": 1, "energy": 0, "perle": 0},
+      "rar": {"name": "Cufăr rar", "weight": 25, "open_s": 3600, "units": 15, "cards": 2, "energy": 5, "perle": 0},
+      "epic": {"name": "Cufăr epic", "weight": 5, "open_s": 10800, "units": 40, "cards": 3, "energy": 15, "perle": 2}
     },
     "globe_reward": "epic"
   },
@@ -25,7 +25,7 @@
     {"day": 7, "chest": "epic", "perle": 5}
   ],
   "event": {
-    "id": "festivalul_luminilor", "name": "Licitația de la miezul nopții", "duration_days": 7,
+    "id": "festivalul_luminilor", "name": "Festivalul luminilor", "duration_days": 7,
     "points": {"atac": 3, "raid": 3, "jackpot": 5, "sac": 2, "cufar": 2, "default": 1},
     "stages": [
       {"points": 20, "energy": 10}, {"points": 50, "units": 8}, {"points": 100, "cards": 2},

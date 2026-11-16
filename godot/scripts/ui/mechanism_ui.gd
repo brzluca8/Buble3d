@@ -1,6 +1,6 @@
 extends "res://scripts/ui/hud_v2.gd"
-## Interfața paginii Mecanismului (rotirile): înapoi în oraș, titlu, Șanse, resurse,
-## banderola cu rezultatul, licitația săptămânii, pariul, butonul Rotește și rotirile automate.
+## Interfața paginii mașinii de bule (rotirile): înapoi în oraș, titlu, Șanse, resurse,
+## banderola cu rezultatul, evenimentul, pariul, butonul Rotește și rotirile automate.
 ## Ferestrele (Șanse, Energie, Magazin...) sunt cele din hud_v2.gd.
 
 var world: Node
@@ -75,7 +75,7 @@ func _mec_top() -> void:
 	K.place(vb, true, 16, 80, 110, 110)
 	vb.add_theme_constant_override("separation", -2)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var t := K.label("Mecanismul", 44, K.GOLD, 900, 6, Color(0, 0, 0, 0.6))
+	var t := K.label("Mașina de bule", 40, Color.WHITE, 900, 8, Color(0.08, 0.05, 0.3, 0.6))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	sub_title = K.label("", 17, Color(1, 1, 1, 0.75), 700)
@@ -91,13 +91,13 @@ func _mec_resources() -> void:
 	hb.add_theme_constant_override("separation", 10)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hb)
-	coins_lbl = _chip(hb, "coins", K.COIN)
-	perle_lbl = _chip(hb, "gem", Color("9fd8c8"))
+	coins_lbl = _chip(hb, "coins", K.GOLD)
+	perle_lbl = _chip(hb, "gem", Color("8ff4ec"))
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", K.glass(26, 8, 0.75))
 	var eh := HBoxContainer.new()
 	eh.add_theme_constant_override("separation", 6)
-	eh.add_child(K.icon_rect("zap", 28, Color("8fb8e8")))
+	eh.add_child(K.icon_rect("zap", 28, Color("7ff0a0")))
 	var ev := VBoxContainer.new()
 	ev.add_theme_constant_override("separation", -6)
 	energy_lbl = K.label("", 24, Color.WHITE, 800)
@@ -121,7 +121,7 @@ func _mec_resources() -> void:
 
 func _mec_banner() -> void:
 	banner = PanelContainer.new()
-	var bs := K.box(Color(0.04, 0.05, 0.08, 0.9), 26, K.GOLD, 2, 12, 12)
+	var bs := K.box(Color(0.12, 0.08, 0.32, 0.92), 30, K.GOLD, 3, 12, 12)
 	banner.add_theme_stylebox_override("panel", bs)
 	K.place(banner, true, 196, 0, 110, 110)
 	banner.modulate.a = 0.0
@@ -152,7 +152,7 @@ func _mec_event() -> void:
 	hb.add_theme_constant_override("separation", 10)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(hb)
-	hb.add_child(K.icon_rect("gavel", 30, K.GOLD))
+	hb.add_child(K.icon_rect("sparkles", 30, K.GOLD))
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", -2)
 	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -178,7 +178,7 @@ func _mec_controls() -> void:
 	K.place(hb, false, 54, 128, 20, 20)
 	hb.add_theme_constant_override("separation", 12)
 	root.add_child(hb)
-	mult_btn = _side_btn("×1", "pariu", Color("1c0f38"))
+	mult_btn = _side_btn("×1", "pariu", Color("6d3fc0"))
 	mult_btn.pressed.connect(func():
 		Sfx.play("click")
 		Game.cycle_mult()
@@ -192,9 +192,9 @@ func _mec_controls() -> void:
 	sv.alignment = BoxContainer.ALIGNMENT_CENTER
 	sv.add_theme_constant_override("separation", -4)
 	sv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sl := K.label("Rotește", 46, Color.WHITE, 900)
+	var sl := K.label("Rotește", 46, K.INK, 900)
 	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	spin_cost = K.label("", 17, Color(1, 1, 1, 0.8), 800)
+	spin_cost = K.label("", 17, Color(K.INK, 0.75), 800)
 	spin_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sv.add_child(sl)
 	sv.add_child(spin_cost)
@@ -203,7 +203,7 @@ func _mec_controls() -> void:
 		auto = false
 		do_spin())
 	hb.add_child(spin_btn)
-	auto_btn = _side_btn("Auto", "oprit", Color("0a2228"))
+	auto_btn = _side_btn("Auto", "oprit", Color("1f9e9c"))
 	auto_sub = auto_btn.get_child(0).get_child(1) as Label
 	auto_btn.pressed.connect(func():
 		Sfx.play("click")
@@ -272,9 +272,9 @@ func _show_result(res: Dictionary) -> void:
 	banner_name.text = name_txt.to_upper()
 	match res.type:
 		"attack":
-			banner_msg.text = "Sabotaj – alege o clădire a țintei"
+			banner_msg.text = "Atac – atinge o clădire a țintei"
 		"raid":
-			banner_msg.text = "Spargere – alege 3 seifuri"
+			banner_msg.text = "Raid – alege 3 locuri"
 		_:
 			banner_msg.text = res.msg
 	var bs := banner.get_theme_stylebox("panel") as StyleBoxFlat
@@ -307,14 +307,14 @@ func _refresh() -> void:
 	spin_btn.modulate = Color.WHITE if Game.energy >= Game.mult else Color(0.6, 0.6, 0.62)
 	auto_sub.text = "pornit" if auto else "oprit"
 	auto_btn.modulate = Color(1.25, 1.15, 0.9) if auto else Color.WHITE
-	ev_name.text = Game.cfg("event.name", "Licitația")
+	ev_name.text = Game.cfg("event.name", "Eveniment")
 	var stages: Array = Game.cfg("event.stages", [])
 	var st := int(Game.event.stage)
 	if Game.event_active() and st < stages.size():
 		var prev := 0 if st == 0 else int(stages[st - 1].points)
 		var nxt := int(stages[st].points)
 		ev_bar.value = 100.0 * (int(Game.event.points) - prev) / maxf(nxt - prev, 1)
-		ev_info.text = "lotul %d din %d · încă %s" % [st + 1, stages.size(), Game.fmt_time(int(Game.event_end() - Time.get_unix_time_from_system()))]
+		ev_info.text = "etapa %d din %d · încă %s" % [st + 1, stages.size(), Game.fmt_time(int(Game.event_end() - Time.get_unix_time_from_system()))]
 	else:
 		ev_bar.value = 100
-		ev_info.text = "încheiată" if not Game.event_active() else "toate loturile câștigate"
+		ev_info.text = "încheiat" if not Game.event_active() else "toate etapele câștigate"

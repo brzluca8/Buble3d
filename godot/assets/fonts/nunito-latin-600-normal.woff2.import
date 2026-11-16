@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://bxrcwry6x15ll"
-path="res://.godot/imported/chakra-petch-latin-ext-700-normal.woff2-3299ffb2986fbc5d0c201d55bfa1f5fb.fontdata"
+uid="uid://dy53v16qp08cf"
+path="res://.godot/imported/nunito-latin-600-normal.woff2-5b01bf4034725a79ddca0610a4c35039.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/chakra-petch-latin-ext-700-normal.woff2"
-dest_files=["res://.godot/imported/chakra-petch-latin-ext-700-normal.woff2-3299ffb2986fbc5d0c201d55bfa1f5fb.fontdata"]
+source_file="res://assets/fonts/nunito-latin-600-normal.woff2"
+dest_files=["res://.godot/imported/nunito-latin-600-normal.woff2-5b01bf4034725a79ddca0610a4c35039.fontdata"]
 
 [params]
 

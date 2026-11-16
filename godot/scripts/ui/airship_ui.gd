@@ -39,7 +39,7 @@ func _top() -> void:
 		Sfx.play("click")
 		get_tree().change_scene_to_file("res://scenes/globe.tscn"))
 	hb.add_child(back)
-	var t := K.label("Dirijabilul", 36, Color.WHITE, 900, 8, Color(0, 0, 0, 0.55))
+	var t := K.label("Dirijabilul", 36, Color.WHITE, 900, 8, Color(0.08, 0.05, 0.3, 0.6))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hb.add_child(t)
@@ -54,7 +54,7 @@ func _top() -> void:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", K.glass(26, 8, 0.8))
 	var ph := HBoxContainer.new()
-	ph.add_child(K.icon_rect("sparkles", 26, K.GOLD))
+	ph.add_child(K.icon_rect("sparkles", 26, Color("b8a0ff")))
 	points_lbl = K.label("0", 22, Color.WHITE, 800)
 	ph.add_child(points_lbl)
 	p.add_child(ph)
@@ -257,8 +257,8 @@ func _observator() -> void:
 
 # ---------------- Garderobă ----------------
 func _garderoba() -> void:
-	_p("Piesele se câștigă jucând. Atinge „Poartă” ca să-l vezi pe Nox.")
-	var slots := {"casca": "Antenă", "ochelari": "Vizor", "esarfa": "Lumina inelului", "corp": "Carcasa", "efect": "Efect la rotire"}
+	_p("Piesele se câștigă jucând. Atinge „Poartă” ca s-o vezi pe mascotă.")
+	var slots := {"casca": "Cască", "ochelari": "Ochelari", "esarfa": "Eșarfă", "corp": "Culoarea corpului", "efect": "Efect la rotire"}
 	var defaults: Dictionary = Game.D.cosmetics.defaults
 	for slot in slots:
 		box.add_child(K.label(slots[slot], 22, K.GOLD, 900))
@@ -331,7 +331,7 @@ func _atelier() -> void:
 func _sera() -> void:
 	var c: Dictionary = Game.D.airship.companion
 	var st := Game.companion_stage()
-	_p("%s: %s" % [c.name, st.name], 26, Color("9fd8c8"))
+	_p("%s: %s" % [c.name, st.name], 26, Color("9fffc8"))
 	_p("Bonus: +%d%% monede din rotiri. Crește singur odată cu nivelul tău." % int(round(float(st.bonus) * 100)))
 	for s in c.stages:
 		_row("%s · nivelul %d" % [s.name, int(s.level)], "+%d%%" % int(round(float(s.bonus) * 100)) + ("  (acum)" if s == st else ""))
@@ -343,10 +343,10 @@ func _salon() -> void:
 	for t in Game.TROPHIES:
 		_row("%s – %s" % [t.name, t.desc], "Obținut" if Game.trophies.has(t.id) else "—")
 	box.add_child(K.label("Statistici", 22, K.GOLD, 900))
-	var names := {"spins": "Rotiri", "coins": "Monede câștigate", "attacks": "Sabotaje reușite", "raids": "Spargeri", "jackpots": "Jackpoturi", "chests": "Loturi deschise", "upgrades": "Construcții"}
+	var names := {"spins": "Rotiri", "coins": "Monede câștigate", "attacks": "Atacuri reușite", "raids": "Raiduri", "jackpots": "Jackpoturi", "chests": "Cufere deschise", "upgrades": "Construcții"}
 	for k in names:
 		_row(names[k], Game.fmt(int(Game.stats.get(k, 0))))
-	box.add_child(K.label("Catalog", 22, K.GOLD, 900))
+	box.add_child(K.label("Album", 22, K.GOLD, 900))
 	var sets: Array = Game.D.cards.sets
 	for si in sets.size():
 		var have := 0

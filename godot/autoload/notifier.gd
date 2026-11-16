@@ -1,6 +1,6 @@
 extends Node
 ## Notificări locale (autoload „Notifier"): doar dacă jucătorul le-a cerut (Setări),
-## maximum 2 pe zi, doar pentru lucruri reale (energie plină, lot gata). Fără presiune.
+## maximum 2 pe zi, doar pentru lucruri reale (energie plină, cufăr gata). Fără presiune.
 ##
 ## Pe Android, afișarea cere un plugin de notificări locale (vezi TESTING.md). Fără plugin,
 ## planificarea se calculează și se scrie în jurnal, dar nu se afișează nimic.
@@ -28,7 +28,7 @@ func plan() -> void:
 	if i >= 0:
 		var left := int(Game.chests[i].end - Time.get_unix_time_from_system())
 		if left > 0:
-			planned.append({"kind": "cufar_gata", "in_s": left, "text": "Lotul tău de licitație e gata."})
+			planned.append({"kind": "cufar_gata", "in_s": left, "text": "Cufărul tău e gata de deschis."})
 	planned.sort_custom(func(a, b): return a.in_s < b.in_s)
 	planned = planned.filter(func(p): return p.in_s < 86400).slice(0, max_n)
 	if _plugin and _plugin.has_method("show"):
