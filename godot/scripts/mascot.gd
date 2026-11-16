@@ -2,7 +2,7 @@ class_name Mascot
 extends Node3D
 ## Mascota este „pionul" de pe traseu: sare din căsuță în căsuță după aruncarea zarurilor
 ## și sare de bucurie la upgrade / întoarcerea din Buble Blast.
-## Dacă res://models/mascot.glb are animații, se folosesc clipurile „idle", „walk"/„run", „jump".
+## Dacă res://assets/models/mascota.glb are animații, se folosesc clipurile „idle", „walk"/„run", „jump".
 
 const HOP_TIME := 0.26
 

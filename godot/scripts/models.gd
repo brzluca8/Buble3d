@@ -1,15 +1,24 @@
 class_name Models
 extends RefCounted
-## Modele GLB din res://models/<id>.glb. Godot le importă automat; dacă un fișier
-## lipsește, piesa rămâne procedurală.
+## Modele GLB din res://assets/models/<nume>.glb (vezi MODELS_TODO.md). Godot le importă
+## automat; dacă un fișier lipsește, piesa rămâne procedurală (rezervă).
 
 const HEIGHT := {"palat": 8.0, "obs": 5.8, "turn": 6.6, "mag": 4.1, "sera": 3.7, "mascot": 2.7}
 const ISLAND_DIAMETER := 14.4
 const UNSCALED := ["plaza", "piedestal"]
 
 
+## Id-urile interne → numele fișierelor din handoff.
+const FILE := {"obs": "observator", "mag": "magazin", "mascot": "mascota"}
+
 static func path(k: String) -> String:
-	return "res://models/%s.glb" % k
+	var base := k
+	var suffix := ""
+	var i := k.rfind("_")
+	if i > 0 and k.substr(i + 1).is_valid_int():
+		base = k.substr(0, i)
+		suffix = k.substr(i)
+	return "res://assets/models/%s%s.glb" % [FILE.get(base, base), suffix]
 
 
 static func has(k: String) -> bool:

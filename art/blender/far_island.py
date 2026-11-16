@@ -1,7 +1,7 @@
 """Prerandează o insulă îndepărtată (PNG cu fundal transparent) din modelele jocului.
 
 Rulare:
-    blender -b --factory-startup --python art/blender/far_island.py -- godot/models godot/art3d/far_island.png
+    blender -b --factory-startup --python art/blender/far_island.py -- godot/assets/models godot/art3d/far_island.png
 
 Folosește insula, magazinul și turnul, micșorate, văzute din același unghi ca jocul (~40°).
 """
@@ -14,7 +14,7 @@ import bk  # noqa: E402
 import bpy  # noqa: E402
 
 A = bk.args()
-MODELS = A[0] if A else "godot/models"
+MODELS = A[0] if A else "godot/assets/models"
 OUT = A[1] if len(A) > 1 else "far_island.png"
 
 bk.reset_scene()

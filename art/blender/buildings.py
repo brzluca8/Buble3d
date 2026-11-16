@@ -1,9 +1,9 @@
 """Clădirile insulei Buble, după imaginea de referință.
 
 Rulare (toate sau una):
-    blender -b --factory-startup --python art/blender/buildings.py -- godot/models [palat|obs|turn|mag|sera] [--preview DIR]
+    blender -b --factory-startup --python art/blender/buildings.py -- godot/assets/models [palat|obs|turn|mag|sera] [--preview DIR]
 
-Fiecare clădire are 5 niveluri, exportate ca godot/models/<id>_<nivel>.glb (nivelul 5 și ca <id>.glb).
+Fiecare clădire are 5 niveluri, exportate ca godot/assets/models/<id>_<nivel>.glb (nivelul 5 și ca <id>.glb).
 La fiecare nivel clădirea crește și își schimbă forma (ex. palatul: pavilion → portal și scări →
 turnuri laterale → cupolă mare cu tambur → lanternă, steaguri, iederă). Plasele sunt unite.
 """
@@ -290,9 +290,10 @@ for bid in ONLY:
         BUILDERS[bid](P, L)
         bk.set_parent(None)
         bk.apply_and_join(root, bid.capitalize())
-        bk.export_glb(os.path.join(OUT_DIR, "%s_%d.glb" % (bid, L)))
+        fname = {"obs": "observator", "mag": "magazin"}.get(bid, bid)
+        bk.export_glb(os.path.join(OUT_DIR, "%s_%d.glb" % (fname, L)))
         if L == 5:
-            bk.export_glb(os.path.join(OUT_DIR, bid + ".glb"))
+            bk.export_glb(os.path.join(OUT_DIR, fname + ".glb"))
         if PREVIEW:
             H = {"palat": 5.5, "obs": 4.5, "turn": 5.3, "mag": 3.3, "sera": 2.6}[bid]
             bk.preview(os.path.join(PREVIEW, "%s_%d.png" % (bid, L)), target=(0, 0, H * 0.45), cam_loc=(H * 0.9, -H * 2.0, H * 1.05), lens=50, res=320)

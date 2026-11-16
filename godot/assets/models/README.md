@@ -24,7 +24,7 @@ Fiecare înlocuiește varianta procedurală. Dacă un fișier lipsește, jocul f
 
 - `mascot.glb` este generat de `art/blender/mascot.py` (Blender 4.x):
   ```bash
-  blender -b --factory-startup --python art/blender/mascot.py -- godot/models/mascot.glb previzualizare.png
+  blender -b --factory-startup --python art/blender/mascot.py -- godot/assets/models/mascota.glb previzualizare.png
   ```
   Animații: `idle` (face cu mâna, repetat), `walk` (repetat), `jump`. Modifică scriptul și rulează din nou;
   Godot reimportă automat fișierul.

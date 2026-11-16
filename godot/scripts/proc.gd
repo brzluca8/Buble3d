@@ -1,7 +1,7 @@
 class_name Proc
 extends RefCounted
 ## Geometrie procedurală (portată din prototipul web). Este varianta implicită
-## pentru orice piesă care nu are încă un model în res://models/.
+## pentru orice piesă care nu are încă un model în res://assets/models/.
 
 # ---------------- aleator determinist ----------------
 static var _sd := 7

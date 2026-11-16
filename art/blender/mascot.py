@@ -1,7 +1,7 @@
 """Mascota Buble – model + animații, generate în Blender (4.x).
 
 Rulare:
-    blender -b --factory-startup --python art/blender/mascot.py -- godot/models/mascot.glb [preview.png]
+    blender -b --factory-startup --python art/blender/mascot.py -- godot/assets/models/mascota.glb [preview.png]
 
 După imaginea de referință: corp moale alb-lavandă în formă de bob, picioare scurte,
 ochi mari lucioși, gură deschisă veselă, cască de aviator maro cu creștet violet,

@@ -2,7 +2,7 @@
 balustrade, felinare, liane și cristale dedesubt.
 
 Rulare:
-    blender -b --factory-startup --python art/blender/island.py -- godot/models/insula.glb [preview.png]
+    blender -b --factory-startup --python art/blender/island.py -- godot/assets/models/insula.glb [preview.png]
 
 Originea = nivelul ierbii (z = 0), diametrul = 14.4 (raza 7.2), fața spre -Y.
 Piața, fântâna, copacii și clădirile rămân în joc (Godot), deasupra acestui teren.

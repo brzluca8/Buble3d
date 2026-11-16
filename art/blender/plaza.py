@@ -1,7 +1,7 @@
 """Piața centrală și vegetația insulei (plaza.glb), după randarea de referință.
 
 Rulare:
-    blender -b --factory-startup --python art/blender/plaza.py -- godot/models/plaza.glb [preview.png]
+    blender -b --factory-startup --python art/blender/plaza.py -- godot/assets/models/plaza.glb [preview.png]
 
 Coordonatele sunt cele ale insulei din joc: Godot (x, z) = Blender (x, -y); fără scalare la import.
 Fântâna: centrul în Godot (0, 0.3), cristalul din vârf la înălțimea FOUNTAIN_TOP (îl adaugă jocul).

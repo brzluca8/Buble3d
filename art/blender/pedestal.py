@@ -1,7 +1,7 @@
 """Piedestalul globului de sticlă (piedestal.glb): bază violet în trepte, inele aurii, rune turcoaz luminoase.
 
 Rulare:
-    blender -b --factory-startup --python art/blender/pedestal.py -- godot/models/piedestal.glb [preview.png]
+    blender -b --factory-startup --python art/blender/pedestal.py -- godot/assets/models/piedestal.glb [preview.png]
 
 Originea = centrul bazei, partea de sus a piedestalului la z = TOP (globul stă deasupra). Raza ~5.
 """
