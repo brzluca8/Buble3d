@@ -1004,6 +1004,11 @@ func _pulse_winners(res: Dictionary, times := 3) -> void:
 			tw.tween_method(func(v: float): _set_glow(n, v), 1.0, 0.45, 0.22)
 
 
+func _winner_pos(i: int, res: Dictionary) -> Vector3:
+	var k: int = syms.find(res.reels[i])
+	return (sym_nodes[i][k][2] as Node3D).global_position + Vector3(0, 0, 0.25)
+
+
 func screen_of(p: Vector3) -> Vector2:
 	return cam.unproject_position(p)
 
@@ -1049,6 +1054,8 @@ func _win_small(res: Dictionary) -> void:
 	Sfx.buzz(25)
 	set_bulbs("win")
 	_play("wave")
+	for i in winners(res):
+		Fx.win(self, _winner_pos(i, res), 0.55, false)
 	if res.coins > 0:
 		hud.fly_coins(middle_screen(), 7)
 	elif res.energy > 0:
@@ -1063,6 +1070,10 @@ func _win_big(res: Dictionary) -> void:
 	Sfx.buzz(120)
 	set_bulbs("win")
 	_mascot_joy()
+	# contact la tavă (bliț + arce aurii + scântei în sus), apoi monedele și sclipirile pe simboluri
+	Fx.win(self, coins_fx.global_position + Vector3(0, 0.2, 0.25), 1.0, true)
+	for i in winners(res):
+		Fx.sparkle(self, _winner_pos(i, res), 0.7, Color(1.0, 0.9, 0.55), 5, 0.3)
 	coins_fx.amount = 70 if Game.quality != "mic" else 40
 	coins_fx.restart()
 	_flash_lamps(3.5)
@@ -1093,6 +1104,10 @@ func _win_huge(res: Dictionary) -> void:
 	tw.parallel().tween_property(cam, "position", cam_base + Vector3(0, 0.1, -1.8), 0.4).set_trans(Tween.TRANS_SINE)
 	coin_rain.restart()
 	bubble_burst.restart()
+	Fx.flash(self, Vector3(0, WZ, REEL_Z + REEL_R + 0.5), 1.1)
+	Fx.arcs(self, Vector3(0, WZ, REEL_Z + REEL_R + 0.4), 1.25, Color("ffd24a"), 5, 0.6)
+	for i in winners(res):
+		Fx.sparkle(self, _winner_pos(i, res), 0.8, Color(1.0, 0.92, 0.6), 6, 0.35)
 	coins_fx.amount = 90 if Game.quality == "mare" else 60
 	coins_fx.restart()
 	_flash_lamps(5.0)
@@ -1140,7 +1155,7 @@ func _pop_out(kind: String, scale_to := 4.0) -> MeshInstance3D:
 	om.shader = preload("res://shaders/symbol_obj.gdshader")
 	obj.material_override = om
 	add_child(obj)
-	obj.set_instance_shader_parameter("glow", 0.6)
+	obj.set_instance_shader_parameter("glow", 0.12)
 	obj.position = Vector3(0, WZ, REEL_Z + REEL_R + 0.05)
 	Sfx.play("whoosh")
 	var tw := create_tween()
@@ -1155,6 +1170,8 @@ func _intro_hammer(res: Dictionary) -> void:
 	_mascot_joy()
 	var h := _pop_out("hammer", 3.4)
 	await get_tree().create_timer(0.5).timeout
+	# anticipare: ciocanul se ridică și capul lui sclipește
+	Fx.sparkle(self, h.global_position + Vector3(-0.25, 0.4, 0), 0.6, Color(1, 1, 1), 3, 0.15)
 	var tw := create_tween()
 	tw.tween_property(h, "rotation:z", 1.2, 0.22).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(h, "rotation:z", -0.6, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -1163,6 +1180,7 @@ func _intro_hammer(res: Dictionary) -> void:
 	Sfx.play("smash")
 	Sfx.buzz(140)
 	shake(0.35, 0.1)
+	Fx.hit_heavy(self, h.global_position + Vector3(0, 0, -0.4), 0.55, Vector3(0, 0.6, 1.0))
 	hud.crack(screen_of(h.global_position))
 	await get_tree().create_timer(0.7).timeout
 	h.queue_free()
@@ -1195,6 +1213,9 @@ func _intro_chest(res: Dictionary) -> void:
 	await get_tree().create_timer(0.5).timeout
 	Sfx.play("chest")
 	Sfx.buzz(40)
+	Fx.flash(self, c.global_position + Vector3(0, 0.3, 0.2), 0.8, Color(1.0, 0.85, 0.5))
+	Fx.sparkle(self, c.global_position, 0.8, Color(1.0, 0.9, 0.5), 10, 0.7)
+	Fx.motes(self, c.global_position, 0.7, Color(1.0, 0.85, 0.45), 12)
 	var burst := OmniLight3D.new()
 	burst.light_color = Color("ffd27a")
 	burst.light_energy = 0.0
@@ -1239,6 +1260,7 @@ func _intro_shield(res: Dictionary) -> void:
 	tw.parallel().tween_property(s, "scale", Vector3.ONE * 0.1, 0.5).set_delay(0.4)
 	tw.tween_interval(0.5)
 	tw.tween_property(dome, "scale", Vector3.ONE * 1.15, 0.2)
+	tw.tween_callback(func(): Fx.shield_break(self, dome.global_position + Vector3(0, 0, 1.2), 1.6))
 	tw.tween_property(dome, "scale", Vector3.ZERO, 0.25)
 	await tw.finished
 	s.queue_free()
@@ -1251,6 +1273,9 @@ func _intro_card(res: Dictionary) -> void:
 	_play("wave")
 	var c := _pop_out("card", 4.5)
 	Sfx.play("chest", 1.2)
+	var st := c.create_tween()
+	st.tween_interval(0.45)
+	st.tween_callback(func(): Fx.sparkle(self, c.global_position, 0.7, Color(1.0, 0.8, 0.95), 8, 0.5))
 	var tw := create_tween()
 	tw.tween_interval(0.45)
 	tw.tween_property(c, "rotation:y", TAU, 0.5).set_trans(Tween.TRANS_SINE)

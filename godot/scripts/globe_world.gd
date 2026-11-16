@@ -491,6 +491,11 @@ func _on_upgraded(id: String) -> void:
 	var b := _building(id)
 	burst.position = globe.to_local(b.global_position) + Vector3(0, 1.0, 0)
 	burst.restart()
+	# upgrade: fără bliț de atac – inele care urcă, sclipiri, mote (apariție lentă, ușor overshoot)
+	var fs: float = Building.FOOT.get(id, 1.2) * CITY_SCALE * globe.scale.x
+	Fx.rising_halos(self, b.global_position + Vector3(0, 0.15, 0), fs * 1.1, Color(1.0, 0.85, 0.45), 3)
+	Fx.sparkle(self, b.global_position + Vector3(0, 1.4, 0), fs * 0.9, Color(1.0, 0.92, 0.6), 8, 1.2)
+	Fx.motes(self, b.global_position + Vector3(0, 0.5, 0), fs * 0.8, Color(1.0, 0.85, 0.5), 12, 1.6, 1.0)
 
 
 ## Câștig mare la mașina de bule: explozie de bule în glob și mascota se bucură.
@@ -629,6 +634,7 @@ func attack_building(id: String) -> Dictionary:
 		add_child(sh)
 		sh.global_position = b.global_position + Vector3(0, 1.2, 0)
 		Sfx.play("pop")
+		Fx.shield_break(self, sh.global_position + Vector3(0, 0.3, 1.0), 1.2)
 		var bt := create_tween()
 		bt.tween_property(hammer, "global_position", impact + Vector3(2.0, 3.0, 2.0), 0.45)
 		bt.parallel().tween_property(sh, "scale", Vector3.ONE * 1.15, 0.2)
@@ -639,6 +645,7 @@ func attack_building(id: String) -> Dictionary:
 		Sfx.play("bomb")
 		Sfx.buzz(80)
 		cam.shake(0.5)
+		Fx.hit_heavy(self, impact, 0.75, Vector3(0, 1, 0.4))
 		burst.position = globe.to_local(impact)
 		burst.restart()
 		b.show_level(int(r.levels.get(id, 0)))
@@ -690,6 +697,9 @@ func dig(i: int, value: int) -> void:
 	tw.tween_property(dirt, "scale", Vector3(1.3, 0.1, 1.3), 0.25)
 	await tw.finished
 	(g.get_node("Label") as Label3D).text = Game.fmt(value) if value > 0 else "–"
+	Fx.dust(self, g.global_position + Vector3(0, 0.3, 0), 0.6, Color(0.75, 0.7, 0.66), 8, 1.1)
+	if value > 0:
+		Fx.win(self, g.global_position + Vector3(0, 0.6, 0), 0.5, false)
 	if value > 0:
 		var chest := Node3D.new()
 		Proc.add(chest, Proc.box(0.9, 0.55, 0.6), Proc.M("brown"), Vector3(0, 0.28, 0))

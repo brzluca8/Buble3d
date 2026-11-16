@@ -19,7 +19,7 @@ func _initialize() -> void:
 	g.levels = {"palat": 2, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 	g.chests = [{"kind": "rar", "end": Time.get_unix_time_from_system() + 2400}, {"kind": "comun", "end": 0.0}]
 	g.streak = {"day": 1, "last": g.today()}
-	for sc in ["acasa", "setari", "santier", "mecanism", "mec_rotire", "mec_super", "mec_mare", "mec_atac", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
+	for sc in ["acasa", "setari", "santier", "mecanism", "mec_rotire", "mec_super", "mec_mare", "mec_atac", "mec_scut", "mec_cufar", "upgrade", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
 		if not only.is_empty() and not sc in only:
 			continue
 		await _shot(g, sc, out + "/" + sc + ".png")
@@ -72,6 +72,13 @@ func _shot(g, sc: String, path: String) -> void:
 	match sc:
 		"selectie":
 			g.select("palat")
+		"upgrade":
+			g.upgraded.emit("palat")
+			await create_timer(0.55, true, false, true).timeout
+			root.get_texture().get_image().save_png(path)
+			w.queue_free()
+			await _wait(3)
+			return
 		"atac":
 			hud._attack_flow(1)
 			await _wait(50)
@@ -122,6 +129,16 @@ func _mec_moment(g, w, hud, sc: String) -> void:
 			hud._show_result(res)
 			w.present(res)
 			await create_timer(1.25 if sc == "mec_super" else 0.62, true, false, true).timeout
+		"mec_scut", "mec_cufar":
+			var sym := "shield" if sc == "mec_scut" else "chest"
+			var k: int = w.syms.find(sym)
+			for i in 3:
+				w.reels[i].rotation.x = k * w.step
+			var res := {"id": "scut" if sc == "mec_scut" else "cufar", "name": "Scut" if sc == "mec_scut" else "Cufăr", "type": "shield" if sc == "mec_scut" else "chest",
+				"reels": [sym, sym, sym], "mult": 1, "coins": 0, "energy": 0, "big": false, "msg": "Scut 1/3" if sc == "mec_scut" else "Cufăr rar adăugat"}
+			hud._show_result(res)
+			w.present(res)
+			await create_timer(1.55 if sc == "mec_scut" else 0.62, true, false, true).timeout
 		"mec_atac":
 			var h: int = w.syms.find("hammer")
 			for i in 3:
@@ -129,4 +146,4 @@ func _mec_moment(g, w, hud, sc: String) -> void:
 			var res := {"id": "atac", "name": "Atac", "type": "attack", "reels": ["hammer", "hammer", "hammer"], "mult": 1, "coins": 0, "energy": 0, "big": false, "msg": "Atac!"}
 			hud._show_result(res)
 			w.present(res)
-			await create_timer(0.86, true, false, true).timeout
+			await create_timer(0.97, true, false, true).timeout

@@ -493,10 +493,10 @@ class Crack:
 func crack(at: Vector2) -> void:
 	var flash := ColorRect.new()
 	K.full_rect(flash)
-	flash.color = Color(1, 1, 1, 0.7)
+	flash.color = Color(1, 1, 1, 0.45)
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fx.add_child(flash)
-	create_tween().tween_property(flash, "color:a", 0.0, 0.25)
+	create_tween().tween_property(flash, "color:a", 0.0, 0.1)      # contactul: câteva cadre, nu o pată albă
 	var c := Crack.new()
 	c.at = at - fx.get_global_rect().position
 	K.full_rect(c)

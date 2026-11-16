@@ -7,6 +7,10 @@ Godot 4.7, Android, portret, interfață în română. Branch: `buble-v2`.
   platformă printre nori, cu 3 role 3D (`scenes/mecanism.tscn`, `scripts/mechanism_world.gd`,
   `scripts/ui/mechanism_ui.gd`, modelul din `art/blender/masina_bule.py`). Atacul și raidul se joacă
   în glob (`Game.pending_action`), apoi jocul revine pe pagina mașinii.
+- **Efecte vizuale** (`scripts/fx.gd`): bliț de contact, arce rupte cu eroziune, scântei care încetinesc și cad,
+  sclipiri în 4 colțuri, praf/fum care persistă, cioburi, mote, inele care urcă. Construite după regulile de meserie
+  din [effekseer-vfx-skill](https://github.com/kanaworksai-hue/effekseer-vfx-skill) (MIT) – structură în timp,
+  valori în straturi, formă care se schimbă, viteze variate –, dar direct în Godot, fără Effekseer.
 - Variantele de stil încercate și abandonate (Art Deco, Neon noir) au rămas doar ca scripturi Blender
   în `art/blender/` (`mecanism_artdeco.py`, `mecanism_neon.py`, `majordom.py`, `asistent.py`).
 - **Dirijabilul**: Observator (abilități), Garderobă, Atelier, Seră, Salon (`scenes/airship.tscn`).
