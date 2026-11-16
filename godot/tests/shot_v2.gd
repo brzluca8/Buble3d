@@ -19,7 +19,7 @@ func _initialize() -> void:
 	g.levels = {"palat": 2, "obs": 1, "turn": 1, "mag": 1, "sera": 1}
 	g.chests = [{"kind": "rar", "end": Time.get_unix_time_from_system() + 2400}, {"kind": "comun", "end": 0.0}]
 	g.streak = {"day": 1, "last": g.today()}
-	for sc in ["acasa", "mecanism", "mec_rotire", "mec_super", "mec_mare", "mec_atac", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
+	for sc in ["acasa", "setari", "santier", "mecanism", "mec_rotire", "mec_super", "mec_mare", "mec_atac", "selectie", "atac", "raid", "nivel5", "sanse", "glob2", "glob3", "dirijabil", "observator", "garderoba"]:
 		if not only.is_empty() and not sc in only:
 			continue
 		await _shot(g, sc, out + "/" + sc + ".png")
@@ -42,6 +42,10 @@ func _shot(g, sc: String, path: String) -> void:
 		g.level = 14 if sc == "glob2" else 24
 		for b in g.levels:
 			g.levels[b] = 3
+	elif sc == "santier":
+		g.globe = 1
+		g.level = 1
+		g.levels = {"palat": 1, "obs": 0, "turn": 0, "mag": 0, "sera": 0}
 	else:
 		g.globe = 1
 		g.level = 3
@@ -76,6 +80,11 @@ func _shot(g, sc: String, path: String) -> void:
 			await _wait(50)
 		"sanse":
 			hud.open_modal("sanse")
+		"setari":
+			hud.open_modal("setari")
+			await _wait(5)
+			var sc_box: ScrollContainer = hud.modal_box.get_parent()
+			sc_box.scroll_vertical = 2000
 		"observator":
 			hud._sel_skill = "noroc_2"
 			hud.open("observator")

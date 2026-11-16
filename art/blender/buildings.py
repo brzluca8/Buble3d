@@ -196,7 +196,10 @@ def build_mag(P, L):
     box((3.2, 2.4, 0.22), (0, 0, 0.11), P["stone_dk"], bevel=0.03)
     box((2.9, 2.1, 1.75), (0, 0.05, 1.1), P["stone"], bevel=0.03)
     box((3.05, 2.25, 0.14), (0, 0.05, 2.03), P["stone_dk"], bevel=0.03)
-    cyl(2.15, 1.05, (0, 0.05, 2.62), P["roof"], seg=4, r2=0.25, rot=(0, 0, math.pi / 4), smooth=False)
+    # acoperiș violet în patru ape, ca în randare, cu coamă aurie
+    cyl(2.15, 1.05, (0, 0.05, 2.62), P["violet"] if L >= 3 else P["roof"], seg=4, r2=0.25, rot=(0, 0, math.pi / 4), smooth=False)
+    if L >= 3:
+        box((3.12, 2.32, 0.07), (0, 0.05, 2.12), P["gold"])
     door((0, -1.06, 0.22), 0.5, 1.15, P)
     if L >= 3:
         for sx in (-1, 1):
@@ -224,6 +227,10 @@ def build_mag(P, L):
             cyl(0.2, 0.3, (sx * 1.25, -1.45, 0.37), P["wood_lt"], seg=12, r2=0.15)
             bush((sx * 1.25, -1.45, 0.45), 0.3, P, "pink" if sx < 0 else "lilac", n=5, seed=sx + 3)
     if L >= 5:
+        # fronton de piatră cu fereastră în arc și ornament auriu deasupra copertinei
+        box((1.3, 0.2, 0.7), (0, -0.95, 2.45), P["stone"], bevel=0.04)
+        arch_window((0, -1.06, 2.42), 0.38, 0.5, P)
+        sphere(0.09, (0, -1.0, 2.86), P["gold"], seg=10, rings=6)
         box((3.12, 0.06, 0.06), (0, -1.82, 1.62), P["gold"])
         leaf((0, -1.86, 1.5), 0.28, P)
         for sx in (-1, 1):

@@ -9,8 +9,9 @@ const C := Vector3(0, 6.55, 0)                   # centrul globului (pe piedesta
 const GROUND := 1.7                             # platoul orașului este la C.y - GROUND
 const CITY_SCALE := 0.64
 const MASCOT_HOME := Vector3(-1.7, 0.0, 4.4)    # în coordonatele orașului (lângă scări)
-const FRIEND_SLOTS := [Vector3(-7.6, 8.8, 1.5), Vector3(7.6, 9.4, 1.0), Vector3(-8.0, 3.6, 2.0),
-	Vector3(8.0, 3.2, 2.0), Vector3(-5.6, 12.4, -3.5), Vector3(5.8, 12.2, -3.5)]
+const FRIEND_SLOTS := [Vector3(-7.6, 8.8, 1.5), Vector3(7.6, 9.4, 1.0), Vector3(-8.0, 3.6, 2.0)]
+## Bulele „Invită” stau fixe pe ecran, în zone libere de interfață (fracții din ecran).
+const FRIEND_SCREEN := [Vector2(0.09, 0.45), Vector2(0.91, 0.5), Vector2(0.09, 0.64)]
 
 var env: Environment
 var sun: DirectionalLight3D
@@ -41,6 +42,7 @@ func _ready() -> void:
 	repo = NetFriendsRepository.new() if Net.online else LocalDemoRepository.new()
 	_environment()
 	_stars()
+	stars.visible = false          # fundalul cu bokeh le înlocuiește (ca la mașina de bule)
 	globe = Node3D.new()
 	globe.name = "Glob"
 	add_child(globe)
@@ -52,9 +54,18 @@ func _ready() -> void:
 	cam = CameraRig.new()
 	add_child(cam)
 	cam.buildings = city.get_node("Buildings").get_children()
-	cam.set_view(C + Vector3(0, -0.6, 0), 33.0, 16.0, 6.0, 38.0)
+	# globul ~30% mai mare pe ecran decât înainte (33 → 25.5)
+	cam.set_view(C + Vector3(0, -0.5, 0), 25.5, 16.0, 6.0, 38.0)
 	cam.auto_rotate = true
-	cam.focus_dist = 21.0
+	cam.focus_dist = 15.0
+	cam.focus_pitch = 50.0
+	cam.focus_center = C + Vector3(0, -GROUND, 0)
+	# același fundal ca la mașina de bule, purtat de cameră (rămâne în spate oricum s-ar roti)
+	Backdrop.build(cam, Vector3(0, -10.0, -32.0), 2.4, false)
+	for i in friends.size():
+		friends[i].cam = cam
+		friends[i].screen_anchor = FRIEND_SCREEN[i]
+		friends[i].scale = Vector3.ONE * 0.32
 	add_child(preload("res://scripts/ui/hud_v2.gd").new())
 	Game.selected.connect(_on_selected)
 	Game.upgraded.connect(_on_upgraded)
@@ -75,10 +86,10 @@ func _ready() -> void:
 # ---------------- mediu: amurg cu stele ----------------
 func _environment() -> void:
 	sky_mat = ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("070624")
-	sky_mat.sky_horizon_color = Color("2a1d7a")
-	sky_mat.ground_horizon_color = Color("2b2486")
-	sky_mat.ground_bottom_color = Color("0e5a7a")
+	sky_mat.sky_top_color = Color("1e1450")
+	sky_mat.sky_horizon_color = Color("c8689a")
+	sky_mat.ground_horizon_color = Color("e88a8a")
+	sky_mat.ground_bottom_color = Color("1a1040")
 	sky_mat.sky_curve = 0.25
 	sky_mat.ground_curve = 0.2
 	sky_mat.sun_angle_max = 0.0
@@ -219,7 +230,7 @@ func _city() -> void:
 	mascot = Mascot.new()
 	city.add_child(mascot)
 	mascot.set_home(MASCOT_HOME)
-	mascot.scale = Vector3.ONE * 1.25
+	mascot.scale = Vector3.ONE * 0.62    # cam cât ușa unei clădiri
 	ring_sel = Proc.add(city, Proc.htor(1.0, 0.035, 64, 8), Proc.mat(Color("ffd86b"), {"emit": Color("ffc040"), "energy": 3.0}))
 	ring_sel.visible = false
 	ring_sel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -466,6 +477,8 @@ func _building(id: String) -> Building:
 
 func _on_selected(id: String) -> void:
 	ring_sel.visible = id != ""
+	for fb in friends:
+		fb.visible = id == ""           # în vederea apropiată bulele nu acoperă orașul
 	if id == "":
 		return
 	var b := _building(id)
@@ -529,7 +542,7 @@ func _process(dt: float) -> void:
 
 # ---------------- teme: cele 3 globuri ----------------
 const THEMES := [
-	{"sky": ["070624", "2a1d7a", "2b2486", "0e5a7a"], "fog": "2e2470", "amb": "a99ad8", "sun": "ffd9a8", "roof": "", "grass": "ffffff", "stone": "ffffff"},
+	{"sky": ["1e1450", "c8689a", "e88a8a", "1a1040"], "fog": "6a3a7a", "amb": "b8a0e8", "sun": "ffe0b0", "roof": "", "grass": "ffffff", "stone": "ffffff"},
 	# Orașul de cristal: noapte rece, acoperișuri de gheață, iarbă argintie
 	{"sky": ["040a2a", "1c3a8a", "2a5ab0", "6aa8d8"], "fog": "2a4a8a", "amb": "9ab8e8", "sun": "dfefff", "roof": "8fc8ff", "grass": "b8e0d8", "stone": "e8f0ff"},
 	# Portul de amurg: apus cald, acoperișuri de coral

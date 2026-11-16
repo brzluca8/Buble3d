@@ -68,7 +68,7 @@ func _ready() -> void:
 	syms = Game.D.spin_table.symbols
 	step = TAU / syms.size()
 	_environment()
-	_backdrop()
+	rays = Backdrop.build(self)
 	_floor()
 	_machine()
 	_symbols()
@@ -149,137 +149,6 @@ func _environment() -> void:
 	fill.light_energy = 0.35
 	add_child(fill)
 	fill.look_at_from_position(Vector3(4, 2, 8), Vector3(0, 2, 0))
-
-
-## Fundalul: orașul din glob estompat, bokeh cald, raze de lumină, bule care urcă.
-func _backdrop() -> void:
-	# siluetele orașului: o textură mică, apoi micșorată și mărită (estompare ieftină)
-	var w := 160
-	var h := 80
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	Proc.reseed(31)
-	var x := 0
-	while x < w:
-		var bw := 6 + int(Proc.rnd() * 14)
-		var bh := 18 + int(Proc.rnd() * 50)
-		var dome := Proc.rnd() < 0.3
-		for yy in range(h - bh, h):
-			for xx in range(x, mini(x + bw, w)):
-				var c := Color(0.2, 0.1, 0.35, 1.0)
-				if (xx - x) % 3 == 1 and (yy - (h - bh)) % 4 == 2 and Proc.rnd() < 0.55:
-					c = Color(1.0, 0.75, 0.45, 1.0)
-				img.set_pixel(xx, yy, c)
-		if dome:
-			for yy in range(maxi(0, h - bh - bw / 2), h - bh):
-				for xx in range(x, mini(x + bw, w)):
-					if Vector2(xx - x - bw / 2.0, float(yy - (h - bh))).length() < bw / 2.0:
-						img.set_pixel(xx, yy, Color(0.2, 0.1, 0.35, 1.0))
-		x += bw + int(Proc.rnd() * 3)
-	img.resize(40, 20, Image.INTERPOLATE_BILINEAR)
-	img.resize(160, 80, Image.INTERPOLATE_CUBIC)
-	var city := MeshInstance3D.new()
-	var qm := QuadMesh.new()
-	qm.size = Vector2(34, 17)
-	city.mesh = qm
-	var cm := StandardMaterial3D.new()
-	cm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	cm.albedo_texture = ImageTexture.create_from_image(img)
-	cm.albedo_color = Color(1.0, 0.85, 1.0, 0.9)
-	city.material_override = cm
-	city.position = Vector3(0, 5.0, -16)
-	add_child(city)
-	# bokeh: pete calde de lumină, mari și moi (o singură desenare)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	var bq := QuadMesh.new()
-	bq.size = Vector2.ONE
-	mm.mesh = bq
-	mm.instance_count = 46
-	var cols := [Color(1.0, 0.7, 0.35, 0.55), Color(1.0, 0.45, 0.7, 0.45), Color(0.4, 0.95, 1.0, 0.35), Color(1.0, 0.9, 0.6, 0.5)]
-	Proc.reseed(44)
-	for i in 46:
-		var s := 0.4 + Proc.rnd() * 1.4
-		var p := Vector3(-9.0 + Proc.rnd() * 18.0, 0.6 + Proc.rnd() * 9.0, -7.0 - Proc.rnd() * 7.0)
-		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ONE * s), p))
-		mm.set_instance_color(i, cols[i % cols.size()])
-	var bokeh := MultiMeshInstance3D.new()
-	bokeh.multimesh = mm
-	var bm := StandardMaterial3D.new()
-	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	bm.vertex_color_use_as_albedo = true
-	bm.albedo_texture = _ring_soft_tex()
-	bm.disable_fog = true
-	bokeh.material_override = bm
-	bokeh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(bokeh)
-	# raze de lumină care cad oblic prin sticla globului
-	for i in 4:
-		var r := MeshInstance3D.new()
-		var rq := QuadMesh.new()
-		rq.size = Vector2(1.2 + i * 0.4, 16.0)
-		r.mesh = rq
-		var rm := StandardMaterial3D.new()
-		rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		rm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		rm.albedo_texture = Proc.tex("soft")
-		rm.albedo_color = Color(1.0, 0.85, 0.6, 0.09)
-		rm.disable_fog = true
-		r.material_override = rm
-		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		r.position = Vector3(-4.5 + i * 2.6, 6.0, -4.0 - i * 0.6)
-		r.rotation.z = -0.42
-		r.name = "Raza%d" % i
-		add_child(r)
-	# raze „sunburst” în spatele aparatului (pornesc doar la super câștig)
-	rays = MeshInstance3D.new()
-	var sq := QuadMesh.new()
-	sq.size = Vector2(12, 12)
-	rays.mesh = sq
-	var sm := StandardMaterial3D.new()
-	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	sm.albedo_texture = _rays_tex()
-	sm.albedo_color = Color(1.0, 0.8, 0.45, 0.0)
-	sm.disable_fog = true
-	rays.material_override = sm
-	rays.position = Vector3(0, 2.6, -1.4)
-	rays.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(rays)
-
-
-func _ring_soft_tex() -> Texture2D:
-	# pată bokeh: disc moale cu marginea puțin mai luminoasă
-	var n := 64
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	for y in n:
-		for x in n:
-			var d := Vector2(x - 31.5, y - 31.5).length() / 32.0
-			var a := clampf((1.0 - d) * 6.0, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.6, 0.95, d))
-			img.set_pixel(x, y, Color(1, 1, 1, a))
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
-
-
-func _rays_tex() -> Texture2D:
-	var n := 128
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	for y in n:
-		for x in n:
-			var p := Vector2(x - 63.5, y - 63.5) / 64.0
-			var a := atan2(p.y, p.x)
-			var v := pow(0.5 + 0.5 * cos(a * 14.0), 5.0) * clampf(1.0 - p.length(), 0.0, 1.0)
-			v += clampf(1.0 - p.length() * 2.2, 0.0, 1.0) * 0.6
-			img.set_pixel(x, y, Color(1, 1, 1, clampf(v, 0.0, 1.0)))
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
 
 
 ## Podea lucioasă sub aparat (reflexii din sondă), cu inel de alamă și o pată caldă de lumină.
@@ -548,6 +417,7 @@ func _reels() -> void:
 			pivot.add_child(holder)
 			var ob := MeshInstance3D.new()
 			ob.mesh = sym_mesh[sid]
+			ob.scale = Vector3.ONE * 1.4          # obiectul umple bula
 			ob.material_override = obj_mat
 			ob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			holder.add_child(ob)
@@ -590,28 +460,44 @@ func _blur_strip() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
-## Linia de câștig: o bară aurie luminoasă pe rândul din mijloc, cu halou.
+## Linia de câștig: o bandă aurie luminoasă pe rândul din mijloc (două filete + umplere caldă).
 func _payline() -> void:
-	var line := MeshInstance3D.new()
-	line.mesh = _box(2.62, 0.022, 0.01)
-	line.material_override = Proc.mat(Color(1.0, 0.82, 0.35), {"unshaded": true})
-	(line.material_override as StandardMaterial3D).albedo_color = Color(3.0, 2.4, 1.0)
-	line.position = Vector3(0, WZ, REEL_Z + REEL_R + 0.3)
-	line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(line)
+	var gold := Proc.mat(Color(1.0, 0.82, 0.35), {"unshaded": true})
+	gold.albedo_color = Color(2.8, 2.1, 0.8)
+	for dy in [-0.27, 0.27]:
+		var line := MeshInstance3D.new()
+		line.mesh = _box(2.62, 0.03, 0.01)
+		line.material_override = gold
+		line.position = Vector3(0, WZ + dy, REEL_Z + REEL_R + 0.3)
+		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(line)
+	var band := MeshInstance3D.new()
+	var bq := QuadMesh.new()
+	bq.size = Vector2(2.62, 0.54)
+	band.mesh = bq
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	bm.albedo_color = Color(1.0, 0.72, 0.25, 0.13)
+	bm.render_priority = 3
+	band.material_override = bm
+	band.position = Vector3(0, WZ, REEL_Z + REEL_R + 0.29)
+	band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(band)
 	var halo := MeshInstance3D.new()
 	var hq := QuadMesh.new()
-	hq.size = Vector2(2.9, 0.62)
+	hq.size = Vector2(3.1, 0.9)
 	halo.mesh = hq
 	var hm := StandardMaterial3D.new()
 	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	hm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	hm.albedo_texture = Proc.tex("soft")
-	hm.albedo_color = Color(1.0, 0.75, 0.3, 0.22)
+	hm.albedo_color = Color(1.0, 0.75, 0.3, 0.16)
 	hm.render_priority = 3
 	halo.material_override = hm
-	halo.position = Vector3(0, WZ, REEL_Z + REEL_R + 0.29)
+	halo.position = Vector3(0, WZ, REEL_Z + REEL_R + 0.28)
 	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(halo)
 
@@ -963,8 +849,8 @@ func _effects() -> void:
 func _place_camera() -> void:
 	# aparatul ocupă ~60–65% din înălțime; camera e puțin mai jos și privește ușor în sus
 	cam.fov = 30.0
-	cam_base = Vector3(0.05, 2.15, 8.6)
-	cam_look = Vector3(0.05, 2.42, 0.0)
+	cam_base = Vector3(0.05, 2.1, 8.9)
+	cam_look = Vector3(0.05, 2.22, 0.0)     # aparatul stă deasupra barei evenimentului
 	cam.position = cam_base
 	cam.look_at(cam_look)
 

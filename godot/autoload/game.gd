@@ -82,6 +82,9 @@ var last_save := 0.0
 var gift_days := {}
 var friend_flags := {}
 var sel := ""
+var forced_outcome := ""                # doar Instrumentele de test: rezultatul următoarei rotiri
+var debug_tools: Node = null            # scripts/debug/debug_tools.gd, doar în build de debug / DEBUG_TOOLS
+const DEBUG_SCRIPT := "res://scripts/debug/debug_tools.gd"
 var pending_action := {}               # atac/raid pornite din pagina mașinii de bule: {"type", "mult", "from"}
 var _raid := []
 var _w_total := 0
@@ -91,6 +94,7 @@ func _ready() -> void:
 	_load_data()
 	_reset_new()
 	load_game()
+	_install_debug_tools()
 	if first_open <= 0.0:
 		first_open = _now()
 		event.start = first_open
@@ -129,6 +133,18 @@ func _load_data() -> void:
 	_w_total = 0
 	for o in D.spin_table.outcomes:
 		_w_total += int(o.weight)
+
+
+## Instrumentele de test: doar dacă jocul rulează ca build de debug sau DEBUG_TOOLS e activ în
+## config.json, și doar dacă scriptul a fost exportat (exportul de lansare îl exclude).
+func debug_tools_allowed() -> bool:
+	return (OS.is_debug_build() or bool(cfg("DEBUG_TOOLS", false))) and ResourceLoader.exists(DEBUG_SCRIPT)
+
+
+func _install_debug_tools() -> void:
+	if debug_tools_allowed():
+		debug_tools = (load(DEBUG_SCRIPT) as GDScript).new()
+		add_child(debug_tools)
 
 
 func cfg(path: String, def = null):
@@ -439,6 +455,11 @@ func spin() -> Dictionary:
 		if r < 0:
 			o = x
 			break
+	if forced_outcome != "" and debug_tools != null:
+		for x in D.spin_table.outcomes:
+			if x.id == forced_outcome:
+				o = x
+		forced_outcome = ""
 	var res := {"id": o.id, "name": o.name, "type": o.type, "reels": _reels(o), "mult": mult, "coins": 0, "energy": 0, "big": false, "msg": ""}
 	var u := bet_unit() * mult
 	var cm := 1.0 + skill_value("spin_coins") + companion_bonus()

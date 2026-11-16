@@ -14,6 +14,9 @@ var _inner: Node3D
 var _flag: Node3D
 var _base := Vector3.ZERO
 var _t := 0.0
+var cam: Camera3D                      # dacă e setat, bula stă fixă pe ecran la screen_anchor
+var screen_anchor := Vector2(-1, -1)  # fracții din ecran (0..1)
+const SCREEN_DEPTH := 12.0
 
 
 func setup(i: int, pos: Vector3) -> void:
@@ -105,7 +108,11 @@ func _label(text: String, size: int, pos: Vector3, col: Color) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
-	position = _base + Vector3(sin(_t * 0.4) * 0.25, sin(_t * 0.7) * 0.35, 0)
+	if cam and screen_anchor.x >= 0.0:
+		var vp := get_viewport().get_visible_rect().size
+		global_position = cam.project_position(screen_anchor * vp, SCREEN_DEPTH) + cam.global_basis.y * sin(_t * 0.7) * 0.08
+	else:
+		position = _base + Vector3(sin(_t * 0.4) * 0.25, sin(_t * 0.7) * 0.35, 0)
 	if _inner:
 		_inner.rotation.y += dt * 0.3
 	if _flag:

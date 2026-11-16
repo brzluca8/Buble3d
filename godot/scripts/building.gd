@@ -72,14 +72,54 @@ func _apply_level(animate: bool) -> void:
 	_refresh_build()
 
 
-## Fundația goală (etapa 0): placă de piatră cu un inel auriu și un cristal care plutește.
+## Locul gol de construcție (etapa 0): fundație de piatră în trepte, schele de lemn,
+## blocuri de piatră pregătite și un panou de lemn cu prețul primei etape.
+var _price: Label3D
+
 func _foundation() -> Node3D:
 	var g := Node3D.new()
 	var r: float = FOOT[id]
-	Proc.add(g, Proc.cyl(r, r + 0.1, 0.18, 32), Proc.M("ped"), Vector3(0, 0.09, 0))
-	Proc.add(g, Proc.htor(r * 0.8, 0.04, 48, 6), Proc.mat(Color("f6c445"), {"emit": Color("ffb030"), "energy": 1.2}), Vector3(0, 0.2, 0))
-	var gem := Proc.add(g, Proc.sph(0.22, 6, 3), Proc.M("gem"), Vector3(0, 1.0, 0))
-	gem.name = "Gem"
+	var stone := Proc.M("ped")
+	var wood := Proc.mat(Color("8a5a32"), {"rough": 0.75})
+	var wood_lt := Proc.mat(Color("b07a44"), {"rough": 0.7})
+	# fundația: două trepte de piatră (dreptunghiulare, ca pentru o clădire)
+	Proc.add(g, Proc.box(r * 1.9, 0.22, r * 1.7), stone, Vector3(0, 0.11, 0))
+	Proc.add(g, Proc.box(r * 1.6, 0.16, r * 1.4), stone, Vector3(0, 0.3, 0))
+	# schele de lemn pe trei laturi, cu scânduri
+	var h := 1.6
+	var xs := [-r * 0.8, r * 0.8]
+	var zs := [-r * 0.7, r * 0.7]
+	var pole := Proc.cyl(0.045, 0.045, h, 6)
+	for x in xs:
+		for z in zs:
+			Proc.add(g, pole, wood, Vector3(x, 0.38 + h / 2, z))
+	for y in [0.9, 1.6]:
+		Proc.add(g, Proc.box(r * 1.7, 0.05, 0.32), wood_lt, Vector3(0, 0.38 + y - 0.38, zs[0]))
+		for x in xs:
+			Proc.add(g, Proc.box(0.32, 0.05, r * 1.5), wood_lt, Vector3(x, 0.38 + y - 0.38, 0))
+	var brace := Proc.add(g, Proc.box(0.04, h * 1.15, 0.04), wood, Vector3(0, 0.38 + h / 2, zs[0]))
+	brace.rotation.z = 0.9
+	# blocuri de piatră pregătite
+	for k in 3:
+		Proc.add(g, Proc.box(0.38, 0.26, 0.3), stone, Vector3(-r * 0.35 + k * 0.4, 0.51, r * 0.15))
+	Proc.add(g, Proc.box(0.38, 0.26, 0.3), stone, Vector3(-r * 0.15, 0.77, r * 0.15))
+	# panoul cu prețul, în față
+	Proc.add(g, Proc.cyl(0.04, 0.04, 1.3, 6), wood, Vector3(r * 0.55, 0.65, r * 0.95))
+	Proc.add(g, Proc.box(1.5, 0.62, 0.08), wood_lt, Vector3(r * 0.55, 1.2, r * 0.95))
+	Proc.add(g, Proc.box(1.58, 0.06, 0.1), Proc.M("gold"), Vector3(r * 0.55, 1.53, r * 0.95))
+	_price = Label3D.new()
+	_price.font = UiKit.font(900)
+	_price.font_size = 54
+	_price.pixel_size = 0.0075
+	_price.outline_size = 6
+	_price.outline_modulate = Color(0.25, 0.12, 0.04, 1.0)
+	_price.modulate = Color("ffe9a8")
+	_price.position = Vector3(r * 0.55, 1.2, r * 0.95 + 0.05)
+	_price.width = 200
+	_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	g.add_child(_price)
+	_update_price()
 	var body := StaticBody3D.new()
 	body.collision_layer = PICK_LAYER
 	body.collision_mask = 0
@@ -87,12 +127,24 @@ func _foundation() -> Node3D:
 	var cs := CollisionShape3D.new()
 	var sh := CylinderShape3D.new()
 	sh.radius = r
-	sh.height = 1.4
+	sh.height = 1.8
 	cs.shape = sh
-	cs.position.y = 0.7
+	cs.position.y = 0.9
 	body.add_child(cs)
 	g.add_child(body)
 	return g
+
+
+func _update_price() -> void:
+	if _price == null or not is_instance_valid(_price):
+		return
+	var u: Dictionary = Game.next_upgrade(id) if level_override < 0 else {}
+	if level_override >= 0:
+		_price.text = "Șantier"
+	elif u.is_empty():
+		_price.text = "Nivel viitor"
+	else:
+		_price.text = "%s\nmonede" % Game.fmt(int(u.cost))
 
 
 ## Schele aurii și timer cât timp clădirea e în construcție.
@@ -136,11 +188,8 @@ func _process(dt: float) -> void:
 		_scaffold.rotation.y = sin(Time.get_ticks_msec() / 900.0) * 0.02
 		if not Game.is_building(id):
 			_refresh_build()
-	if _visual and _lvl <= 0:
-		var g := _visual.get_node_or_null("Gem")
-		if g:
-			g.position.y = 1.0 + sin(Time.get_ticks_msec() / 500.0) * 0.12
-			g.rotation.y += dt
+	if _visual and _lvl <= 0 and Engine.get_process_frames() % 30 == 0:
+		_update_price()
 	if _pop >= 1.0:
 		return
 	_pop = minf(1.0, _pop + dt / 0.9)

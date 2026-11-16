@@ -185,7 +185,7 @@ func _mec_controls() -> void:
 	K.place(hb, false, 54, 128, 20, 20)
 	hb.add_theme_constant_override("separation", 12)
 	root.add_child(hb)
-	mult_btn = _side_btn("×1", "pariu", Color("6d3fc0"))
+	mult_btn = _side_btn("×1", "pariu", Color("8a4ff0"))
 	mult_btn.pressed.connect(func():
 		Sfx.play("click")
 		Game.cycle_mult()
@@ -229,7 +229,7 @@ var auto := false
 
 
 func _side_btn(big: String, small: String, col: Color) -> Button:
-	var b := K.button("", 20, K.box(col, 26, K.GOLD, 2, 8, 6), Color.WHITE)
+	var b := K.button("", 20, K.box(col, 26, K.GOLD, 3, 10, 6), Color.WHITE)
 	b.custom_minimum_size = Vector2(118, 0)
 	var vb := VBoxContainer.new()
 	K.full_rect(vb)
@@ -315,7 +315,7 @@ func _refresh() -> void:
 	energy_sub.text = ("+1 în " + Game.fmt_time(Game.energy_next_in())) if Game.energy < Game.energy_cap() else "plin"
 	sub_title.text = "%s · nivelul %d" % [Game.globe_name(), mini(Game.level, Game.max_level())]
 	(mult_btn.get_child(0).get_child(0) as Label).text = "×%d" % Game.mult
-	mult_btn.modulate = Color.WHITE if Game.multipliers().size() > 1 else Color(1, 1, 1, 0.45)
+	mult_btn.modulate = Color.WHITE        # arată mereu activ; sub nivelul 5 spune când se deblochează
 	spin_cost.text = "%d energie" % Game.mult
 	spin_btn.modulate = Color.WHITE if Game.energy >= Game.mult else Color(0.6, 0.6, 0.62)
 	auto_sub.text = "pornit" if auto else "oprit"

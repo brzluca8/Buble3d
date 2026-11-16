@@ -210,7 +210,7 @@ func _initialize() -> void:
 	for i in 10:
 		await process_frame
 	check(globe.city.get_node("Buildings").get_child_count() == 5, "globul are 5 clădiri")
-	check(globe.friends.filter(func(f): return f.friend.is_empty()).size() == 6, "bulele prietenilor: doar sloturi DEMO")
+	check(globe.friends.filter(func(f): return f.friend.is_empty()).size() == 3, "bulele prietenilor: 3 sloturi DEMO")
 	var hud = globe.get_children().filter(func(x): return x.has_method("show_toast"))[0]
 	check(hud.slot is Button and hud.slot.visible, "orașul are butonul spre mașina de bule (rotirile au pagina lor)")
 	# atac din interfață
@@ -291,5 +291,29 @@ func _initialize() -> void:
 		aui.open(room)
 		await process_frame
 		check(aui.panel.visible and aui.box.get_child_count() > 0, "dirijabil: camera %s se deschide" % room)
+	# ---------------- instrumente de test ----------------
+	var dt = g.debug_tools
+	check(dt != null, "instrumentele de test sunt încărcate în build-ul de debug")
+	if dt:
+		fresh(g)
+		g.energy = 10
+		g.forced_outcome = "atac"
+		check(g.spin().type == "attack" and g.forced_outcome == "", "rezultatul forțat se aplică o singură dată")
+		dt._used("test_smoke")
+		check(root.get_node("Analytics").test_session and FileAccess.get_file_as_string("user://analytics.jsonl").contains("debug_tool_used"), "sesiunea e marcată ca test (debug_tool_used)")
+		dt.go_to_level(14)
+		check(g.level == 14 and g.globe == 2 and int(g.levels.palat) > 0, "mergi la nivelul 14: globul 2, clădiri construite")
+		g.chests = [{"kind": "comun", "end": Time.get_unix_time_from_system() + 900}]
+		dt.finish_timers()
+		check(float(g.chests[0].end) < Time.get_unix_time_from_system(), "timerele se termină instant")
+		var gl = load("res://scenes/globe.tscn").instantiate()
+		root.add_child(gl)
+		await process_frame
+		var h = gl.get_children().filter(func(x): return x.has_method("show_toast"))[0]
+		h.open_modal("setari")
+		await process_frame
+		check(h.modal_box.find_children("*", "OptionButton", true, false).size() == 1, "Setări: secțiunea „Instrumente de test” cu lista de rezultate")
+		gl.queue_free()
+		await process_frame
 	print("REZULTAT: %s" % ("TOATE TESTELE AU TRECUT" if fails == 0 else "%d EȘECURI" % fails))
 	quit(1 if fails else 0)

@@ -168,10 +168,24 @@ func _side() -> void:
 	hb.add_theme_constant_override("separation", 8)
 	root.add_child(hb)
 	for i in int(Game.cfg("chests.slots", 3)):
-		var b := K.icon_button("package", "", 15, K.glass(18, 4, 0.7), Color(1, 1, 1, 0.35), 34)
-		b.custom_minimum_size = Vector2(84, 74)
-		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		# slot de cufăr: pictograma cufărului colorată după raritate + două rânduri de text clar
+		var b := K.button("", 15, K.glass(18, 4, 0.78), Color.WHITE)
+		b.custom_minimum_size = Vector2(96, 92)
+		var vb := VBoxContainer.new()
+		K.full_rect(vb)
+		vb.alignment = BoxContainer.ALIGNMENT_CENTER
+		vb.add_theme_constant_override("separation", -2)
+		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ic := K.icon_rect("treasure-chest", 36, Color.WHITE)
+		ic.name = "Ic"
+		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(ic)
+		for nm in ["Sus", "Jos"]:
+			var l := K.label("", 15 if nm == "Sus" else 14, Color.WHITE if nm == "Sus" else Color(1, 1, 1, 0.8), 900 if nm == "Sus" else 800)
+			l.name = nm
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			vb.add_child(l)
+		b.add_child(vb)
 		var idx := i
 		b.pressed.connect(func(): _chest_tap(idx))
 		hb.add_child(b)
@@ -193,7 +207,7 @@ func _side() -> void:
 			show_toast("Rezervorul se umple din clădirile construite"))
 	streak_btn = _round(col, "calendar", "Serie zilnică", func(): open_modal("serie"))
 	_round(col, "settings", "Setări", func(): open_modal("setari"))
-	_round(col, "rotate-ccw", "Vederea generală", _reset_view)
+	# „Vederea generală” s-a mutat în Setări
 
 
 func _round(parent: Control, icon: String, tip: String, cb: Callable) -> Button:
@@ -205,7 +219,14 @@ func _round(parent: Control, icon: String, tip: String, cb: Callable) -> Button:
 	b.pressed.connect(func():
 		Sfx.play("click")
 		cb.call())
-	parent.add_child(b)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	vb.add_child(b)
+	# eticheta sub buton
+	var l := K.label({"Serie zilnică": "Serie"}.get(tip, tip), 14, Color.WHITE, 800, 5, Color(0.08, 0.05, 0.3, 0.8))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(l)
+	parent.add_child(vb)
 	return b
 
 
@@ -432,20 +453,28 @@ func _refresh() -> void:
 		prog_bar.value = 100.0 * p.x / maxf(p.y, 1)
 	for i in chest_btns.size():
 		var b := chest_btns[i]
+		var ic := b.find_child("Ic", true, false) as TextureRect
+		var top := b.find_child("Sus", true, false) as Label
+		var bot := b.find_child("Jos", true, false) as Label
+		top.remove_theme_color_override("font_color")
 		if i < Game.chests.size():
 			var c: Dictionary = Game.chests[i]
-			var info := Game.chest_info(c.kind)
+			var kind_name := {"comun": "Comun", "rar": "Rar", "epic": "Epic"}.get(c.kind, "Cufăr") as String
 			b.modulate = Color(1, 1, 1, 1)
+			ic.modulate = {"comun": Color("f0c878"), "rar": Color("8fc8ff"), "epic": Color("e0a0ff")}.get(c.kind, Color.WHITE)
+			top.text = kind_name
 			if c.end <= 0.0:
-				b.text = String(info.get("name", "")).replace("Cufăr ", "")
+				bot.text = "Deschide"
 			elif c.end > Time.get_unix_time_from_system():
-				b.text = Game.fmt_time(int(c.end - Time.get_unix_time_from_system())).replace(" s", "s")
+				bot.text = Game.fmt_time(int(c.end - Time.get_unix_time_from_system())).replace(" s", "s")
 			else:
-				b.text = "Gata"
-			b.add_theme_color_override("icon_normal_color", {"comun": Color("e0c080"), "rar": Color("8fc8ff"), "epic": Color("d8a0ff")}.get(c.kind, Color.WHITE))
+				bot.text = "Gata!"
+				top.add_theme_color_override("font_color", K.GOLD)
 		else:
-			b.text = "liber"
-			b.modulate = Color(1, 1, 1, 0.5)
+			ic.modulate = Color(1, 1, 1, 0.35)
+			top.text = "Liber"
+			bot.text = "cufăr"
+			b.modulate = Color(1, 1, 1, 0.6)
 	res_btn.text = Game.fmt(Game.reservoir_amount()) if Game.reservoir_amount() > 0 else ""
 	streak_btn.modulate = Color(1.0, 0.9, 0.5) if Game.streak_available() else Color.WHITE
 	if title:
@@ -937,5 +966,10 @@ func _m_setari() -> void:
 			Game.set(key, not Game.get(key))
 			Game.save_game()
 			open_modal("setari"), "Pornit" if val else "Oprit")
+	_row("Vederea generală a orașului", "", "rotate-ccw", func():
+		close_modal()
+		_reset_view(), "Resetează")
 	_h("Despre")
 	_p("Versiune de test pentru adulți. Fără plăți reale. Rezultatele mașinii de bule sunt aleatorii, cu șansele afișate în ecranul Șanse. Jocul simulează un mecanism de noroc fără bani reali.", 18, Color(1, 1, 1, 0.7))
+	if Game.debug_tools:
+		Game.debug_tools.build_section(self)

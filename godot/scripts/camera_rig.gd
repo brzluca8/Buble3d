@@ -87,11 +87,18 @@ func set_view(t: Vector3, d: float, pitch_deg: float, pmin_deg: float, pmax_deg:
 
 ## Apropie camera lin de un punct (clădirea selectată).
 var focus_dist := FOCUS_DIST
+var focus_pitch := 36.0                    # grade
+var focus_center := Vector3.INF            # dacă e setat, cadrul rămâne pe oraș (nu doar pe clădire)
 
 func focus(point: Vector3, height: float) -> void:
-	_t_target = point + Vector3(0, height * 0.42, 0)
+	if focus_center != Vector3.INF:
+		# privește mai de sus, între clădire și centrul orașului: orașul umple cadrul,
+		# fără piedestal și sticlă în jumătatea de jos
+		_t_target = point.lerp(focus_center, 0.45) + Vector3(0, height * 0.18, 0)
+	else:
+		_t_target = point + Vector3(0, height * 0.42, 0)
 	_t_dist = focus_dist
-	_t_pitch = deg_to_rad(36.0)
+	_t_pitch = deg_to_rad(focus_pitch)
 	# păstrează orientarea curentă, dar o aduce puțin spre clădire
 	_t_yaw = clampf(atan2(point.x, 12.0) * 0.6, -YAW_LIMIT, YAW_LIMIT)
 

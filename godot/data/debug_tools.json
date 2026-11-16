@@ -1,0 +1,19 @@
+{
+  "_info": "Valorile butoanelor din „Instrumente de test” (doar build de debug sau DEBUG_TOOLS = true în config.json). Fișierul și scripts/debug/ sunt excluse din exportul de lansare.",
+  "coins": [1000, 10000, 100000],
+  "perle": [10, 100],
+  "energy_add": 50,
+  "shield_add": 1,
+  "outcomes": [
+    {"id": "sac", "name": "Sac de monede"},
+    {"id": "jackpot", "name": "Trei perle (super câștig)"},
+    {"id": "monede", "name": "Trei monede (câștig mare)"},
+    {"id": "atac", "name": "Atac"},
+    {"id": "raid", "name": "Raid"},
+    {"id": "cufar", "name": "Cufăr"},
+    {"id": "scut", "name": "Scut"},
+    {"id": "energie", "name": "Energie"},
+    {"id": "carte", "name": "Carte de album"},
+    {"id": "nimic", "name": "Nimic"}
+  ]
+}
