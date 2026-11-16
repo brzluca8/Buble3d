@@ -1,3 +1,17 @@
+# Buble – versiunea de test pentru adulți (v2)
+
+Godot 4.7, Android, portret, interfață în română. Branch: `buble-v2`.
+
+- **Ecran principal**: orașul din glob de sticlă + mașina de bule (`scenes/globe.tscn`).
+- **Dirijabilul**: Observator (abilități), Garderobă, Atelier, Seră, Salon (`scenes/airship.tscn`).
+- **Economie din date**: `data/*.json` (vezi `../BALANCE.md`, generat de `../tools/balance.py`).
+- **Teste**: `godot --headless --path godot -s res://tests/smoke_v2.gd` · capturi: `tests/shot_v2.gd`.
+- **Documente**: `TESTING.md` (instalare pe telefon), `MODELS_TODO.md` (sloturi GLB), `MONETIZARE_V2.md`
+  (plăți dezactivate, plugin-uri, juridic), `GLOB.md` (scena globului).
+- Codul vechi (insula cu zaruri, Buble Blast, varianta pictată, prototipul web) e în `../legacy/`.
+
+---
+
 # Buble 3D – Godot 4
 
 > **Prezentare 2.5D cu modele 3D reale** (`scenes/main.tscn`): cameră cinematografică oblică (~33°, FOV
