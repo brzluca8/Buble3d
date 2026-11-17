@@ -62,3 +62,14 @@ Paletă propusă:
 | Eșarfă | roșu `#D8322F` |
 | Curele, rucsac | maro piele `#6B3E1E` |
 | Metal | alamă `#C9923A` |
+
+### Cum va exista Orion în joc
+- ✅ **Model 3D** (un singur model → toate unghiurile, animațiile, costumele și culorile alternative).
+- ⏳ Cine face modelul: AI (imagine → 3D), artist 3D, sau combinat.
+- ⏳ Folosire în joc: 3D în timp real, sau imagini randate din model (decis la Pasul 8/9).
+- Cerințe tehnice propuse pentru telefon:
+  - 10–20 mii de triunghiuri;
+  - 1–2 texturi de 1024–2048 px;
+  - format `.glb`;
+  - schelet care include coada, urechile și eșarfa;
+  - costumele ca piese separate care se schimbă pe model.
