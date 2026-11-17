@@ -23,3 +23,42 @@ Deciziile se adaugă aici pas cu pas, după discuție. Codul se scrie doar după
 - Imaginile generate cu AI: de verificat dreptul de folosire comercială.
 - Recompense aleatorii plătite cu bani reali → șansele trebuie afișate.
 - Politică de confidențialitate și clasificare pe vârste obligatorii.
+
+## Din imaginea de concept (notat, de confirmat când vin detaliile)
+- **Bucla:** aruncă zarurile → mergi pe tablă → primești recompense → construiești și faci upgrade → progresezi în univers → repeți cu obiective noi.
+- **Insulele cresc în 3 etape:**
+  - Faza 1 – Avanpost: 24 de căsuțe, 3 clădiri, progres rapid.
+  - Faza 2 – Așezare: 32–36 de căsuțe, 5–6 clădiri, cartier nou.
+  - Faza 3 – Regat: 40–48 de căsuțe, hub regional, rute către alte insule.
+- **Universul Aliseron:** arhipelag de insule conectate în jurul unui cristal central: Aurora (verde), Glacia (gheață), Volkaris (vulcan), Celestia (nori/roz), Eldora (junglă/temple), Noctra (întuneric/violet).
+- **Progres pe termen lung:** insule și cartiere, univers persistent (rute noi), Orion se dezvoltă (nivel, costume, abilități, relicve), colecții (cărți, fragmente, comori), evenimente, parte socială (prieteni, vizite, raiduri, clasamente).
+- De corectat în imagini: logo-ul „Buble” → numele nou; coroana de pe zar → busolă.
+
+## Mascota – Orion (fișă de design, în lucru)
+
+| Subiect | Propunere | Stare |
+|---|---|---|
+| Specie | râs tânăr | ✅ |
+| Proporții | chibi: cap mare (~40% din înălțime), ~2,5 capete înălțime | ⏳ |
+| Siluetă ușor de recunoscut | urechi mari cu smocuri negre + ochelari de aviator + coadă stufoasă cu spirale | ⏳ |
+| Ochi | albaștri, mari, cu reflexe | ✅ |
+| Accesorii | ochelari de aviator din alamă (pe frunte), eșarfă roșie, rucsac cu hartă rulată, felinar cu cristal, medalion-busolă la piept (= simbolul monedei), brățară cu cristal | ⏳ |
+| Semne magice | spirale cyan pe coadă și romburi pe brațe; strălucesc mai tare când Aura e activă | ⏳ |
+| Expresii | fericit, încântat (inimioare), surprins, hotărât, somnoros + propuse: trist, triumf | ⏳ |
+| Animații în joc | idle, salut, aruncă zarul, sare pe tablă, aterizare, bucurie, dezamăgire, Aura activă, doarme (fără zaruri) | ⏳ |
+| Costume (se câștigă) | Pirat, Viking, Constructor, Mag, Spațial | ✅ |
+| Culori alternative | Ametist, Aqua, Rubin | ⏳ |
+
+Paletă propusă:
+
+| Element | Culoare |
+|---|---|
+| Blană | auriu-portocaliu `#E8A44A` |
+| Bot, piept, burtă | crem `#FFF1DC` |
+| Pete | maro `#8A5A2B` |
+| Vârfuri de urechi | negru `#2A1D14` |
+| Ochi | albastru `#3BA7FF` |
+| Spirale magice | cyan `#4FE3FF` |
+| Eșarfă | roșu `#D8322F` |
+| Curele, rucsac | maro piele `#6B3E1E` |
+| Metal | alamă `#C9923A` |
