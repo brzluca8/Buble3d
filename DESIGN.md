@@ -16,7 +16,7 @@ Deciziile se adaugă aici pas cu pas, după discuție. Codul se scrie doar după
 | Puterea „Aura Aventurii” | are efect în joc sau e doar decor? | ⏳ |
 | Simbolul monedei (nu coroană) | B / stea / busolă / altceva | ⏳ |
 | Subtitlu | „Worlds of Wonder” sau variantă în română | ⏳ |
-| Durata unei sesiuni | de discutat | ⏳ |
+| Durata unei sesiuni | scurte și dese: aruncări de zar limitate care se reîncarcă în timp (tip Monopoly GO) | ✅ |
 
 ### De reținut pentru Google Play
 - Mecanicile pot semăna cu alte jocuri, dar numele, simbolurile, personajele și aspectul trebuie să fie originale.
