@@ -13,7 +13,7 @@ Deciziile se adaugă aici pas cu pas, după discuție. Codul se scrie doar după
 | Dragonul | nu, deocamdată | ✅ |
 | Costume (Pirat, Viking, Constructor, Mag, Spațial) | se câștigă în joc, nu se cumpără | ✅ |
 | Culori alternative (Ametist, Aqua, Rubin) | de discutat | ⏳ |
-| Puterea „Aura Aventurii” | are efect în joc sau e doar decor? | ⏳ |
+| Puterea „Aura Aventurii” | o bară care se umple la fiecare aruncare; plină → Orion „se aprinde”: următoarele aruncări dau recompense duble + un bonus (aruncări gratuite sau cufăr). Cifrele la Pasul 4 | ✅ |
 | Simbolul monedei (nu coroană) | B / stea / busolă / altceva | ⏳ |
 | Subtitlu | „Worlds of Wonder” sau variantă în română | ⏳ |
 | Durata unei sesiuni | scurte și dese: aruncări de zar limitate care se reîncarcă în timp (tip Monopoly GO) | ✅ |
