@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#4fb3ff">
+<title>Buble – Drumul Norilor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#4fb3ff;font-family:'Lilita One',system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{position:fixed;inset:0;display:block}
+button{font-family:inherit;cursor:pointer}
+.ts{text-shadow:0 2px 0 rgba(0,0,0,.35)}
+
+/* ---------- bara de sus ---------- */
+#top{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:5}
+.pill{background:linear-gradient(#ffeccc,#f3cf98);border:3px solid #fff7e6;border-radius:999px;color:#7a4a12;height:40px;display:flex;align-items:center;padding:0 14px 0 4px;gap:8px;font-size:19px;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.coinIco{width:30px;height:30px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#fff3a8,#ffcd2e 45%,#e09a00);box-shadow:inset 0 -3px 0 #b97800,0 0 0 2px #fff6c9}
+#coins{min-width:96px;text-align:right}
+.starIco{font-size:24px;line-height:1;filter:drop-shadow(0 2px 0 rgba(0,0,0,.2))}
+#shields{display:flex;gap:4px;margin-left:auto;background:rgba(20,50,90,.35);padding:5px 7px;border-radius:999px}
+.sh{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.5)}
+.sh.on{background:conic-gradient(#ff5a3c 0 25%,#ffb43c 0 50%,#ff5a3c 0 75%,#ffb43c 0);border-color:#e9eef5;box-shadow:inset 0 0 0 3px rgba(255,255,255,.15)}
+#islandName{position:fixed;top:calc(env(safe-area-inset-top) + 58px);left:50%;transform:translateX(-50%);z-index:4;font-size:15px;white-space:nowrap;background:linear-gradient(#ff6b5a,#e0412d);padding:5px 16px;border-radius:12px;border:2px solid #ffd0c4;box-shadow:0 3px 0 #9b2a1d}
+#gift{position:fixed;top:calc(env(safe-area-inset-top) + 58px);left:10px;z-index:5;width:54px;height:54px;border-radius:16px;border:3px solid #fff7e6;background:linear-gradient(#a77bff,#7a4fe0);color:#fff;font-size:24px;box-shadow:0 3px 0 rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;line-height:1}
+#gift small{font-size:10px;margin-top:2px}
+#gift.ready{animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+
+/* ---------- bara de jos ---------- */
+#bottom{position:fixed;left:0;right:0;bottom:0;height:calc(92px + env(safe-area-inset-bottom));padding:0 12px env(safe-area-inset-bottom);background:linear-gradient(#ffe7c2,#f2c58d);border-top:4px solid #fff3dc;border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:space-between;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.15)}
+.side{width:76px;height:70px;border-radius:18px;border:3px solid #fff3dc;background:linear-gradient(#ffb347,#f08a1c);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 4px 0 #b9600c;font-size:26px;padding:0}
+.side small{font-size:11px}
+.side:active{transform:translateY(3px);box-shadow:0 1px 0 #b9600c}
+#btnMult{background:linear-gradient(#5cd1ff,#2a96e0);box-shadow:0 4px 0 #1b64a0}
+#btnMult b{font-size:26px;font-weight:normal}
+.energy{position:absolute;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);width:170px;text-align:center;color:#7a4a12;font-size:12px}
+.bar{position:relative;height:24px;border-radius:999px;background:#5a3a1c;border:3px solid #fff3dc;overflow:hidden}
+#eFill{position:absolute;inset:0 auto 0 0;background:linear-gradient(#7ff0ff,#22b8e8);width:100%;transition:width .3s}
+#eTxt{position:relative;color:#fff;font-size:15px;line-height:18px}
+#btnRoll{position:fixed;left:50%;bottom:calc(58px + env(safe-area-inset-bottom));transform:translateX(-50%);width:128px;height:128px;border-radius:50%;border:5px solid #ffd7c9;z-index:6;color:#fff;background:radial-gradient(circle at 50% 35%,#ff8a68,#f2412a 60%,#c42a17);box-shadow:0 9px 0 #9b1e10,0 14px 22px rgba(0,0,0,.3),inset 0 4px 0 rgba(255,255,255,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+#btnRoll:active,#btnRoll.auto{transform:translateX(-50%) translateY(6px);box-shadow:0 3px 0 #9b1e10,0 6px 12px rgba(0,0,0,.3),inset 0 4px 0 rgba(255,255,255,.35)}
+#btnRoll.auto{background:radial-gradient(circle at 50% 35%,#ffcf5a,#f29a1a 60%,#c46a10)}
+#btnRoll small{font-size:15px}
+.mini-die{width:44px;height:44px;background:#fff;border-radius:10px;transform:rotate(-12deg);box-shadow:inset 0 -4px 0 #e4d6d0;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:6px}
+.mini-die i{width:8px;height:8px;border-radius:50%;background:#e8402a;margin:auto}
+
+/* ---------- zaruri ---------- */
+#diceBox{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(.6);display:flex;gap:18px;z-index:8;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#diceBox.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.die{width:70px;height:70px;background:#fff;border-radius:16px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:10px;box-shadow:inset 0 -6px 0 #e4d6d0,0 8px 16px rgba(0,0,0,.3)}
+.die.spin{animation:spin .14s linear infinite}
+@keyframes spin{0%{transform:rotate(0) translateY(0)}50%{transform:rotate(180deg) translateY(-8px)}100%{transform:rotate(360deg)}}
+.pip{width:13px;height:13px;border-radius:50%;background:#e8402a;margin:auto;visibility:hidden}
+.pip.on{visibility:visible}
+
+/* ---------- texte plutitoare ---------- */
+.ft{position:fixed;z-index:15;pointer-events:none;font-size:22px;color:#ffe066;text-shadow:0 2px 0 #7a4a12,0 0 6px rgba(0,0,0,.4);transform:translate(-50%,-50%);animation:ft 1.4s ease-out forwards;white-space:nowrap}
+.ft.big{font-size:30px;color:#fff;text-shadow:0 3px 0 #c42a17,0 0 10px rgba(0,0,0,.35);animation-duration:1.8s}
+.ft.blue{color:#bff4ff;text-shadow:0 2px 0 #1b64a0}
+@keyframes ft{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}
+
+/* ---------- ferestre ---------- */
+#modal{position:fixed;inset:0;z-index:30;background:rgba(20,30,60,.5);display:none;align-items:center;justify-content:center;padding:20px}
+#modal.on{display:flex}
+.box{width:min(88vw,340px);background:linear-gradient(#fff6e6,#ffe2b8);border:4px solid #fff;border-radius:24px;padding:46px 20px 20px;text-align:center;color:#7a4a12;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:pop .3s}
+@keyframes pop{0%{transform:scale(.6)}80%{transform:scale(1.05)}100%{transform:scale(1)}}
+.ribbon{position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:linear-gradient(#ff6b5a,#e0412d);color:#fff;font-size:22px;padding:8px 22px;border-radius:14px;white-space:nowrap;box-shadow:0 4px 0 #9b2a1d;text-shadow:0 2px 0 rgba(0,0,0,.3)}
+.big-ico{font-size:58px;line-height:1.1;margin:4px 0 8px}
+.box p{font-family:system-ui,sans-serif;font-weight:700;font-size:15px;line-height:1.4;margin:6px 0 16px}
+.ok{background:linear-gradient(#7ee05a,#3eaa2a);border:3px solid #d7ffc8;color:#fff;font-size:22px;padding:10px 34px;border-radius:16px;box-shadow:0 5px 0 #2a7a1a;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.ok:active{transform:translateY(3px);box-shadow:0 2px 0 #2a7a1a}
+
+/* ---------- construcții ---------- */
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:linear-gradient(#fff3dc,#ffd9a6);border-radius:26px 26px 0 0;border-top:4px solid #fff;padding:14px 14px calc(14px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.9,.3,1.1);box-shadow:0 -8px 30px rgba(0,0,0,.3);color:#7a4a12}
+#sheet.on{transform:none}
+.sh-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:22px}
+.x{width:40px;height:40px;border-radius:12px;border:3px solid #fff;background:linear-gradient(#ff6b5a,#e0412d);color:#fff;font-size:20px;padding:0}
+.card{display:flex;align-items:center;gap:12px;background:#fff8ec;border-radius:16px;padding:8px 10px;margin-bottom:8px;box-shadow:0 3px 0 rgba(122,74,18,.15)}
+.card .ic{width:50px;height:50px;border-radius:12px;background:linear-gradient(#bfe9ff,#7cc8f5);display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+.card .nm{flex:1;font-size:17px}
+.stars{font-size:16px;letter-spacing:1px;color:#d9c3a0}
+.stars b{color:#ffb800;font-weight:normal;text-shadow:0 1px 0 #b97800}
+.buy{min-width:96px;height:44px;border-radius:12px;border:3px solid #d7ffc8;background:linear-gradient(#7ee05a,#3eaa2a);color:#fff;font-size:17px;box-shadow:0 4px 0 #2a7a1a;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px}
+.buy .coinIco{width:20px;height:20px}
+.buy:disabled{background:linear-gradient(#c9c2b8,#a69d91);border-color:#e6e0d8;box-shadow:0 4px 0 #7d756b;cursor:default}
+.buy.done{background:linear-gradient(#ffd25a,#f2a91a);border-color:#fff1c2;box-shadow:0 4px 0 #b97800}
+
+/* ---------- mini-joc bule ---------- */
+#bub{position:fixed;inset:0;z-index:25;display:none;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgba(160,120,255,.35),rgba(40,20,110,.65))}
+#bub.on{display:block}
+#bubHead{position:absolute;top:calc(env(safe-area-inset-top) + 70px);left:0;right:0;text-align:center;font-size:30px;pointer-events:none}
+#bubHead div{font-size:18px;margin-top:4px;color:#ffe066}
+.bb{position:absolute;left:0;top:0;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff 0 8%,rgba(200,240,255,.55) 18%,rgba(120,200,255,.35) 60%,rgba(255,255,255,.75) 100%);box-shadow:inset 0 0 10px rgba(255,255,255,.6),0 0 12px rgba(150,220,255,.5)}
+.bb.gold{background:radial-gradient(circle at 32% 28%,#fff 0 8%,rgba(255,240,160,.7) 18%,rgba(255,200,40,.5) 60%,rgba(255,250,210,.9) 100%);box-shadow:inset 0 0 10px rgba(255,255,255,.6),0 0 16px rgba(255,210,60,.8)}
+.bb.pop{transition:transform .18s,opacity .18s;opacity:0}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="top">
+  <div class="pill"><span class="coinIco"></span><span id="coins">0</span></div>
+  <div class="pill" style="padding:0 12px 0 8px"><span class="starIco">⭐</span><span id="stars">0</span></div>
+  <div id="shields"></div>
+</div>
+<div id="islandName" class="ts"></div>
+<button id="gift" class="ts">🎁<small id="giftT"></small></button>
+
+<div id="diceBox"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
+
+<button id="btnRoll" class="ts">
+  <div class="mini-die"><i></i><i style="visibility:hidden"></i><i></i><i style="visibility:hidden"></i><i></i><i style="visibility:hidden"></i><i></i><i style="visibility:hidden"></i><i></i></div>
+  <small id="rollLbl">Aruncă</small>
+</button>
+<div id="bottom">
+  <button id="btnBuild" class="side ts">🔨<small>Construiește</small></button>
+  <div class="energy">
+    <div class="bar"><div id="eFill"></div><span id="eTxt" class="ts">50 / 50</span></div>
+    <div id="eTimer">Energie plină</div>
+  </div>
+  <button id="btnMult" class="side ts"><b id="multTxt">x1</b><small>Multiplicator</small></button>
+</div>
+
+<div id="sheet">
+  <div class="sh-head"><span>Construiește insula</span><button class="x" id="closeSheet">✕</button></div>
+  <div id="bList"></div>
+</div>
+
+<div id="bub"><div id="bubHead" class="ts">Sparge bulele!<div id="bubInfo"></div></div></div>
+
+<div id="modal"><div class="box"><div class="ribbon" id="mTitle"></div><div class="big-ico" id="mIco"></div><p id="mText"></p><button class="ok" id="mBtn">OK</button></div></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ================= Configurare ================= */
+const N = 8, TW = 64, TH = 32, TZ = 12, K = Math.SQRT1_2;
+const ENERGY_MAX = 50, REGEN_MS = 2 * 60 * 1000, GIFT_MS = 60 * 60 * 1000, GIFT_ENERGY = 15;
+const MULTS = [1, 2, 3, 5, 10];
+const KEY = 'buble_drum_v1';
+
+const THEMES = [
+  {name:'Grădina dintre nori', grass:'#86d957', rock:'#b49a7e', sky:['#4fb3ff','#c9ecff'], accent:'#2ec4b6', roof:'#7a5cff', wall:'#fbf1df', tree:'#3fae5a', tile:'#fff4e0'},
+  {name:'Laguna de cristal',   grass:'#7fe0c9', rock:'#9fb3c8', sky:['#38c9e8','#d2f7ff'], accent:'#ff6fa8', roof:'#ff8a3d', wall:'#fff7ee', tree:'#2fa98c', tile:'#f4fbff'},
+  {name:'Valea de lavandă',    grass:'#b8a2f2', rock:'#a69a8c', sky:['#8a7dff','#f1d9ff'], accent:'#ffcf3c', roof:'#4b6bff', wall:'#fff4fb', tree:'#7d5fd6', tile:'#fff6fb'},
+  {name:'Dunele aurii',        grass:'#f0cf72', rock:'#c98f5a', sky:['#ff9f5a','#ffe3b0'], accent:'#2ec4b6', roof:'#d94f3d', wall:'#fff1d6', tree:'#5a9e3a', tile:'#fffaf0'},
+  {name:'Vârful înghețat',     grass:'#eaf6ff', rock:'#9fb0c4', sky:['#5a8dff','#dff0ff'], accent:'#5cc8ff', roof:'#3d5afe', wall:'#ffffff', tree:'#2e7d6b', tile:'#ffffff'},
+];
+const BUILDINGS = [
+  {name:'Palatul',      ico:'🏰', x:2.6, y:2.6},
+  {name:'Observatorul', ico:'🔭', x:5.0, y:2.0},
+  {name:'Turnul',       ico:'🗼', x:2.0, y:5.0},
+  {name:'Magazinul',    ico:'🏪', x:4.9, y:4.6},
+  {name:'Sera',         ico:'🌿', x:3.4, y:5.6},
+];
+const TREES = [[1.2,1.3],[4.0,1.1],[6.0,3.4],[1.1,3.7],[6.0,6.0],[1.2,6.1]];
+const TILE_COL = {start:'#ffc93c', bubble:'#a77bff', chest:'#ff8fb1', wind:'#7fd8ff'};
+
+/* ================= Stare ================= */
+const S = {coins:30000, stars:0, shields:0, energy:ENERGY_MAX, eTime:Date.now(), island:1,
+           levels:[0,0,0,0,0], pos:0, mult:1, free:0, giftAt:0};
+try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) Object.assign(S, d); } catch(e) {}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+
+const theme = () => THEMES[(S.island - 1) % THEMES.length];
+const base = () => Math.round(3000 * Math.pow(S.island, 1.35) / 100) * 100;
+const cost = (i, l) => Math.round((6000 + i * 2500) * (l + 1) * Math.pow(S.island, 1.5) / 500) * 500;
+
+/* ================= Utilitare ================= */
+function rng(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shade(h, a){
+  const n = parseInt(h.slice(1), 16), c = [n >> 16, n >> 8 & 255, n & 255];
+  const f = v => Math.max(0, Math.min(255, Math.round(a < 0 ? v * (1 + a) : v + (255 - v) * a)));
+  return `rgb(${f(c[0])},${f(c[1])},${f(c[2])})`;
+}
+function short(n){
+  n = Math.floor(n);
+  if (n >= 1e9) return +(n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return +(n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e4) return +(n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString('ro-RO');
+}
+const fmt = n => Math.floor(n).toLocaleString('ro-RO');
+const mmss = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ================= Sunet ================= */
+let AC = null;
+function audioInit(){ if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+function beep(f, d = .08, type = 'sine', v = .08, slide = 0){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d);
+}
+const sfx = {
+  hop: () => beep(520, .07, 'triangle', .05, 1.5),
+  coin: () => { beep(988, .08, 'square', .03); setTimeout(() => beep(1319, .12, 'square', .03), 70); },
+  pop: () => beep(700 + Math.random() * 400, .09, 'sine', .08, .4),
+  build: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, .15, 'triangle', .06), i * 80)),
+  dice: () => beep(200 + Math.random() * 100, .04, 'square', .03),
+};
+
+/* ================= Tabla ================= */
+let path = [];
+for (let x = 0; x < N; x++) path.push([x, 0]);
+for (let y = 1; y < N; y++) path.push([N - 1, y]);
+for (let x = N - 2; x >= 0; x--) path.push([x, N - 1]);
+for (let y = N - 2; y >= 1; y--) path.push([0, y]);
+path = path.slice(14).concat(path.slice(0, 14));          // START în colțul din față
+const L = path.length;                                      // 28 de căsuțe
+let tiles = [], patches = [];
+const flash = new Array(L).fill(0);
+function genIsland(){
+  const r = rng(S.island * 9973 + 7);
+  const pool = [].concat(Array(8).fill('coin'), Array(5).fill('pile'), Array(3).fill('sack'), Array(3).fill('shield'),
+                         Array(3).fill('bubble'), Array(3).fill('chest'), Array(2).fill('wind'));
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  tiles = ['start', ...pool];
+  patches = [];
+  for (let i = 0; i < 26; i++) patches.push({x: .8 + r() * 5.4, y: .8 + r() * 5.4, r: .15 + r() * .3, f: r() < .35});
+}
+genIsland();
+
+/* ================= Canvas ================= */
+const cvs = $('c'), ctx = cvs.getContext('2d');
+let W, H, DPR, sc, ox, oy;
+function resize(){
+  DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  cvs.width = W * DPR; cvs.height = H * DPR; cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
+  const top = 100, bot = 195, availH = H - top - bot;
+  sc = Math.min(W * .98 / (N * TW), availH / (N * TH + 200), 1.6);
+  const cy = top + availH * .47;
+  ox = W / 2; oy = cy - (N - 1) * TH / 2 * sc;
+}
+addEventListener('resize', resize); resize();
+
+const iso = (x, y, z = 0) => ({x: ox + (x - y) * TW / 2 * sc, y: oy + (x + y) * TH / 2 * sc - z * sc});
+function poly(p, fill, stroke, lw){
+  ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y);
+  for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x, p[i].y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); }
+}
+function ell(x, y, rx, ry, fill){ ctx.beginPath(); ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); }
+
+function isoBox(cx, cy, w, d, z0, h, col, alpha){
+  const x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - d / 2, y1 = cy + d / 2;
+  const tN = iso(x0, y0, z0 + h), tE = iso(x1, y0, z0 + h), tS = iso(x1, y1, z0 + h), tW = iso(x0, y1, z0 + h);
+  const bE = iso(x1, y0, z0), bS = iso(x1, y1, z0), bW = iso(x0, y1, z0);
+  if (alpha) ctx.globalAlpha = alpha;
+  poly([tW, tS, bS, bW], shade(col, -.15));
+  poly([tS, tE, bE, bS], shade(col, -.32));
+  poly([tN, tE, tS, tW], shade(col, .12));
+  ctx.globalAlpha = 1;
+  return {tN, tE, tS, tW, bE, bS, bW};
+}
+function cyl(cx, cy, r, z0, h, col){
+  const b = iso(cx, cy, z0), t = iso(cx, cy, z0 + h), rx = r * TW * K * sc, ry = r * TH * K * sc;
+  const g = ctx.createLinearGradient(b.x - rx, 0, b.x + rx, 0);
+  g.addColorStop(0, shade(col, -.12)); g.addColorStop(.35, shade(col, .18)); g.addColorStop(1, shade(col, -.42));
+  ctx.beginPath(); ctx.moveTo(b.x - rx, b.y);
+  ctx.ellipse(b.x, b.y, rx, ry, 0, Math.PI, 0, true);
+  ctx.lineTo(t.x + rx, t.y);
+  ctx.ellipse(t.x, t.y, rx, ry, 0, 0, Math.PI, true);
+  ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  ell(t.x, t.y, rx, ry, shade(col, .22));
+  return {b, t, rx, ry};
+}
+function cone(cx, cy, r, z0, h, col){
+  const b = iso(cx, cy, z0), a = iso(cx, cy, z0 + h), rx = r * TW * K * sc, ry = r * TH * K * sc;
+  const g = ctx.createLinearGradient(b.x - rx, 0, b.x + rx, 0);
+  g.addColorStop(0, shade(col, -.05)); g.addColorStop(.35, shade(col, .2)); g.addColorStop(1, shade(col, -.4));
+  ctx.beginPath(); ctx.moveTo(b.x - rx, b.y);
+  ctx.ellipse(b.x, b.y, rx, ry, 0, Math.PI, 0, true);
+  ctx.lineTo(a.x, a.y); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  return a;
+}
+function dome(cx, cy, r, z0, col){
+  const b = iso(cx, cy, z0), rx = r * TW * K * sc, ry = r * TH * K * sc, hh = rx * .95;
+  const g = ctx.createRadialGradient(b.x - rx * .35, b.y - hh * .6, rx * .05, b.x, b.y - hh * .3, rx * 1.1);
+  g.addColorStop(0, shade(col, .55)); g.addColorStop(.5, col); g.addColorStop(1, shade(col, -.35));
+  ctx.beginPath(); ctx.moveTo(b.x - rx, b.y);
+  ctx.ellipse(b.x, b.y, rx, ry, 0, Math.PI, 0, true);
+  ctx.ellipse(b.x, b.y, rx, hh, 0, 0, Math.PI, true);
+  ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  return {x: b.x, y: b.y - hh};
+}
+function glow(x, y, r, col){
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
+
+/* ---------- fundal ---------- */
+const clouds = [];
+for (let i = 0; i < 9; i++) clouds.push({x: Math.random(), y: Math.random(), s: .6 + Math.random() * .9, v: .004 + Math.random() * .01});
+function cloud(x, y, s, a){
+  ctx.globalAlpha = a; ctx.fillStyle = '#fff';
+  [[0,0,30],[28,6,24],[-28,8,22],[12,-14,22],[-12,-10,20],[44,14,16],[-44,16,15]].forEach(c => {
+    ctx.beginPath(); ctx.arc(x + c[0] * s, y + c[1] * s, c[2] * s, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+function miniIsland(x, y, s){
+  const th = theme();
+  ctx.globalAlpha = .75;
+  ctx.beginPath(); ctx.moveTo(x - 40 * s, y); ctx.quadraticCurveTo(x - 10 * s, y + 50 * s, x, y + 70 * s); ctx.quadraticCurveTo(x + 15 * s, y + 40 * s, x + 40 * s, y); ctx.closePath();
+  ctx.fillStyle = shade(th.rock, -.1); ctx.fill();
+  ell(x, y, 40 * s, 12 * s, th.grass);
+  ctx.beginPath(); ctx.moveTo(x - 6 * s, y - 2 * s); ctx.lineTo(x + 6 * s, y - 2 * s); ctx.lineTo(x, y - 28 * s); ctx.closePath(); ctx.fillStyle = th.tree; ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function drawBackground(t){
+  const th = theme();
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  glow(W * .82, H * .12, Math.max(W, H) * .35, 'rgba(255,250,220,.55)');
+  miniIsland(W * .12, H * .30 + Math.sin(t / 1400) * 4, .7);
+  miniIsland(W * .9, H * .55 + Math.sin(t / 1700 + 1) * 4, .55);
+  clouds.forEach((c, i) => { if (i < 6) cloud(c.x * (W + 200) - 100, c.y * H * .9, c.s, .55); });
+}
+
+/* ---------- insula ---------- */
+function drawIsland(t){
+  const th = theme(), m = .2, a = -.5 - m, b = N - .5 + m, ZB = -24;
+  const tW = iso(a, b, 0), tS = iso(b, b, 0), tE = iso(b, a, 0), tN = iso(a, a, 0);
+  const bW = iso(a, b, ZB), bS = iso(b, b, ZB), bE = iso(b, a, ZB);
+  // partea de dedesubt (stânca plutitoare)
+  const tip = {x: bS.x + 10 * sc, y: bS.y + 190 * sc};
+  const rg = ctx.createLinearGradient(0, bS.y - 60 * sc, 0, tip.y);
+  rg.addColorStop(0, shade(th.rock, -.1)); rg.addColorStop(1, shade(th.rock, -.55));
+  ctx.beginPath(); ctx.moveTo(bW.x, bW.y);
+  ctx.quadraticCurveTo(bW.x + 40 * sc, bW.y + 110 * sc, tip.x - 30 * sc, tip.y - 30 * sc);
+  ctx.lineTo(tip.x, tip.y); ctx.lineTo(tip.x + 30 * sc, tip.y - 40 * sc);
+  ctx.quadraticCurveTo(bE.x - 30 * sc, bE.y + 110 * sc, bE.x, bE.y);
+  ctx.lineTo(bS.x, bS.y); ctx.closePath(); ctx.fillStyle = rg; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 2 * sc;
+  for (let i = 1; i < 6; i++) {
+    ctx.beginPath(); const yy = bS.y + i * 28 * sc, w = (1 - i / 6.5);
+    ctx.moveTo(bS.x - (bS.x - bW.x) * w * .9, yy - (bS.y - bW.y) * w * .6); ctx.lineTo(bS.x, yy + 6 * sc);
+    ctx.lineTo(bS.x + (bE.x - bS.x) * w * .9, yy - (bS.y - bE.y) * w * .6); ctx.stroke();
+  }
+  // laturi
+  poly([tW, tS, bS, bW], shade(th.rock, -.05));
+  poly([tS, tE, bE, bS], shade(th.rock, -.25));
+  // cascada
+  const w0 = iso(3.2, b, -2), w1 = iso(4.0, b, -2);
+  const wf = ctx.createLinearGradient(0, w0.y, 0, w0.y + 170 * sc);
+  wf.addColorStop(0, 'rgba(190,240,255,.95)'); wf.addColorStop(1, 'rgba(190,240,255,0)');
+  ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.lineTo(w1.x, w1.y); ctx.lineTo(w1.x + 4 * sc, w1.y + 170 * sc); ctx.lineTo(w0.x - 4 * sc, w0.y + 170 * sc); ctx.closePath();
+  ctx.fillStyle = wf; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5 * sc;
+  for (let i = 0; i < 6; i++) {
+    const off = ((t / 9 + i * 30) % 160) * sc, xx = w0.x + (w1.x - w0.x) * (i + .5) / 6;
+    ctx.beginPath(); ctx.moveTo(xx, w0.y + off); ctx.lineTo(xx, w0.y + off + 14 * sc); ctx.stroke();
+  }
+  // iarba de sus + buza de iarbă
+  poly([tN, tE, tS, tW], th.grass);
+  ctx.fillStyle = th.grass;
+  for (let i = 0; i <= 14; i++) {
+    const f = i / 14;
+    ctx.beginPath(); ctx.arc(tW.x + (tS.x - tW.x) * f, tW.y + (tS.y - tW.y) * f + 3 * sc, (5 + (i % 3) * 2) * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tS.x + (tE.x - tS.x) * f, tS.y + (tE.y - tS.y) * f + 3 * sc, (5 + (i % 2) * 3) * sc, 0, Math.PI * 2); ctx.fill();
+  }
+  // pete de iarbă și flori
+  patches.forEach(p => {
+    const c = iso(p.x, p.y, 0);
+    if (p.f) { ell(c.x, c.y, 2.2 * sc, 2.2 * sc, '#fff'); ell(c.x, c.y, 1 * sc, 1 * sc, '#ffd23c'); }
+    else ell(c.x, c.y, p.r * TW * K * sc, p.r * TH * K * sc, shade(th.grass, .18));
+  });
+  // lac
+  const pc = iso(3.75, 3.95, 0);
+  ell(pc.x, pc.y + 1, .62 * TW * K * sc, .62 * TH * K * sc, shade(th.grass, -.25));
+  const lg = ctx.createLinearGradient(pc.x - 30 * sc, 0, pc.x + 30 * sc, 0);
+  lg.addColorStop(0, '#7fe3ff'); lg.addColorStop(1, '#2fa8e8');
+  ell(pc.x, pc.y, .55 * TW * K * sc, .55 * TH * K * sc, lg);
+  ell(pc.x - 6 * sc, pc.y - 2 * sc, 8 * sc, 2 * sc, 'rgba(255,255,255,.6)');
+}
+
+/* ---------- căsuțe ---------- */
+function coinFlat(x, y, r){
+  ell(x, y + r * .28, r, r * .55, '#c88a00');
+  ell(x, y, r, r * .55, '#ffd23c');
+  ell(x, y, r * .66, r * .36, '#ffe98a');
+  ell(x - r * .2, y - r * .1, r * .2, r * .1, '#fff8d0');
+}
+function drawIcon(type, p, s, t, i){
+  const bob = Math.sin(t / 400 + i) * 2.5 * s;
+  switch (type) {
+    case 'coin': coinFlat(p.x, p.y - 2 * s, 10 * s); break;
+    case 'pile':
+      for (let k = 0; k < 2; k++) coinFlat(p.x + 9 * s, p.y + 2 * s - k * 3.5 * s, 8 * s);
+      for (let k = 0; k < 4; k++) coinFlat(p.x - 5 * s, p.y - 1 * s - k * 3.5 * s, 9 * s);
+      break;
+    case 'sack': {
+      const y = p.y - 10 * s;
+      ell(p.x, p.y + 1 * s, 13 * s, 5 * s, 'rgba(0,0,0,.15)');
+      ell(p.x, y, 13 * s, 11 * s, '#a8682c');
+      ell(p.x - 4 * s, y - 4 * s, 5 * s, 3 * s, '#c88a4a');
+      ctx.beginPath(); ctx.moveTo(p.x - 6 * s, y - 9 * s); ctx.lineTo(p.x + 6 * s, y - 9 * s); ctx.lineTo(p.x + 9 * s, y - 17 * s); ctx.lineTo(p.x - 9 * s, y - 17 * s); ctx.closePath(); ctx.fillStyle = '#93591f'; ctx.fill();
+      ell(p.x, y - 9 * s, 7 * s, 2.5 * s, '#ffd23c');
+      ell(p.x, y + 1 * s, 5 * s, 5 * s, '#ffd23c'); ell(p.x, y + 1 * s, 3 * s, 3 * s, '#ffe98a');
+      break; }
+    case 'shield': {
+      const y = p.y - 13 * s, r = 11 * s;
+      ell(p.x, p.y, 10 * s, 4 * s, 'rgba(0,0,0,.15)');
+      ell(p.x, y, r + 2 * s, r + 2 * s, '#cfd8e3');
+      for (let q = 0; q < 4; q++) { ctx.beginPath(); ctx.moveTo(p.x, y); ctx.arc(p.x, y, r, q * Math.PI / 2, (q + 1) * Math.PI / 2); ctx.closePath(); ctx.fillStyle = q % 2 ? '#ffb43c' : '#ff5a3c'; ctx.fill(); }
+      ell(p.x, y, 3.5 * s, 3.5 * s, '#eef3f8'); ell(p.x - 1 * s, y - 1 * s, 1.4 * s, 1.4 * s, '#fff');
+      break; }
+    case 'bubble': {
+      const y = p.y - 16 * s + bob;
+      ell(p.x, p.y, 9 * s, 3.5 * s, 'rgba(60,20,120,.2)');
+      [[0, 0, 11], [-11, 7, 5], [10, 6, 6]].forEach(c => {
+        const g = ctx.createRadialGradient(p.x + c[0] * s - c[2] * .35 * s, y + c[1] * s - c[2] * .35 * s, 0, p.x + c[0] * s, y + c[1] * s, c[2] * s);
+        g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.3, 'rgba(200,240,255,.5)'); g.addColorStop(.85, 'rgba(140,200,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,.9)');
+        ell(p.x + c[0] * s, y + c[1] * s, c[2] * s, c[2] * s, g);
+      });
+      break; }
+    case 'chest': {
+      const x = p.x - 11 * s, y = p.y - 16 * s + bob * .4, w = 22 * s, h = 12 * s;
+      ell(p.x, p.y, 12 * s, 4 * s, 'rgba(0,0,0,.18)');
+      ctx.fillStyle = '#9c5a24'; ctx.fillRect(x, y, w, h);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(p.x, y - 13 * s, x + w, y); ctx.closePath(); ctx.fillStyle = '#b8702e'; ctx.fill();
+      ctx.fillStyle = '#ffc93c'; ctx.fillRect(x, y - .5 * s, w, 2.5 * s); ctx.fillRect(p.x - 2 * s, y - 6 * s, 4 * s, h + 6 * s);
+      ell(p.x, y + 4 * s, 3 * s, 3 * s, '#ffe98a');
+      glow(p.x, y - 3 * s, 16 * s, 'rgba(255,240,150,.35)');
+      break; }
+    case 'wind': {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.6 * s; ctx.lineCap = 'round';
+      const y = p.y - 8 * s + bob * .5, sp = t / 500;
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath(); ctx.ellipse(p.x + (k - 1) * 3 * s, y - k * 5 * s, (12 - k * 3) * s, (4 - k * .8) * s, 0, sp + k, sp + k + 4.2); ctx.stroke();
+      }
+      break; }
+    case 'start': {
+      ctx.save(); ctx.translate(p.x, p.y);
+      ctx.transform(TW / 2 * sc, TH / 2 * sc, -TW / 2 * sc, TH / 2 * sc, 0, 0);
+      ctx.rotate(Math.PI); ctx.scale(.01, .01);
+      ctx.font = '22px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#a3480f'; ctx.fillText('START', 0, 0);
+      ctx.restore();
+      break; }
+  }
+}
+function drawTile(i, t){
+  const [gx, gy] = path[i], h = .47, th = theme(), type = tiles[i];
+  const col = TILE_COL[type] || th.tile;
+  const tN = iso(gx - h, gy - h, TZ), tE = iso(gx + h, gy - h, TZ), tS = iso(gx + h, gy + h, TZ), tW = iso(gx - h, gy + h, TZ);
+  const bE = iso(gx + h, gy - h, 0), bS = iso(gx + h, gy + h, 0), bW = iso(gx - h, gy + h, 0);
+  poly([iso(gx - h + .08, gy + h + .08, 0), iso(gx + h + .08, gy + h + .08, 0), iso(gx + h + .08, gy - h + .08, 0)], 'rgba(0,0,0,.12)');
+  poly([tW, tS, bS, bW], shade(col, -.2));
+  poly([tS, tE, bE, bS], shade(col, -.35));
+  const g = ctx.createLinearGradient(tN.x, tN.y, tS.x, tS.y);
+  g.addColorStop(0, shade(col, .25)); g.addColorStop(1, col);
+  poly([tN, tE, tS, tW], g, 'rgba(255,255,255,.7)', 1.2 * sc);
+  if (flash[i] > 0) { ctx.globalAlpha = flash[i]; poly([tN, tE, tS, tW], '#fff'); ctx.globalAlpha = 1; }
+  drawIcon(type, iso(gx, gy, TZ), sc, t, i);
+}
+
+/* ---------- clădiri ---------- */
+function plot(b, i, t){
+  const r = .62, z = .5;
+  const p = [iso(b.x - r, b.y - r, z), iso(b.x + r, b.y - r, z), iso(b.x + r, b.y + r, z), iso(b.x - r, b.y + r, z)];
+  poly(p, 'rgba(120,80,40,.35)');
+  ctx.setLineDash([5 * sc, 4 * sc]); poly(p, null, 'rgba(255,255,255,.85)', 2 * sc); ctx.setLineDash([]);
+  const c = iso(b.x, b.y, 18), afford = S.coins >= cost(i, 0);
+  const s = 1 + (afford ? Math.sin(t / 200) * .12 : 0), r2 = 11 * sc * s;
+  ell(c.x, c.y, r2, r2, afford ? '#3eaa2a' : 'rgba(80,60,40,.55)');
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * sc; ctx.beginPath(); ctx.arc(c.x, c.y, r2, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 3 * sc; ctx.lineCap = 'round'; ctx.beginPath();
+  ctx.moveTo(c.x - 5 * sc * s, c.y); ctx.lineTo(c.x + 5 * sc * s, c.y); ctx.moveTo(c.x, c.y - 5 * sc * s); ctx.lineTo(c.x, c.y + 5 * sc * s); ctx.stroke();
+}
+function windows(x, y, z, n, gap, s){
+  for (let k = 0; k < n; k++) { const p = iso(x, y, z + k * gap); ctx.fillStyle = '#3a4a7a'; ctx.beginPath(); ctx.roundRect(p.x - 2.5 * s, p.y - 5 * s, 5 * s, 7 * s, [3 * s, 3 * s, 0, 0]); ctx.fill(); ctx.fillStyle = 'rgba(255,230,140,.8)'; ctx.fillRect(p.x - 1.5 * s, p.y - 3 * s, 3 * s, 4 * s); }
+}
+function drawBuilding(i, t){
+  const b = BUILDINGS[i], l = S.levels[i], th = theme(), x = b.x, y = b.y;
+  if (!l) return plot(b, i, t);
+  const hf = .75 + .12 * l;
+  ell(iso(x, y, 0).x, iso(x, y, 0).y, .95 * TW * K * sc, .95 * TH * K * sc, 'rgba(0,0,0,.12)');
+  if (i === 0) { // Palatul
+    if (l >= 4) { cyl(x - .72, y - .72, .22, 0, 44 * hf, th.wall); cone(x - .72, y - .72, .3, 44 * hf, 26, th.roof); }
+    const h = 26 * hf; isoBox(x, y, 1.5, 1.5, 0, h, th.wall);
+    windows(x + .76, y, 8, 2, 9, sc); windows(x, y + .76, 8, 2, 9, sc);
+    const door = iso(x + .25, y + .76, 0); ctx.fillStyle = shade(th.roof, -.3); ctx.beginPath(); ctx.roundRect(door.x - 4 * sc, door.y - 13 * sc, 8 * sc, 12 * sc, [4 * sc, 4 * sc, 0, 0]); ctx.fill();
+    isoBox(x, y, 1.6, 1.6, h, 4, th.accent);
+    if (l >= 2) { [[-.72, .72], [.72, -.72]].forEach(o => { cyl(x + o[0], y + o[1], .22, 0, 40 * hf, th.wall); cone(x + o[0], y + o[1], .3, 40 * hf, 24, th.roof); }); }
+    const top = dome(x, y, .55, h + 4, th.accent);
+    if (l >= 3) { ctx.fillStyle = '#ffc93c'; ctx.beginPath(); ctx.moveTo(top.x - 3 * sc, top.y + 2 * sc); ctx.lineTo(top.x + 3 * sc, top.y + 2 * sc); ctx.lineTo(top.x, top.y - 16 * sc); ctx.closePath(); ctx.fill(); }
+    if (l >= 4) glow(top.x, top.y - 8 * sc, 30 * sc, 'rgba(255,230,120,.6)');
+  } else if (i === 1) { // Observatorul
+    if (l >= 2) isoBox(x, y, 1.3, 1.3, 0, 7, '#cfc6b8');
+    const z0 = l >= 2 ? 7 : 0, h = 28 * hf;
+    cyl(x, y, .5, z0, h, '#eef2ff');
+    windows(x, y + .35, z0 + 8, 2, 10, sc);
+    const top = dome(x, y, .56, z0 + h, '#a9c1ff');
+    ctx.strokeStyle = '#33406a'; ctx.lineWidth = 3 * sc; ctx.beginPath(); ctx.moveTo(top.x + 2 * sc, top.y + 2 * sc); ctx.lineTo(top.x + 4 * sc, top.y + 18 * sc); ctx.stroke();
+    if (l >= 3) { ctx.strokeStyle = '#ffc93c'; ctx.lineWidth = 5 * sc; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(top.x + 3 * sc, top.y + 8 * sc); ctx.lineTo(top.x + 20 * sc, top.y - 6 * sc); ctx.stroke(); }
+    if (l >= 4) { const tw = .6 + .4 * Math.sin(t / 300); glow(top.x + 26 * sc, top.y - 20 * sc, 16 * sc * tw, 'rgba(255,255,200,.9)'); }
+  } else if (i === 2) { // Turnul
+    if (l >= 2) isoBox(x, y, 1, 1, 0, 9, '#cfc6b8');
+    const z0 = l >= 2 ? 9 : 0, h = 50 * hf;
+    cyl(x, y, .36, z0, h, '#e3d7c2');
+    windows(x, y + .26, z0 + 10, 3, 13, sc);
+    if (l >= 3) cyl(x, y, .5, z0 + h * .72, 3, th.accent);
+    const a = cone(x, y, .5, z0 + h, 32, th.roof);
+    if (l >= 4) { const pu = 1 + Math.sin(t / 250) * .15; ell(a.x, a.y - 5 * sc, 5 * sc * pu, 5 * sc * pu, '#bff4ff'); glow(a.x, a.y - 5 * sc, 24 * sc * pu, 'rgba(120,230,255,.7)'); }
+  } else if (i === 3) { // Magazinul
+    const h = 22 * hf, w = 1.2, d = 1.05;
+    isoBox(x, y, w, d, 0, h, '#ffe2b8');
+    windows(x + w / 2 + .02, y, 7, 1, 0, sc);
+    const y1 = y + d / 2;
+    for (let k = 0; k < 6; k++) {
+      const u0 = x - w / 2 + k * w / 6, u1 = u0 + w / 6;
+      poly([iso(u0, y1, h * .72), iso(u1, y1, h * .72), iso(u1, y1 + .32, h * .5), iso(u0, y1 + .32, h * .5)], k % 2 ? '#fff' : '#ff5a4a');
+    }
+    const r = isoBox(x, y, w + .12, d + .12, h, 5, th.roof);
+    if (l >= 2) isoBox(x - .25, y - .2, .3, .3, h + 5, 12, '#c9b8a6');
+    if (l >= 3) { const p = iso(x + .1, y + .1, h + 14); ctx.fillStyle = '#ffc93c'; ctx.beginPath(); ctx.roundRect(p.x - 14 * sc, p.y - 8 * sc, 28 * sc, 12 * sc, 4 * sc); ctx.fill(); coinFlat(p.x, p.y - 2 * sc, 4 * sc); }
+    if (l >= 4) { coinFlat(iso(x + .75, y + .6, 0).x, iso(x + .75, y + .6, 0).y, 6 * sc); coinFlat(iso(x + .75, y + .6, 3).x, iso(x + .75, y + .6, 3).y, 6 * sc); }
+  } else { // Sera
+    const h = 20 * hf, w = 1.3, d = 1;
+    [[-.3, 0, '#3fae5a'], [.25, .15, '#5cc96a'], [0, -.2, '#ff7ab6']].forEach(pl => { const p = iso(x + pl[0], y + pl[1], 6); ell(p.x, p.y, 8 * sc, 8 * sc, pl[2]); });
+    if (l >= 3) [[-.4, .2], [.35, -.2]].forEach(pl => { const p = iso(x + pl[0], y + pl[1], 10); ell(p.x, p.y, 3 * sc, 3 * sc, '#ffd23c'); });
+    const bx = isoBox(x, y, w, d, 0, h, '#bfefff', .5);
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.6 * sc;
+    for (let k = 0; k <= 4; k++) { const u = x - w / 2 + k * w / 4; const a = iso(u, y + d / 2, 0), c = iso(u, y + d / 2, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke(); }
+    poly([bx.tN, bx.tE, bx.tS, bx.tW], null, '#fff', 1.6 * sc);
+    if (l >= 2) { ctx.globalAlpha = .6; dome(x, y, .45, h, '#bfefff'); ctx.globalAlpha = 1; }
+    if (l >= 4) glow(iso(x, y, h + 12).x, iso(x, y, h + 12).y, 26 * sc, 'rgba(180,255,200,.55)');
+  }
+}
+function drawTree(x, y){
+  const th = theme();
+  const s = iso(x, y, 0); ell(s.x, s.y, 12 * sc, 6 * sc, 'rgba(0,0,0,.15)');
+  cyl(x, y, .07, 0, 8, '#8a5a32');
+  cone(x, y, .32, 6, 18, th.tree); cone(x, y, .25, 14, 16, shade(th.tree, .1)); cone(x, y, .17, 22, 12, shade(th.tree, .2));
+}
+
+/* ---------- mascota Bubi ---------- */
+let hop = null, squash = 0;
+function mascotPos(){
+  if (!hop) { const p = path[S.pos]; return {x: p[0], y: p[1], z: 0}; }
+  const a = path[hop.from], b = path[hop.to], k = Math.min(1, hop.t);
+  return {x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k, z: Math.sin(Math.PI * k) * 26};
+}
+function drawMascot(t){
+  const m = mascotPos(), base = iso(m.x, m.y, TZ), R = 20 * sc;
+  const bob = hop ? 0 : Math.sin(t / 300) * 2 * sc;
+  const sq = squash > 0 ? Math.sin(squash * Math.PI) * .22 : 0;
+  ell(base.x, base.y, R * .8 * (1 - m.z / 80), R * .35 * (1 - m.z / 80), 'rgba(0,0,0,.22)');
+  const cx = base.x, cy = base.y - R * (1 - sq) - m.z * sc - bob, rx = R * (1 + sq), ry = R * (1 - sq);
+  const g = ctx.createRadialGradient(cx - rx * .35, cy - ry * .4, rx * .05, cx, cy, rx);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(.25, '#c4f1ff'); g.addColorStop(.8, '#5cc8ff'); g.addColorStop(1, '#2f8fe0');
+  ctx.globalAlpha = .95; ell(cx, cy, rx, ry, g); ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5 * sc; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  // ochi
+  [-1, 1].forEach(d => {
+    ell(cx + d * rx * .33, cy + ry * .08, rx * .19, ry * .24, '#fff');
+    ell(cx + d * rx * .33 - rx * .03, cy + ry * .14, rx * .1, ry * .13, '#1d2a4a');
+    ell(cx + d * rx * .33 - rx * .06, cy + ry * .08, rx * .04, ry * .04, '#fff');
+    ell(cx + d * rx * .52, cy + ry * .38, rx * .1, ry * .06, 'rgba(255,120,160,.55)');
+  });
+  ctx.strokeStyle = '#1d2a4a'; ctx.lineWidth = 1.8 * sc; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy + ry * .3, rx * .17, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+  // ochelari de aviator pe frunte
+  ctx.strokeStyle = '#6a3c1a'; ctx.lineWidth = 3 * sc;
+  ctx.beginPath(); ctx.ellipse(cx, cy - ry * .2, rx * .98, ry * .5, 0, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  [-1, 1].forEach(d => {
+    const gx = cx + d * rx * .3, gy = cy - ry * .52;
+    ell(gx, gy, rx * .24, ry * .22, '#c98a2b');
+    ell(gx, gy, rx * .17, ry * .155, '#7fd6ff');
+    ell(gx - rx * .05, gy - ry * .05, rx * .06, ry * .05, '#fff');
+  });
+  ell(cx - rx * .45, cy - ry * .05, rx * .1, ry * .2, 'rgba(255,255,255,.6)');
+}
+
+/* ---------- particule ---------- */
+const parts = [];
+function burst(x, y, n, cols){
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 180;
+    parts.push({x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120, life: 1, c: cols[i % cols.length], r: 3 + Math.random() * 4}); }
+}
+function flyCoins(x, y, n){
+  const tgt = $('coins').getBoundingClientRect();
+  for (let i = 0; i < n; i++) parts.push({fly: true, x0: x + (Math.random() - .5) * 30, y0: y + (Math.random() - .5) * 20, x1: tgt.left - 20, y1: tgt.top + 14, t: -i * .06, life: 1});
+}
+
+/* ================= Desenare ================= */
+function render(t){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawBackground(t);
+  drawIsland(t);
+  const list = [];
+  for (let i = 0; i < L; i++) list.push({d: path[i][0] + path[i][1], f: () => drawTile(i, t)});
+  BUILDINGS.forEach((b, i) => list.push({d: b.x + b.y + .3, f: () => drawBuilding(i, t)}));
+  TREES.forEach(tr => list.push({d: tr[0] + tr[1], f: () => drawTree(tr[0], tr[1])}));
+  const m = mascotPos(); list.push({d: m.x + m.y + .45, f: () => drawMascot(t)});
+  list.sort((a, b) => a.d - b.d).forEach(o => o.f());
+  clouds.forEach((c, i) => { if (i >= 6) cloud(c.x * (W + 300) - 150, H * .72 + c.y * 60, c.s * 1.4, .8); });
+  parts.forEach(p => {
+    if (p.fly) { if (p.t < 0) return; const k = p.t * p.t * (3 - 2 * p.t), x = p.x0 + (p.x1 - p.x0) * k, y = p.y0 + (p.y1 - p.y0) * k - Math.sin(Math.PI * p.t) * 60; coinFlat(x, y, 7); }
+    else { ctx.globalAlpha = Math.max(0, p.life); ell(p.x, p.y, p.r, p.r, p.c); ctx.globalAlpha = 1; }
+  });
+}
+function update(dt){
+  if (hop) { hop.t += dt / hop.dur; if (hop.t >= 1) { S.pos = hop.to; squash = 1; const r = hop.res; hop = null; r(); } }
+  if (squash > 0) squash = Math.max(0, squash - dt * 5);
+  for (let i = 0; i < L; i++) if (flash[i] > 0) flash[i] = Math.max(0, flash[i] - dt * 2);
+  clouds.forEach(c => { c.x += c.v * dt; if (c.x > 1.1) c.x = -.1; });
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    if (p.fly) { p.t += dt * 1.6; if (p.t >= 1) { parts.splice(i, 1); sfx.coin(); } }
+    else { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; p.life -= dt * 1.2; if (p.life <= 0) parts.splice(i, 1); }
+  }
+  dispCoins += (S.coins - dispCoins) * Math.min(1, dt * 8);
+  if (Math.abs(S.coins - dispCoins) < 1) dispCoins = S.coins;
+}
+let lastT = performance.now(), hudT = 0;
+function loop(now){
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  update(dt); render(now);
+  hudT += dt; if (hudT > .25) { hudT = 0; updateHUD(); }
+  $('coins').textContent = fmt(dispCoins);
+  requestAnimationFrame(loop);
+}
+
+/* ================= Interfață ================= */
+let dispCoins = S.coins, busy = false, auto = false;
+function tickEnergy(){
+  if (S.energy >= ENERGY_MAX) { S.eTime = Date.now(); return; }
+  const n = Math.floor((Date.now() - S.eTime) / REGEN_MS);
+  if (n > 0) { S.energy = Math.min(ENERGY_MAX, S.energy + n); S.eTime += n * REGEN_MS; if (S.energy >= ENERGY_MAX) S.eTime = Date.now(); }
+}
+function updateHUD(){
+  tickEnergy();
+  $('stars').textContent = S.stars;
+  $('shields').innerHTML = [0, 1, 2].map(i => `<div class="sh ${i < S.shields ? 'on' : ''}"></div>`).join('');
+  $('islandName').textContent = `Insula ${S.island} · ${theme().name}`;
+  $('eTxt').textContent = `⚡ ${S.energy} / ${ENERGY_MAX}`;
+  $('eFill').style.width = Math.min(100, S.energy / ENERGY_MAX * 100) + '%';
+  $('eTimer').textContent = S.energy >= ENERGY_MAX ? 'Energie plină' : `+1 energie în ${mmss(REGEN_MS - (Date.now() - S.eTime))}`;
+  $('multTxt').textContent = 'x' + S.mult;
+  $('rollLbl').textContent = auto ? 'AUTO' : S.free > 0 ? `Gratuit ×${S.free}` : 'Aruncă';
+  $('btnRoll').classList.toggle('auto', auto);
+  const g = GIFT_MS - (Date.now() - S.giftAt);
+  $('gift').classList.toggle('ready', g <= 0);
+  $('giftT').textContent = g <= 0 ? 'Cadou!' : mmss(g);
+}
+function screenOf(i){ const p = path[i]; const s = iso(p[0], p[1], TZ); return {x: s.x, y: s.y - 30 * sc}; }
+function float(x, y, txt, cls = ''){
+  const e = document.createElement('div'); e.className = 'ft ' + cls; e.textContent = txt;
+  e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e);
+  setTimeout(() => e.remove(), 2000);
+}
+function banner(txt){ float(W / 2, H * .3, txt, 'big'); }
+function gain(n, x, y){
+  S.coins += n;
+  if (x !== undefined) { float(x, y, '+' + short(n)); flyCoins(x, y, Math.min(8, 2 + Math.floor(Math.log10(n)))); }
+}
+
+let modalRes = null;
+function modal(title, ico, html, btn = 'OK'){
+  $('mTitle').textContent = title; $('mIco').textContent = ico; $('mText').innerHTML = html; $('mBtn').textContent = btn;
+  $('modal').classList.add('on');
+  return new Promise(r => modalRes = r);
+}
+$('mBtn').onclick = () => { $('modal').classList.remove('on'); const r = modalRes; modalRes = null; if (r) r(); };
+const uiOpen = () => $('modal').classList.contains('on') || $('sheet').classList.contains('on') || $('bub').classList.contains('on');
+
+/* ---------- zaruri ---------- */
+const PIPS = {1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
+['d1', 'd2'].forEach(id => $(id).innerHTML = '<div class="pip"></div>'.repeat(9));
+function setDie(id, n){ [...$(id).children].forEach((p, i) => p.classList.toggle('on', PIPS[n].includes(i))); }
+async function rollDice(a, b){
+  const box = $('diceBox'); box.classList.add('on');
+  $('d1').classList.add('spin'); $('d2').classList.add('spin');
+  for (let k = 0; k < 8; k++) { setDie('d1', 1 + Math.floor(Math.random() * 6)); setDie('d2', 1 + Math.floor(Math.random() * 6)); sfx.dice(); await wait(65); }
+  $('d1').classList.remove('spin'); $('d2').classList.remove('spin');
+  setDie('d1', a); setDie('d2', b); beep(660, .1, 'triangle', .06);
+  await wait(420); box.classList.remove('on');
+}
+
+/* ---------- mișcare și căsuțe ---------- */
+const hopTo = i => new Promise(res => hop = {from: S.pos, to: i, t: 0, dur: .19, res});
+async function moveBy(n, m){
+  for (let k = 0; k < n; k++) {
+    const nx = (S.pos + 1) % L;
+    await hopTo(nx); sfx.hop(); flash[nx] = .5;
+    if (nx === 0 && k < n - 1) { const s = screenOf(0); gain(base() * 2 * m, s.x, s.y); float(s.x, s.y - 30, 'Start!', 'blue'); }
+  }
+}
+async function land(i, m){
+  const s = screenOf(i), b = base() * m; flash[i] = 1;
+  switch (tiles[i]) {
+    case 'coin': gain(b, s.x, s.y); break;
+    case 'pile': gain(b * 2.5, s.x, s.y); break;
+    case 'sack': gain(b * 5, s.x, s.y); break;
+    case 'start': gain(b * 3, s.x, s.y); banner('Fix pe START!'); break;
+    case 'shield':
+      if (S.shields < 3) { S.shields++; float(s.x, s.y, '+1 scut', 'blue'); beep(880, .2, 'triangle', .07, 1.3); }
+      else { float(s.x, s.y - 30, 'Scuturi pline', 'blue'); gain(b * 2, s.x, s.y); }
+      break;
+    case 'wind': S.free++; banner('Curent de vânt! Aruncare gratuită'); beep(400, .4, 'sine', .06, 2); break;
+    case 'bubble': await wait(300); await bubbleGame(m); break;
+    case 'chest': await wait(300); await chest(m); break;
+  }
+}
+async function chest(m){
+  const r = Math.random(), b = base() * m;
+  let title = 'Cufăr surpriză', ico, txt;
+  if (r < .4) { const v = b * 6; S.coins += v; ico = '💰'; txt = `Ai găsit <b>${fmt(v)}</b> monede!`; }
+  else if (r < .65) { const v = 5 + Math.floor(Math.random() * 6); S.energy += v; ico = '⚡'; txt = `Primești <b>+${v} energie</b>.`; }
+  else if (r < .85) { if (S.shields < 3) { S.shields++; ico = '🛡️'; txt = 'Primești <b>un scut</b> pentru insula ta.'; } else { const v = b * 4; S.coins += v; ico = '💰'; txt = `Scuturile sunt pline, așa că primești <b>${fmt(v)}</b> monede.`; } }
+  else { const v = b * 12; S.coins += v; title = 'Ploaie de monede!'; ico = '🌧️'; txt = `Ploaie de aur: <b>${fmt(v)}</b> monede!`; }
+  sfx.build();
+  await modal(title, ico, txt, 'Colectează');
+}
+function bubbleGame(m){
+  return new Promise(res => {
+    const ov = $('bub'); ov.classList.add('on');
+    let total = 0, popped = 0, lastSpawn = 0, prev = performance.now();
+    const end = prev + 7000, bubs = [], b = base() * m;
+    function spawn(){
+      const gold = Math.random() < .15, size = gold ? 64 : 54 + Math.random() * 34;
+      const el = document.createElement('div'); el.className = 'bb' + (gold ? ' gold' : '');
+      el.style.width = el.style.height = size + 'px';
+      const o = {el, x: 20 + Math.random() * (W - size - 40), y: H + 10, v: 110 + Math.random() * 90 + (gold ? 60 : 0), ph: Math.random() * 6, size, gold, dead: false};
+      el.onpointerdown = e => {
+        e.stopPropagation(); if (o.dead) return; o.dead = true; popped++;
+        const v = Math.round(b * (o.gold ? 1.5 : .5)); total += v; S.coins += v;
+        float(o.x + size / 2, o.y + size / 2, '+' + short(v)); sfx.pop();
+        el.classList.add('pop'); el.style.transform += ' scale(1.6)'; setTimeout(() => el.remove(), 200);
+      };
+      ov.appendChild(el); bubs.push(o);
+    }
+    function frame(now){
+      const dt = Math.min(.05, (now - prev) / 1000); prev = now;
+      const rem = Math.max(0, end - now);
+      $('bubInfo').textContent = `${(rem / 1000).toFixed(1)}s · ${short(total)} monede`;
+      if (rem > 0 && now - lastSpawn > 260) { lastSpawn = now; spawn(); }
+      bubs.forEach(o => { if (o.dead) return; o.y -= o.v * dt; o.el.style.transform = `translate(${o.x + Math.sin(now / 300 + o.ph) * 12}px,${o.y}px)`; if (o.y < -o.size) { o.dead = true; o.el.remove(); } });
+      if (rem > 0 || bubs.some(o => !o.dead)) requestAnimationFrame(frame);
+      else { ov.classList.remove('on'); ov.querySelectorAll('.bb').forEach(e => e.remove());
+        modal('Bule sparte!', '🫧', `Ai spart <b>${popped}</b> bule și ai câștigat <b>${fmt(total)}</b> monede.`, 'Super!').then(res); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+/* ---------- aruncare ---------- */
+function stopAuto(){ auto = false; updateHUD(); }
+async function doRoll(){
+  if (busy || uiOpen()) return;
+  tickEnergy();
+  const free = S.free > 0;
+  let m = S.mult;
+  if (!free) {
+    if (S.energy < 1) { stopAuto(); return modal('Fără energie', '⚡', `Revino peste <b>${mmss(REGEN_MS - (Date.now() - S.eTime))}</b> pentru următoarea energie, sau deschide cadoul 🎁 când e gata.`); }
+    if (S.energy < m) { m = Math.max(...MULTS.filter(x => x <= S.energy)); S.mult = m; }
+    S.energy -= m;
+  } else { S.free--; }
+  busy = true; updateHUD(); audioInit();
+  const a = 1 + Math.floor(Math.random() * 6), b = 1 + Math.floor(Math.random() * 6);
+  await rollDice(a, b);
+  await moveBy(a + b, m);
+  await land(S.pos, m);
+  if (a === b) { S.free++; banner('Dublă! Mai arunci o dată'); }
+  save(); busy = false; updateHUD();
+  if (auto) setTimeout(() => { if (auto) doRoll(); }, 380);
+}
+let holdT = null;
+$('btnRoll').onpointerdown = () => {
+  audioInit();
+  if (auto) { stopAuto(); return; }
+  holdT = setTimeout(() => { holdT = null; auto = true; updateHUD(); doRoll(); }, 500);
+};
+$('btnRoll').onpointerup = () => { if (holdT) { clearTimeout(holdT); holdT = null; doRoll(); } };
+$('btnRoll').onpointerleave = $('btnRoll').onpointercancel = () => { if (holdT) { clearTimeout(holdT); holdT = null; } };
+$('btnMult').onclick = () => {
+  tickEnergy();
+  const ok = MULTS.filter(x => x <= Math.max(1, S.energy));
+  const i = ok.indexOf(S.mult);
+  S.mult = ok[(i + 1) % ok.length] || 1; beep(600 + S.mult * 40, .08, 'triangle', .05); updateHUD(); save();
+};
+$('gift').onclick = () => {
+  audioInit();
+  const g = GIFT_MS - (Date.now() - S.giftAt);
+  if (g > 0) return modal('Cadou', '🎁', `Următorul cadou e gata în <b>${mmss(g)}</b>.`);
+  S.giftAt = Date.now(); tickEnergy(); S.energy += GIFT_ENERGY; save(); updateHUD(); sfx.build();
+  modal('Cadou!', '🎁', `Primești <b>+${GIFT_ENERGY} energie</b>. Revino peste o oră pentru următorul.`, 'Mulțumesc!');
+};
+
+/* ---------- construcții ---------- */
+function renderSheet(){
+  $('bList').innerHTML = BUILDINGS.map((b, i) => {
+    const l = S.levels[i], c = l < 4 ? cost(i, l) : 0;
+    const stars = '<b>★</b>'.repeat(l) + '★'.repeat(4 - l);
+    const btn = l >= 4 ? `<button class="buy done" disabled>Gata ✓</button>`
+      : `<button class="buy" data-i="${i}" ${S.coins < c ? 'disabled' : ''}><span class="coinIco"></span>${short(c)}</button>`;
+    return `<div class="card"><div class="ic">${b.ico}</div><div class="nm">${b.name}<div class="stars">${stars}</div></div>${btn}</div>`;
+  }).join('');
+  $('bList').querySelectorAll('.buy[data-i]').forEach(el => el.onclick = () => build(+el.dataset.i));
+}
+function openSheet(){ if (busy) return; stopAuto(); renderSheet(); $('sheet').classList.add('on'); }
+function closeSheet(){ $('sheet').classList.remove('on'); }
+$('btnBuild').onclick = openSheet;
+$('closeSheet').onclick = closeSheet;
+function build(i){
+  const l = S.levels[i]; if (l >= 4) return;
+  const c = cost(i, l); if (S.coins < c) return;
+  S.coins -= c; S.levels[i]++; S.stars++;
+  const b = BUILDINGS[i], p = iso(b.x, b.y, 30);
+  burst(p.x, p.y, 26, ['#ffd23c', '#fff', theme().accent, '#ff7ab6']);
+  float(p.x, p.y - 20, '+1 ⭐'); sfx.build();
+  save(); renderSheet(); updateHUD();
+  if (S.levels.every(v => v >= 4)) setTimeout(islandComplete, 900);
+}
+async function islandComplete(){
+  closeSheet();
+  const next = THEMES[S.island % THEMES.length].name, bonus = base() * 20;
+  await modal('Insulă completă!', '🎉', `Ai construit tot pe <b>${theme().name}</b>.<br>Primești <b>+30 energie</b> și <b>${fmt(bonus)}</b> monede.<br>Următoarea oprire: <b>${next}</b>.`, 'Zboară mai departe');
+  S.energy += 30; S.coins += bonus; S.island++; S.levels = [0, 0, 0, 0, 0]; S.pos = 0;
+  genIsland(); save(); updateHUD();
+  banner(`Insula ${S.island}: ${theme().name}`);
+}
+cvs.onpointerdown = e => {
+  if (uiOpen() || busy) return;
+  for (const b of BUILDINGS) { const p = iso(b.x, b.y, 20); if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 40 * sc) return openSheet(); }
+};
+
+setInterval(save, 5000);
+addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+updateHUD();
+requestAnimationFrame(loop);
+if (!localStorage.getItem(KEY)) setTimeout(() => modal('Bine ai venit!', '🫧', 'Eu sunt <b>Bubi</b>. Aruncă zarurile, mergi pe Drumul Norilor și strânge monede ca să construiești insula.<br><br>Ține apăsat pe zar pentru aruncare automată.', 'Hai!').then(save), 400);
+</script>
+</body>
+</html>
