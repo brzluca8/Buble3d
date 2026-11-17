@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a56c6">
+<title>Buble 3D</title>
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vg"></div>
+<div id="ui">
+  <div id="top"><div class="logo"><div class="av">☺</div><b>Buble</b></div><div class="pill">🪙 <span id="coins"></span></div><div class="badge">NIVEL<b id="lvl"></b></div></div>
+  <div id="xpbar"><span>Dezvoltă insula • <b id="prog"></b> niveluri</span><button id="mis">Misiuni</button><div class="bar"><i id="xpf"></i></div></div>
+  <div id="title">Grădina dintre nori<small>Atinge o clădire ca să o dezvolți</small></div>
+  <div id="sheet" hidden></div>
+  <button id="mdl">🧩 Modele 3D</button>
+  <button id="blast">Buble Blast<span>JOACĂ ȘI CÂȘTIGĂ MONEDE</span></button>
+  <nav><button class="on" data-m="home"><i>🏠</i>Acasă</button><button data-m="album"><i>🃏</i>Album</button><button data-m="friends"><i>👥</i>Prieteni</button><button data-m="events"><i>🏆</i>Evenimente</button><button data-m="shop"><i>🏪</i>Magazin</button></nav>
+  <div id="toast"></div>
+  <div id="md" hidden><div class="card"><button class="x" id="mx">✕</button><div id="mb"></div></div></div>
+  <div id="bw" hidden><canvas id="bc"></canvas><button id="bx">✕</button><div id="rs" hidden></div></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
