@@ -207,7 +207,8 @@ def mirror(builder, name, region, k=0.05, op="add"):
 HEAD_C = np.array([0.0, 0.04, 1.79])
 add("cranium", "head", ell((0, 0.05, 1.79), (0.41, 0.37, 0.29)), 0.0)
 add("face", "head", ell((0, -0.07, 1.62), (0.40, 0.33, 0.27)), 0.12)
-mirror(lambda s: ell((s * 0.25, -0.12, 1.51), (0.21, 0.19, 0.15), rot=(0, s * 25, 0)), "cheek", "cheek", 0.10)
+# cheeks sit high (cheekbones) and stay compact, so the face narrows towards the chin as in the concept
+mirror(lambda s: ell((s * 0.245, -0.11, 1.55), (0.19, 0.17, 0.13), rot=(0, s * 20, 0)), "cheek", "cheek", 0.10)
 MUZ_DY = -0.022  # muzzle, mouth and chin sit a little forward of the face: a readable snout in profile
 add("muzzle", "muzzle", ell((0, -0.385 + MUZ_DY, 1.53), (0.145, 0.095 - MUZ_DY * 0.5, 0.09)), 0.06)
 mirror(lambda s: ell((s * 0.078, -0.43 + MUZ_DY, 1.515), (0.088, 0.072, 0.064)), "puff", "muzzle", 0.04)
@@ -1951,18 +1952,18 @@ def fur_params():
     face = head & (V[:, 1] < -0.22)
     L[face] = 0.009
     lift[face] = 0.25
-    # ruff: long spiky cream tufts on the lower cheeks / sides of the face
+    # ruff: short spiky cream tufts sticking out sideways from the cheeks (not hanging jowls)
     cheek = rmask("cheek")
     side = smoothstep(0.12, 0.42, np.abs(V[:, 0]))
-    L[cheek] = (0.045 + 0.09 * side)[cheek]
-    lift[cheek] = 0.3
-    clump[cheek] = 0.92
+    L[cheek] = (0.03 + 0.05 * side)[cheek]
+    lift[cheek] = 0.42
+    clump[cheek] = 0.9
     low_side = head & (V[:, 2] < 1.64) & (np.abs(V[:, 0]) > 0.24)
-    L[low_side] = np.maximum(L[low_side], 0.065)
-    clump[low_side] = 0.88
+    L[low_side] = np.maximum(L[low_side], 0.038)
+    clump[low_side] = 0.85
     L[rmask("muzzle")] = 0.008
-    L[rmask("chin")] = 0.032
-    clump[rmask("chin")] = 0.75
+    L[rmask("chin")] = 0.016
+    clump[rmask("chin")] = 0.6
     # ears
     L[ear] = 0.03 + 0.03 * smoothstep(0.2, 0.9, eh[ear])
     lift[ear] = 0.22
@@ -2007,7 +2008,7 @@ def flow_dir(P, Nn, reg, tt, eu):
     f[m] = P[m] - np.array([0, -0.80, 1.62])
     low = m & (P[:, 2] < 1.64) & (np.abs(P[:, 0]) > 0.24)
     m2 = (reg == "cheek") | low
-    f[m2] = np.stack([np.sign(P[m2, 0]), np.full(m2.sum(), 0.3), np.full(m2.sum(), -0.6)], 1)
+    f[m2] = np.stack([np.sign(P[m2, 0]), np.full(m2.sum(), 0.45), np.full(m2.sum(), -0.18)], 1)
     m = np.isin(reg, ["muzzle", "chin"])
     f[m] = P[m] - np.array([0, -0.62, 1.58])
     m = reg == "ear"
@@ -2108,7 +2109,8 @@ def build_fur(count):
         root = P0[m] - Nn[m] * 0.002
         Lm = L[m][:, None, None]
         pts = root[:, None, :] + d[m][:, None, :] * (Lm * t[None, :, None])
-        droop = 0.22 if long_ else 0.15
+        ruff = (reg[m] == "cheek") | ((reg[m] == "head") & (P0[m, 2] < 1.64) & (np.abs(P0[m, 0]) > 0.24))
+        droop = np.where(ruff, 0.04, 0.22 if long_ else 0.15)[:, None, None]
         pts += np.array([0, 0, -1.0])[None, None, :] * (droop * Lm * (t ** 2)[None, :, None])
         pts += F[m][:, None, :] * (0.3 * Lm * (t ** 2)[None, :, None])
         pts = clump_pull(P0[m], pts, clv[m], 18 if long_ else 24)
