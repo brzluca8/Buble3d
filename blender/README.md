@@ -73,3 +73,31 @@ Parametri:
 - **Rig și animații**: Rigify sau Mixamo pe `Orion_Body`, cu accesoriile legate de oase. Blana se leagă prin *Surface* = `Orion_Body`. Expresiile pot deveni shape keys pe pleoape și sprâncene, iar gura se poate face ca înlocuire de mesh.
 - **Pentru joc**: în `orion_game.glb` blana lipsește. Pentru aspect de blană pe telefon, se coace (bake) blana în texturi (Color + Normal + AO) pe un mesh retopologizat, plus 6–8 straturi de *shell fur* în Three.js.
 - **Costume și skin-uri** (Pirat, Viking, Mag, Ametist, Aqua, Rubin): se schimbă constantele `C_*` și materialele `M_*`, iar costumele se adaugă ca funcții `build_*` noi.
+
+## Modelul din Tripo (pentru joc)
+`tripo/orion_tripo.glb` este modelul generat în Tripo Studio după planșă: un singur mesh texturat (188 de mii de triunghiuri, texturi 2048 px). Scriptul `tripo_prep.py` îl pregătește pentru joc.
+
+Ce face scriptul:
+1. Întoarce modelul cu fața spre cameră (în Tripo stătea rotit cu ~15°), îl așază cu tălpile pe sol și îl aduce la 1,2 m.
+2. Face marcajele luminoase să emită lumină: spirala de pe coadă, stelele, cristalele, felinarul, lentilele și busola. Masca de emisie e calculată din textura de culoare (turcoaz și albastru saturat). Ochii sunt excluși.
+3. Recolorează în mov materialul rucsacului, care în Tripo ieșise vișiniu. Curelele maro și eșarfa roșie rămân neschimbate. Recolorarea se oprește cu `--no-pack-purple`.
+4. Păstrează metalul doar pe piesele de metal. Harta din Tripo făcea blana pe jumătate metalică și deci mai închisă la culoare.
+5. Exportă:
+   - `orion_tripo_game.glb`: modelul complet;
+   - `orion_tripo_mobile.glb`: aceleași texturi, redus la 40 de mii de triunghiuri pentru telefon.
+
+   Ambele sunt la 1,2 m, cu texturi JPG compatibile cu Three.js r128 din `buble.html`. Au trecut de validatorul glTF fără erori.
+6. Randează aceeași planșă ca modelul procedural: `tripo_sheet.png`, `tripo_mobile_sheet.png`, `tripo_face.png`, iar vederile transparente în `transparent/`.
+
+Rezultatele sunt în `out_tripo/`.
+
+```bash
+./bvenv/bin/python tripo_prep.py --src tripo/orion_tripo.glb --out out_tripo --render sheet,face,lodsheet
+```
+Parametri: `--face-yaw` (rotația, implicit -15), `--lod` (triunghiuri pentru telefon, implicit 40000), `--glow` (intensitatea emisiei în randări), `--no-pack-purple`, `--size`, `--samples`.
+
+**În joc:** în `buble.html`, din panoul „🧩 Modele 3D”, la mascotă, încarci `out_tripo/orion_tripo_mobile.glb`.
+
+**Animație:** modelul e un singur mesh, fără oase. Pentru mers și sărit se poate face rig automat în Mixamo (corp umanoid). Coada și urechile au nevoie de oase adăugate în Blender.
+
+**Licență:** verifică în planul tău Tripo dacă modelul poate fi folosit comercial.
