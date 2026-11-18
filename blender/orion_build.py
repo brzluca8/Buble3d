@@ -6,25 +6,29 @@ Rulare (Blender 5.1 ca modul Python, cu scikit-image și pillow instalate):
     python orion_build.py --out out --render sheet,face,hero
 Test rapid:
     python orion_build.py --res 0.012 --fur 60000 --samples 24 --size 600 --render sheet --no-blend --no-glb
-Expresii (prim-plan pe față):  --expr happy|surprised|laugh|determined|angry|wink --render face
+Expresii (prim-plan pe față):  --expr happy|surprised|laugh|determined|angry|wink|content --render face
+Fișierele finale ajung direct în forma din README: imaginile pe alb în out/, cele transparente în out/transparent/.
 
 Pași:
-  1. Corpul este un câmp SDF (elipsoizi, conuri rotunjite, urechi în formă de frunză, coadă în spirală)
-     transformat în mesh cu marching cubes.
+  1. Corpul este un câmp SDF (elipsoizi, conuri rotunjite, urechi mari în formă de lacrimă/flacără,
+     coadă în spirală) transformat în mesh cu marching cubes.
   2. Culorile sunt pictate pe vârfuri: portocaliu-auriu, crem (bot, obraji, piept, labe), pete maro,
      marcaje pe frunte, mov pe urechi și în interiorul cozii, roz în urechi, marcaje turcoaz care strălucesc.
   3. Accesoriile: ochelari de aviator cu lentile luminoase și curele pe cap, eșarfă roșie, medalion-busolă,
      vestă de piele cu nituri, centură cu cataramă, curea peste piept, brățări cu cristale,
-     rucsac mov cu hartă rulată și felinar.
-  4. Blana (Hair Curves) are lungime, direcție și smocuri pe zone. Urechile au smocuri mov,
-     în interiorul urechilor e puf crem, pe obraji e un guler de blană. Sub haine blana se elimină automat.
+     rucsac mov moale (clapă, buzunar, curele cu catarame) cu hartă rulată, hartă desfăcută și felinar.
+  4. Blana (Hair Curves) are lungime, direcție și smocuri pe zone. Vârfurile urechilor sunt flăcări mov
+     curbate în afară, în interiorul urechilor e puf crem, pe obraji e un guler de blană.
+     Sub haine blana se elimină automat.
   5. Randarea se face pe fundal alb, cu umbră, iar luminile se rotesc odată cu camera.
      Rezultă planșa „Față / 3/4 / Profil / Spate”, un prim-plan pe față și o vedere 3/4.
+     Ca în concept, profilul are gura închisă, zâmbind (expresia „content”, randată într-un proces separat).
   6. Se salvează orion.blend și orion_game.glb (1,2 m, fără blană).
 """
 import argparse
 import math
 import os
+import subprocess
 import sys
 import time
 
@@ -54,6 +58,8 @@ ap.add_argument("--view", default="Khronos PBR Neutral")
 ap.add_argument("--look", default="")
 ap.add_argument("--no-blend", action="store_true")
 ap.add_argument("--no-glb", action="store_true")
+ap.add_argument("--side-expr", default="content",
+                help="expresia pentru vederea din profil a planșei (în concept profilul are gura închisă)")
 args = ap.parse_args(argv)
 os.makedirs(args.out, exist_ok=True)
 rng = np.random.default_rng(args.seed)
@@ -116,6 +122,8 @@ EXPRS = {
                        pupil=1.0),
     "angry": dict(mouth="snarl", lid=(0.5, 0.5), low=(-0.66, -0.66), tilt=24, brow="angry", pupil=0.9),
     "wink": dict(mouth="smirk", lid=("arc", None), low=(-1, -1), tilt=0, brow=None, pupil=1.0),
+    # closed-mouth smile: the concept's profile view
+    "content": dict(mouth="smile_closed", lid=(None, None), low=(-1, -1), tilt=0, brow=None, pupil=1.0),
 }
 EX = EXPRS[args.expr]
 
@@ -200,16 +208,18 @@ HEAD_C = np.array([0.0, 0.04, 1.79])
 add("cranium", "head", ell((0, 0.05, 1.79), (0.41, 0.37, 0.29)), 0.0)
 add("face", "head", ell((0, -0.07, 1.62), (0.40, 0.33, 0.27)), 0.12)
 mirror(lambda s: ell((s * 0.25, -0.12, 1.51), (0.21, 0.19, 0.15), rot=(0, s * 25, 0)), "cheek", "cheek", 0.10)
-add("muzzle", "muzzle", ell((0, -0.385, 1.53), (0.145, 0.095, 0.09)), 0.06)
-mirror(lambda s: ell((s * 0.078, -0.43, 1.515), (0.088, 0.072, 0.064)), "puff", "muzzle", 0.04)
-add("chin", "chin", ell((0, -0.32, 1.39), (0.115, 0.09, 0.068)), 0.06)
+MUZ_DY = -0.022  # muzzle, mouth and chin sit a little forward of the face: a readable snout in profile
+add("muzzle", "muzzle", ell((0, -0.385 + MUZ_DY, 1.53), (0.145, 0.095 - MUZ_DY * 0.5, 0.09)), 0.06)
+mirror(lambda s: ell((s * 0.078, -0.43 + MUZ_DY, 1.515), (0.088, 0.072, 0.064)), "puff", "muzzle", 0.04)
+add("chin", "chin", ell((0, -0.32 + MUZ_DY, 1.39), (0.115, 0.09 - MUZ_DY * 0.5, 0.068)), 0.06)
 
-# --- ears: big leaf-shaped lynx ears, cupped, with a hollow front
-EAR_B = np.array([0.30, 0.07, 1.90])
+# --- ears: big teardrop ("flame") lynx ears: round bottom, pointed tip bending outward, cupped hollow front
+EAR_B = np.array([0.27, 0.16, 2.0])  # centre of the round lower part
 EAR_U = np.array([0.36, 0.05, 1.0])
-EAR_F = np.array([0.9, -1.0, 0.1])
-EAR_R, EAR_D = 0.53, 0.32
-EAR_LEN = math.sqrt(EAR_R ** 2 - EAR_D ** 2)
+EAR_F = np.array([0.62, -1.0, 0.12])
+EAR_RB = 0.235  # radius of the round part (ear ~0.47 wide)
+EAR_LEN = 0.40  # centre -> tip
+EAR_CURL = 0.065  # sideways bend of the tip (outward)
 
 
 def ear_frame(s):
@@ -227,11 +237,25 @@ def ear_local(P, s):
     return q @ W, q @ U, q @ F
 
 
+def ear_centre(h):
+    """lateral offset of the ear's centre line: the upper half bends outward (flame tip)"""
+    return EAR_CURL * np.clip(h / EAR_LEN, 0, 1) ** 2.5
+
+
 def ear_shape(w, h):
-    leaf = np.maximum(np.sqrt((w - EAR_D) ** 2 + h ** 2) - EAR_R, np.sqrt((w + EAR_D) ** 2 + h ** 2) - EAR_R)
-    hn = np.clip((h + 0.1) / (EAR_LEN + 0.1), 0, 1)
-    t = 0.085 * (1 - hn) + 0.026 * hn
-    bend = 0.55 * w * w - 0.30 * np.clip(h, 0, None) ** 2
+    """leaf = approx. signed distance to the teardrop outline in the ear plane,
+    t = shell thickness, bend = cupping offset along the ear normal"""
+    wc = w - ear_centre(h)
+    x = np.clip(h / EAR_LEN, 0, 1)
+    hw = EAR_RB * np.maximum(1 - x ** 2.2, 0) ** 0.8  # full, onion-like outline
+    slope = EAR_RB / EAR_LEN * 0.8 * 2.2 * x ** 1.2 * np.maximum(1 - x ** 2.2, 1e-3) ** -0.2
+    top = (np.abs(wc) - hw) / np.sqrt(1 + slope ** 2)
+    top = np.maximum(top, h - EAR_LEN)
+    bottom = np.sqrt(wc ** 2 + h ** 2) - EAR_RB
+    leaf = np.where(h > 0, top, bottom)
+    hn = np.clip((h + EAR_RB) / (EAR_LEN + EAR_RB), 0, 1)
+    t = 0.09 * (1 - hn) + 0.028 * hn
+    bend = 0.6 * wc * wc - 0.22 * np.clip(h, 0, None) ** 2
     return leaf, t, bend
 
 
@@ -240,13 +264,13 @@ def ear_sdf(s):
         w, h, c = ear_local(P, s)
         leaf, t, bend = ear_shape(w, h)
         d = smax(leaf, np.abs(c - bend) - t / 2, 0.015)
-        cav = np.maximum(leaf + 0.055, (bend - t / 2 + 0.022) - c)
+        cav = np.maximum(leaf + 0.05, (bend - t / 2 + 0.024) - c)
         d = smax(d, -cav, 0.02)
-        d = np.maximum(d, -(h + 0.30))
         return d.astype(np.float32)
 
     B, U, F, W = ear_frame(s)
-    corners = np.array([B + W * a + U * b + F * c for a in (-0.32, 0.32) for b in (-0.32, EAR_LEN + 0.04)
+    r = EAR_RB + 0.06
+    corners = np.array([B + W * a + U * b + F * c for a in (-r, r + EAR_CURL) for b in (-r, EAR_LEN + 0.06)
                         for c in (-0.2, 0.2)])
     return f, corners.min(0), corners.max(0)
 
@@ -337,16 +361,16 @@ EYE_X, EYE_Z = 0.172, 1.665
 EYE_C = {s: np.array([s * EYE_X, -0.345, EYE_Z]) for s in (1, -1)}
 EYE_S = np.array([0.114, 0.066, 0.104])
 mirror(lambda s: ell((s * EYE_X, -0.42, EYE_Z), (0.122, 0.075, 0.112)), "socket", "head", 0.03, op="sub")
-MOUTH_C = np.array([0.0, -0.43, 1.44])
+MOUTH_C = np.array([0.0, -0.43 + MUZ_DY, 1.44])
 
 
 def mouth_shape(kind):
     if kind in ("smile", "grin"):
         big = kind == "grin"
         c = MOUTH_C + [0, 0, -0.016 if big else -0.008]
-        r = np.array((0.2, 0.135, 0.095) if big else (0.19, 0.13, 0.08), np.float32)
+        r = np.array((0.225, 0.135, 0.095) if big else (0.215, 0.13, 0.08), np.float32)
         top = 1.462 if big else 1.457
-        bend = 2.0
+        bend = 2.2
 
         def f(P):
             Q = P.copy()
@@ -506,9 +530,9 @@ def tail_param(P):
 
 
 # ============================================================================= 2. colours
-C_FUR = lin("#FDA828")
-C_FUR_HI = lin("#FFCB55")
-C_FUR_DEEP = lin("#EE820E")
+C_FUR = lin("#FB9214")
+C_FUR_HI = lin("#FFBE45")
+C_FUR_DEEP = lin("#E26A06")
 C_CREAM = lin("#FDE8D2")
 C_SPOT = lin("#8E3E0E")
 C_MARK = lin("#6E260A")
@@ -516,7 +540,10 @@ C_PURPLE = lin("#8E2F8E")
 C_PURPLE_D = lin("#5C1868")
 C_PINK = lin("#F59DA5")
 C_MOUTH = lin("#5E101C")
-C_GLOW = lin("#1AA4FF")
+C_GLOW = lin("#19D2FF")  # emission colour of the glowing marks
+C_GLOW_BASE = lin("#06287A")  # their diffuse colour: dark blue, so the cyan emission stays saturated
+C_INDIGO = lin("#3A1A78")  # backdrop of the tail spiral
+C_SPILL = lin("#1E4FC8")  # blue light spilling around the spiral strokes
 C_DOT = lin("#C9875A")
 
 col = np.tile(C_FUR, (NV, 1))
@@ -556,11 +583,11 @@ cream = np.maximum(cream, rmask("paw", "foot").astype(float))
 col = mix(col, C_CREAM, cream)
 
 # --- ears: pink hollow, purple tips
-inner_ear = ear * smoothstep(0.05, 0.45, EARF) * smoothstep(-0.025, -0.06, LEAF)
-ear_purple = ear * smoothstep(0.35, 0.7, eh)
+inner_ear = ear * smoothstep(0.05, 0.45, EARF) * smoothstep(-0.02, -0.05, LEAF)
+ear_purple = ear * smoothstep(0.1, 0.42, eh) * (1 - inner_ear) + ear * inner_ear * smoothstep(0.78, 0.97, eh)
 col = mix(col, C_PINK, inner_ear)
-col = mix(col, C_PURPLE, ear_purple * (1 - 0.55 * inner_ear))
-col = mix(col, C_PURPLE_D, ear * smoothstep(0.82, 1.0, eh) * (1 - inner_ear))
+col = mix(col, C_PURPLE, ear_purple)
+col = mix(col, C_PURPLE_D, ear * smoothstep(0.7, 1.0, eh) * (1 - inner_ear))
 
 # --- tail: orange outside, purple inside the curl, glowing spiral on the flanks
 tail = rmask("tail")
@@ -623,9 +650,13 @@ for _k in range(-1, 4):
     _th = -_phi_p + 2 * np.pi * _k
     _rs = 0.012 + _b * _th
     _best = np.minimum(_best, np.where(_th > -0.4, np.abs(rho_p - _rs), 9))
-_spiral = smoothstep(0.026, 0.009, _best) * smoothstep(0.25, 0.18, rho_p)
+_spiral = smoothstep(0.032, 0.011, _best) * smoothstep(0.25, 0.18, rho_p)
 _core = smoothstep(0.06, 0.0, rho_p)
 glow = np.maximum(glow, tail * side_face * np.clip(_spiral + _core, 0, 1) * smoothstep(0.25, 0.4, ts))
+# dark indigo backdrop on the flanks of the curl + blue spill around the strokes (as in the concept)
+_disk = tail * smoothstep(0.15, 0.6, np.abs(N @ TAIL_N)) * smoothstep(0.3, 0.2, rho_p) * smoothstep(0.2, 0.38, ts)
+col = mix(col, C_INDIGO, _disk * 0.8)
+col = mix(col, C_SPILL, _disk * smoothstep(0.075, 0.025, _best) * smoothstep(0.26, 0.18, rho_p) * 0.7)
 
 
 def star_mask(center, normal, R, p=0.55, up=(0, 0, 1.0)):
@@ -639,7 +670,7 @@ def star_mask(center, normal, R, p=0.55, up=(0, 0, 1.0)):
     fill = smoothstep(1.0, 0.75, q)
     edge = smoothstep(0.16, 0.02, np.abs(q - 0.88))
     near = smoothstep(0.07, 0.035, np.abs(rel @ n))
-    return near * np.clip(fill * 0.6 + edge, 0, 1)
+    return near * np.clip(fill * 0.85 + edge, 0, 1)
 
 
 STAR_SPOTS = []
@@ -651,7 +682,7 @@ for _s in (1, -1):
         if hit is not None:
             glow = np.maximum(glow, rmask(reg) * star_mask(np.array(hit), np.array(n), R))
             STAR_SPOTS.append((np.array(hit), np.array(n), R))
-col = mix(col, C_GLOW, glow * 0.9)
+col = mix(col, C_GLOW_BASE, glow * 0.95)
 
 ca = me.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
 ca.data.foreach_set("color", np.concatenate([col, np.ones((NV, 1))], 1).astype(np.float32).ravel())
@@ -743,6 +774,12 @@ def attr_node(nt, name, x=-600, y=0):
     return a
 
 
+def glow_strength(nt, fac, lin_k, core_k):
+    """emission strength for the glowing marks: lin_k * g + core_k * g^3"""
+    return mnode(nt, "ADD", mnode(nt, "MULTIPLY", fac, vb=lin_k),
+                 mnode(nt, "MULTIPLY", mnode(nt, "POWER", fac, vb=3.0), vb=core_k))
+
+
 def skin_material():
     m, nt, b = new_mat("Orion_Skin")
     a = attr_node(nt, "Col")
@@ -753,7 +790,7 @@ def skin_material():
     b.inputs["Subsurface Radius"].default_value = (0.4, 0.15, 0.08)
     b.inputs["Subsurface Scale"].default_value = 0.03
     b.inputs["Emission Color"].default_value = (*C_GLOW, 1)
-    nt.links.new(mnode(nt, "MULTIPLY", g.outputs["Fac"], vb=3.0), b.inputs["Emission Strength"])
+    nt.links.new(glow_strength(nt, g.outputs["Fac"], 0.5, 0.8), b.inputs["Emission Strength"])
     return m
 
 
@@ -777,12 +814,12 @@ def fur_material():
     nt.links.new(comb.outputs[0], mul.inputs[7])
     nt.links.new(mul.outputs[2], b.inputs["Base Color"])
     b.inputs["Roughness"].default_value = 0.5
-    b.inputs["Specular IOR Level"].default_value = 0.3
+    b.inputs["Specular IOR Level"].default_value = 0.22
     b.inputs["Subsurface Weight"].default_value = 0.1
     b.inputs["Subsurface Radius"].default_value = (0.5, 0.25, 0.1)
     b.inputs["Subsurface Scale"].default_value = 0.01
     b.inputs["Emission Color"].default_value = (*C_GLOW, 1)
-    nt.links.new(mnode(nt, "MULTIPLY", g.outputs["Fac"], vb=3.6), b.inputs["Emission Strength"])
+    nt.links.new(glow_strength(nt, g.outputs["Fac"], 0.6, 0.95), b.inputs["Emission Strength"])
     return m
 
 
@@ -796,7 +833,7 @@ M_LEATHER_D = textured_mat("LeatherDark", "#5A2B12", scale=16, var=0.2, bump=0.3
 M_STRAP_P = textured_mat("StrapPurple", "#4C1E46", scale=16, var=0.18, bump=0.3, rough=0.5, coat=0.15)
 M_BAG = textured_mat("BagPurple", "#7B2C8A", scale=22, var=0.14, bump=0.35, rough=0.75, sheen=0.5)
 M_BAG_D = textured_mat("BagPurpleDark", "#61206F", scale=22, var=0.14, bump=0.35, rough=0.75, sheen=0.5)
-M_SCARF = textured_mat("Scarf", "#D9121B", scale=26, var=0.12, bump=0.2, rough=0.72, sheen=0.7)
+M_SCARF = textured_mat("Scarf", "#D3131B", scale=26, var=0.12, bump=0.25, rough=0.86, coat=0.0, sheen=0.35)
 def lens_material():
     m, nt, b = new_mat("GoggleLens")
     tc = nt.nodes.new("ShaderNodeTexCoord")
@@ -807,13 +844,14 @@ def lens_material():
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     nt.links.new(r, ramp.inputs[0])
     cr = ramp.color_ramp
-    cr.elements[0].position, cr.elements[0].color = 0.0, (*srgb("#7FEBFF"), 1)
-    cr.elements[1].position, cr.elements[1].color = 1.0, (*srgb("#0630A8"), 1)
-    e = cr.elements.new(0.42)
-    e.color = (*srgb("#0E8CFF"), 1)
-    b.inputs["Base Color"].default_value = (*srgb("#0D47D9"), 1)
+    cr.elements[0].position, cr.elements[0].color = 0.0, (*srgb("#A8F6FF"), 1)
+    cr.elements[1].position, cr.elements[1].color = 1.0, (*srgb("#0634B0"), 1)
+    for pos, hx in ((0.33, "#1CCBFF"), (0.72, "#0A74EE")):
+        e = cr.elements.new(pos)
+        e.color = (*srgb(hx), 1)
+    b.inputs["Base Color"].default_value = (*srgb("#0A3FC0"), 1)
     nt.links.new(ramp.outputs[0], b.inputs["Emission Color"])
-    b.inputs["Emission Strength"].default_value = 1.5
+    b.inputs["Emission Strength"].default_value = 1.25
     b.inputs["Roughness"].default_value = 0.2
     b.inputs["Specular IOR Level"].default_value = 0.15
     b.inputs["Coat Weight"].default_value = 0.0
@@ -821,13 +859,34 @@ def lens_material():
 
 
 M_LENS = lens_material()
-M_GLOWM = simple_mat("GlowCyan", "#7FE6FF", rough=0.3, emit="#1FC4FF", emit_str=6.0)
-M_STARM = simple_mat("StarGlow", "#E8FFFF", rough=0.3, emit="#7FF4FF", emit_str=9.0)
+
+
+def lantern_material():
+    """glowing orb: hot white-cyan where it faces the viewer, deep blue at grazing angles"""
+    m, nt, b = new_mat("LanternGlass")
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.5
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    nt.links.new(lw.outputs["Facing"], ramp.inputs[0])
+    cr = ramp.color_ramp
+    cr.elements[0].position, cr.elements[0].color = 0.0, (*srgb("#DDFBFF"), 1)
+    cr.elements[1].position, cr.elements[1].color = 1.0, (*srgb("#0A2A9E"), 1)
+    for pos, hx in ((0.3, "#2CB6FF"), (0.65, "#1250E8")):
+        e = cr.elements.new(pos)
+        e.color = (*srgb(hx), 1)
+    nt.links.new(ramp.outputs[0], b.inputs["Emission Color"])
+    b.inputs["Emission Strength"].default_value = 1.1
+    b.inputs["Base Color"].default_value = (*srgb("#0A2E9A"), 1)
+    b.inputs["Roughness"].default_value = 0.15
+    b.inputs["Coat Weight"].default_value = 0.3
+    return m
+M_GLOWM = simple_mat("GlowCyan", "#0A5FC8", rough=0.3, emit="#19D2FF", emit_str=1.1)
+M_STARM = simple_mat("StarGlow", "#D8FCFF", rough=0.3, emit="#5FECFF", emit_str=4.5)
 M_GEM_BLUE = simple_mat("GemBlue", "#123C9E", rough=0.04, coat=1.0, emit="#1F5BFF", emit_str=0.6)
 M_GEM_DARK = simple_mat("GemDark", "#2A0F30", rough=0.06, coat=1.0)
 M_GEM_GREEN = simple_mat("GemGreen", "#25C35E", rough=0.05, coat=1.0, emit="#28E070", emit_str=1.2)
-M_LANTERN = simple_mat("LanternGlass", "#1438B0", rough=0.08, trans=0.2, emit="#1E5BFF", emit_str=2.2, coat=0.2)
-M_SPARK = simple_mat("Sparkle", "#FFFFFF", emit="#C8FBFF", emit_str=45.0)
+M_LANTERN = lantern_material()
+M_SPARK = simple_mat("Sparkle", "#FFFFFF", emit="#B8F6FF", emit_str=30.0)
 M_NOSE = simple_mat("Nose", "#D0303F", rough=0.28, coat=0.8, sss=0.2)
 M_TONGUE = simple_mat("Tongue", "#F07385", rough=0.35, coat=0.4, sss=0.3)
 M_TOOTH = simple_mat("Tooth", "#FFFDF8", rough=0.25, coat=0.5)
@@ -873,10 +932,14 @@ def make_textures():
     d.line([S * 0.78, S * 0.72, S * 0.84, S * 0.78], fill=red, width=7)
     d.line([S * 0.84, S * 0.72, S * 0.78, S * 0.78], fill=red, width=7)
     img = img.filter(ImageFilter.GaussianBlur(1.2))
-    path = os.path.join(args.out, "_tex_map.png")
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix="_orion_map.png")
+    os.close(fd)
     img.save(path)
     im = bpy.data.images.load(path)
-    im.pack()
+    im.pack()  # stored inside the .blend; the temporary PNG is not needed afterwards
+    im.name = "orion_map.png"
+    os.remove(path)
     return im
 
 
@@ -1325,7 +1388,7 @@ def build_face():
     # philtrum / mouth line
     top = hit + Vector((0, -0.02, -0.03))
     kind = EX["mouth"]
-    if kind in ("closed", "smirk"):
+    if kind in ("closed", "smirk", "smile_closed"):
         lip_z = 1.488
 
         def on_face(x, z, off=0.012):
@@ -1335,6 +1398,8 @@ def build_face():
         curve_tube("Philtrum", [top, on_face(0, lip_z + 0.03), on_face(0, lip_z)], 0.0065, M_LASH)
         for s in (1, -1):
             up = 0.04 if (kind == "smirk" and s < 0) else (0.014 if kind == "smirk" else 0.004)
+            if kind == "smile_closed":
+                up = 0.034
             pts = [on_face(0, lip_z), on_face(s * 0.04, lip_z - 0.022), on_face(s * 0.085, lip_z - 0.014 + up * 0.5),
                    on_face(s * 0.125, lip_z + up)]
             curve_tube(f"MouthLine_{s}", pts, 0.0068, M_LASH, taper=[1, 1, .85, .35])
@@ -1347,18 +1412,19 @@ def build_face():
                  mat=M_TONGUE)
         else:
             big = 1.15 if kind == "grin" else 1.0
-            prim("sphere", "Tongue", Vector((0, -0.405, 1.388 - 0.01 * (big - 1))), scale=(0.09 * big, 0.05, 0.017),
+            prim("sphere", "Tongue", Vector((0, -0.405 + MUZ_DY, 1.388 - 0.01 * (big - 1))),
+                 scale=(0.09 * big, 0.05, 0.017),
                  mat=M_TONGUE)
             fl = 0.05 if kind != "snarl" else 0.058
             for s in (1, -1):
-                f = prim("cone", "Fang", Vector((s * 0.088, -0.43, 1.474)), scale=(0.017, 0.014, fl),
+                f = prim("cone", "Fang", Vector((s * 0.088, -0.43 + MUZ_DY, 1.474)), scale=(0.017, 0.014, fl),
                          rot=(180 - 8, s * 6, 0), mat=M_TOOTH, vertices=16, depth=1.0, radius1=1.0, radius2=0.05)
-                prim("cone", "FangLow", Vector((s * 0.08, -0.43, 1.383)), scale=(0.011, 0.01, 0.026),
+                prim("cone", "FangLow", Vector((s * 0.08, -0.43 + MUZ_DY, 1.383)), scale=(0.011, 0.01, 0.026),
                      rot=(8, 0, 0), mat=M_TOOTH, vertices=12, depth=1.0, radius1=1.0, radius2=0.05)
     # whiskers
     for s in (1, -1):
         for k, (dz, angd) in enumerate(((0.025, 10), (0.0, 0), (-0.025, -10))):
-            start = Vector((s * 0.14, -0.43, 1.53 + dz))
+            start = Vector((s * 0.14, -0.43 + MUZ_DY, 1.53 + dz))
             pts = [start + Vector((s * math.cos(math.radians(angd)) * r, 0.05 * r * r,
                                    math.sin(math.radians(angd)) * r - 0.05 * r * r)) for r in np.linspace(0, 0.32, 6)]
             curve_tube("Whisker", pts, 0.0024, M_WHISK, taper=[1, 0.9, 0.7, 0.5, 0.3, 0.1], res=2)
@@ -1435,12 +1501,12 @@ def build_scarf():
     th = np.linspace(0, 2 * np.pi, M, endpoint=False)
     r2 = np.random.default_rng(11)
     folds = r2.uniform(0, 2 * np.pi, 24)
-    fdepth = r2.uniform(0.12, 0.34, 24)
-    fwid = r2.uniform(0.03, 0.07, 24)
+    fdepth = r2.uniform(0.06, 0.17, 24)
+    fwid = r2.uniform(0.035, 0.08, 24)
     verts = []
     for i in range(len(a)):
-        rt = 0.065 + 0.015 * np.clip(front[i], 0, 1)
-        rh = 0.1 + 0.02 * np.clip(front[i], 0, 1)
+        rt = 0.05 + 0.012 * np.clip(front[i], 0, 1)
+        rh = 0.088 + 0.014 * np.clip(front[i], 0, 1)
         for t in th:
             w = 1 + 0.06 * math.sin(5 * t + 3 * a[i]) + 0.04 * math.sin(11 * a[i] + 2 * t)
             for f, fd, fw in zip(folds, fdepth, fwid):
@@ -1464,16 +1530,16 @@ def build_scarf():
     add_mods(ob, sub=1)
     # bandana point on the chest
     rows = []
-    zs = np.linspace(1.17, 0.99, 7)
+    zs = np.linspace(1.19, 0.93, 9)
     for k, z in enumerate(zs):
         t = k / (len(zs) - 1)
-        hw = 0.23 * (1 - t) + 0.014
-        xs = np.linspace(-hw, hw, 9)
+        hw = 0.25 * (1 - t) ** 0.9 + 0.012
+        xs = np.linspace(-hw, hw, 11)
         hints = np.stack([xs, np.full_like(xs, -0.6), np.full_like(xs, z)], 1)
-        p, n = project(TORSO_SDF, np.array([0, 0.02, z]), hints, 0.09 + 0.012 * (1 - t))
-        p = p + np.array([0, -1.0, 0]) * (0.012 * np.sin(xs * 38 + k * 0.8) * (1 - 0.5 * t))[:, None]
+        p, n = project(TORSO_SDF, np.array([0, 0.02, z]), hints, 0.1 + 0.014 * (1 - t))
+        p = p + np.array([0, -1.0, 0]) * (0.011 * np.sin(xs * 36 + k * 0.8) * (1 - 0.5 * t))[:, None]
         rows.append(p)
-    drape = mesh_from("ScarfDrape", np.concatenate(rows), grid_faces(len(zs), 9), M_SCARF)
+    drape = mesh_from("ScarfDrape", np.concatenate(rows), grid_faces(len(zs), 11), M_SCARF)
     add_mods(drape, solid=0.022, offset=0, sub=2)
     # loose end over the right shoulder, falling on the back
     st = centers[int(len(a) * 0.62)]
@@ -1677,42 +1743,103 @@ def build_bracers():
              mat=M_GEM_BLUE)
 
 
+def se_mesh(name, center, radii, e1, e2, mat, seg=72, rings=36, sub=1):
+    """superellipsoid ("soft box"): e1 = vertical squareness, e2 = horizontal squareness (1 = round, ->0 = box)"""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=rings, radius=1.0)
+    a, b, c = radii
+    for v in bm.verts:
+        x, y, z = v.co
+        u = math.asin(max(-1.0, min(1.0, z)))
+        w = math.atan2(y, x)
+        cu = abs(math.cos(u)) ** e1
+        su = math.copysign(abs(math.sin(u)) ** e1, math.sin(u))
+        cw = math.copysign(abs(math.cos(w)) ** e2, math.cos(w))
+        sw = math.copysign(abs(math.sin(w)) ** e2, math.sin(w))
+        v.co = Vector((a * cu * cw, b * cu * sw, c * su))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
+    me_ = bpy.data.meshes.new(name)
+    bm.to_mesh(me_)
+    bm.free()
+    ob = link(bpy.data.objects.new(name, me_))
+    ob.location = tuple(center)
+    for p in me_.polygons:
+        p.use_smooth = True
+    me_.materials.append(mat)
+    if sub:
+        m = ob.modifiers.new("sub", "SUBSURF")
+        m.levels = m.render_levels = sub
+    return ob
+
+
+def se_inside(P, shape):
+    """superellipsoid inside-outside function (< 1 inside)"""
+    c, r, e1, e2 = shape
+    q = np.abs((np.asarray(P) - c) / r)
+    return (q[..., 0] ** (2 / e2) + q[..., 1] ** (2 / e2)) ** (e2 / e1) + q[..., 2] ** (2 / e1)
+
+
+def se_hits(shapes, O, D, tmax=0.8, n=400):
+    """outermost surface point along each ray O + t*D over a union of superellipsoids"""
+    O = np.broadcast_to(np.asarray(O, np.float64), np.shape(D))
+    t = np.linspace(0, tmax, n)
+    P = O[None] + t[:, None, None] * np.asarray(D)[None]
+    inside = np.zeros(P.shape[:2], bool)
+    for sh in shapes:
+        inside |= se_inside(P, sh) < 1
+    last = (n - 1) - np.argmax(inside[::-1], axis=0)
+    return O + t[last][:, None] * D
+
+
 def build_backpack():
+    """soft, puffy purple bag (concept: 'Rucsac (detaliu)'): body + wrap-over flap + front pocket,
+    two leather straps with gold buckles, emblem clasp, handle; map roll, map cone, lantern, crystal"""
     M_PAPER = paper_material()
     M_SPIRAL = scroll_end_material()
-    rbox("Backpack", (0, 0.44, 0.95), (0.3, 0.19, 0.32), M_BAG, bevel=0.12)
-    rbox("BackpackBottom", (0, 0.46, 0.73), (0.31, 0.2, 0.11), M_BAG, bevel=0.1)
-    rbox("BackpackFlap", (0, 0.45, 1.17), (0.315, 0.21, 0.15), M_BAG_D, bevel=0.09)
-    rbox("Pocket", (0, 0.66, 0.80), (0.21, 0.045, 0.12), M_BAG, bevel=0.035)
-    rbox("PocketFlap", (0, 0.695, 0.895), (0.215, 0.028, 0.048), M_BAG_D, bevel=0.02)
-    prim("sphere", "PocketButton", (0, 0.724, 0.87), scale=0.015, mat=M_GOLD)
-    for x in (-0.145, 0.145):
-        path = np.array([(x, 0.30, 1.32), (x, 0.46, 1.33), (x, 0.62, 1.31), (x, 0.665, 1.23),
-                         (x, 0.668, 1.04), (x, 0.64, 1.0), (x, 0.635, 0.95), (x, 0.71, 0.92), (x, 0.712, 0.82),
-                         (x, 0.69, 0.70)])
-        outs = np.array([(0, 0, 1), (0, 0.2, 1), (0, 0.6, 0.8), (0, 1, 0.1), (0, 1, 0), (0, 1, 0), (0, 1, 0),
-                         (0, 1, 0), (0, 1, 0), (0, 1, -0.3)], np.float64)
-        band_mesh("PackStrap", path, outs, (1, 0, 0), 0.062, 0.014, M_LEATHER, closed=False)
-        square_ring("PackBuckle", (x, 0.69, 1.05), (0, 1, 0), 0.075, 0.065, 0.01, M_GOLD)
-    # emblem clasp
-    q = quat_z((0, 1, 0))
-    prim("cyl", "Emblem", (0, 0.668, 1.08), quat=q, scale=(1.25, 1, 1), mat=M_GOLD, radius=0.045, depth=0.016)
-    prim("sphere", "EmblemGem", (0, 0.68, 1.08), quat=q, scale=(0.022, 0.022, 0.012), mat=M_GEM_DARK)
-    curve_tube("PackHandle", [(-0.1, 0.45, 1.31), (-0.06, 0.45, 1.40), (0.06, 0.45, 1.40), (0.1, 0.45, 1.31)],
-               0.018, M_LEATHER)
+    BODY = (np.array([0, 0.47, 0.9]), np.array([0.32, 0.21, 0.37]), 0.38, 0.42)
+    FLAP = (np.array([0, 0.477, 1.095]), np.array([0.338, 0.229, 0.19]), 0.42, 0.42)
+    POCKET = (np.array([0, 0.665, 0.73]), np.array([0.228, 0.064, 0.138]), 0.4, 0.38)
+    se_mesh("Backpack", *BODY, M_BAG)
+    se_mesh("BackpackFlap", *FLAP, M_BAG_D)
+    se_mesh("Pocket", *POCKET, M_BAG)
+    shapes = [BODY, FLAP, POCKET]
+    for x in (-0.13, 0.13):
+        th = np.radians(np.linspace(-38, 145, 46))
+        D = np.stack([np.zeros_like(th), np.sin(th), np.cos(th)], 1)
+        path = se_hits(shapes, np.array([x, 0.47, 0.9]), D)
+        tng = np.gradient(path, axis=0)
+        outs = np.cross(tng, [1.0, 0, 0])
+        outs *= np.sign(np.sum(outs * (path - [x, 0.47, 0.9]), 1))[:, None]
+        outs /= norm(outs)[:, None]
+        band_mesh("PackStrap", path + outs * 0.002, outs, (1, 0, 0), 0.064, 0.014, M_LEATHER, closed=False)
+        k = int(np.argmin(np.abs(path[:, 2] - 0.95) + (path[:, 1] < 0.55) * 9))
+        square_ring("PackBuckle", path[k] + outs[k] * 0.02, outs[k], 0.082, 0.07, 0.011, M_GOLD)
+        prim("cube", "BuckleTongue", path[k] + outs[k] * 0.022, scale=(0.006, 0.006, 0.03), mat=M_GOLD)
+        for kk in (len(path) - 3, 4):
+            prim("sphere", "PackRivet", path[kk] + outs[kk] * 0.018, scale=0.011, mat=M_GOLD, segments=10,
+                 ring_count=6)
+    # emblem clasp at the flap's lower edge
+    em = se_hits([FLAP], FLAP[0], nrm([0, 0.8, -0.62])[None])[0]
+    q = quat_z((0, 1, -0.25))
+    prim("cyl", "Emblem", em + [0, 0.012, 0], quat=q, scale=(1.3, 1, 1), mat=M_GOLD, radius=0.048, depth=0.018)
+    prim("sphere", "EmblemGem", em + [0, 0.026, 0], quat=q, scale=(0.024, 0.024, 0.012), mat=M_GEM_DARK)
+    top = FLAP[0][2] + FLAP[1][2]
+    curve_tube("PackHandle", [(-0.11, 0.48, top - 0.025), (-0.07, 0.48, top + 0.075), (0.07, 0.48, top + 0.075),
+                              (0.11, 0.48, top - 0.025)], 0.019, M_LEATHER)
     # rolled map (horizontal) on the right side
-    rc = np.array([-0.43, 0.48, 1.12])
+    rc = np.array([-0.44, 0.5, 1.08])
     rax = nrm((0.87, 0.5, 0.0))
-    prim("cyl", "MapRoll", rc, rot=(0, 90, 30), mat=M_PAPER, radius=0.085, depth=0.34)
+    prim("cyl", "MapRoll", rc, rot=(0, 90, 30), mat=M_PAPER, radius=0.118, depth=0.38)
     for k in (-1, 1):
-        prim("cyl", "MapRollEnd", rc + rax * k * 0.171, rot=(0, 90, 30), mat=M_SPIRAL, radius=0.084, depth=0.004)
+        prim("cyl", "MapRollEnd", rc + rax * k * 0.191, rot=(0, 90, 30), mat=M_SPIRAL, radius=0.117, depth=0.004)
     e1 = np.cross(rax, [0, 0, 1.0])
-    ring = [rc + (e1 * math.cos(a) + np.array([0, 0, 1.0]) * math.sin(a)) * 0.09 for a in
-            np.linspace(0, 2 * np.pi, 24, endpoint=False)]
-    band_mesh("MapTie", ring, [p - rc for p in ring], rax, 0.03, 0.006, M_LEATHER_D)
+    for off in (-0.09, 0.09):
+        ring = [rc + rax * off + (e1 * math.cos(a) + np.array([0, 0, 1.0]) * math.sin(a)) * 0.123 for a in
+                np.linspace(0, 2 * np.pi, 28, endpoint=False)]
+        band_mesh("MapTie", ring, [p - rc - rax * off for p in ring], rax, 0.034, 0.007, M_LEATHER_D)
     # partly unrolled map: a cone of parchment sticking up and out
-    A = np.array([-0.33, 0.49, 1.16])
-    B = np.array([-0.47, 0.56, 1.54])
+    A = np.array([-0.31, 0.52, 1.17])
+    B = np.array([-0.47, 0.6, 1.6])
     ax = nrm(B - A)
     e1 = nrm(np.cross(ax, [0, 0, 1.0]))
     e2 = np.cross(ax, e1)
@@ -1723,7 +1850,7 @@ def build_backpack():
         for j in range(nv):
             v = j / (nv - 1)
             th = 0.9 + v * math.radians(300)
-            r = (0.045 + 0.085 * u ** 1.3) * (1 + 0.22 * v)
+            r = (0.05 + 0.115 * u ** 1.25) * (1 + 0.22 * v)
             verts.append(A + ax * np.linalg.norm(B - A) * u + (e1 * math.cos(th) + e2 * math.sin(th)) * r)
             uvs.append((v, u))
     faces = grid_faces(nu, nv)
@@ -1752,7 +1879,7 @@ def build_backpack():
     prim("sphere", "LanternRayV", lc, scale=(0.0050, 0.0050, 0.0625), mat=M_SPARK, segments=12, ring_count=6)
     L = bpy.data.lights.new("LanternLight", "POINT")
     L.color = srgb("#6FB6FF")
-    L.energy = 14
+    L.energy = 4
     L.shadow_soft_size = 0.03
     lo = link(bpy.data.objects.new("LanternLight", L))
     lo.location = tuple(lc)
@@ -1837,15 +1964,16 @@ def fur_params():
     L[rmask("chin")] = 0.032
     clump[rmask("chin")] = 0.75
     # ears
-    L[ear] = 0.03 + 0.035 * smoothstep(0.3, 0.9, eh[ear])
+    L[ear] = 0.03 + 0.03 * smoothstep(0.2, 0.9, eh[ear])
     lift[ear] = 0.22
     clump[ear] = 0.7
-    rim = ear & (LEAF > -0.03)
-    L[rim] = np.maximum(L[rim], 0.075)
-    clump[rim] = 0.75
+    rim = ear & (LEAF > -0.035)
+    L[rim] = np.maximum(L[rim], (0.085 - 0.03 * smoothstep(0.4, 1.0, eh))[rim])
+    lift[rim] = 0.12
+    clump[rim] = 0.8
     hollow = ear & (inner_ear > 0.5)
-    L[hollow] = 0.006
-    D[hollow] = 0.35
+    L[hollow] = 0.005
+    D[hollow] = 0.3
     # body
     L[rmask("neck", "chest", "belly")] = 0.032
     clump[rmask("neck", "chest", "belly")] = 0.6
@@ -1863,6 +1991,10 @@ def fur_params():
     L[gl & ~tail] = np.minimum(L[gl & ~tail], 0.01)
     L[gl & tail] = np.minimum(L[gl & tail], 0.022)
     D *= 1 - MOUTH_MASK
+    if MOUTH:  # keep the lips clear: very short fur right around the mouth opening
+        md = np.asarray(MOUTH[0](V.astype(np.float32)), np.float64)
+        near_mouth = smoothstep(0.05, 0.012, md) * rmask("muzzle", "chin", "cheek", "head")
+        L = L * (1 - near_mouth) + 0.006 * near_mouth
     D *= smoothstep(0.0, 0.025, V[:, 2])
     for s in (1, -1):
         D *= smoothstep(0.115, 0.14, norm((V - EYE_C[s]) / [1.0, 1.0, 0.92]))
@@ -1981,47 +2113,53 @@ def build_fur(count):
         pts += F[m][:, None, :] * (0.3 * Lm * (t ** 2)[None, :, None])
         pts = clump_pull(P0[m], pts, clv[m], 18 if long_ else 24)
         groups.append((pts, C[m], G[m], L[m]))
-    # --- purple flame tufts: locks rising past the ear tip and curling outward
+    # --- purple flame tips: locks running up the back and rim of the ear, meeting above the tip and
+    #     hooking outward (main tongue), with two small wisps pointing up / inward
     for s in (1, -1):
         B, U, F_, W = ear_frame(s)
-        sel = np.where((np.sign(V[:, 0]) == s) & ear & (eh > 0.45) & (inner_ear < 0.6))[0]
-        n_t = 12000
-        roots = V[rng.choice(sel, n_t)] + rng.normal(0, 0.003, (n_t, 3))
+        sel = np.where((np.sign(V[:, 0]) == s) & ear & (eh > 0.45) & (inner_ear < 0.35))[0]
+        n_t = 9000
+        roots = V[rng.choice(sel, n_t)] + rng.normal(0, 0.002, (n_t, 3))
         rh = np.clip(((roots - B) @ U) / EAR_LEN, 0, 1)
-        tip = B + U * EAR_LEN
-        # flame spine: rises above the ear tip, then hooks outward and down
-        sp0, sp1 = tip - U * 0.15, tip + U * 0.2 - W * 0.02
-        sp2, sp3 = tip + U * 0.3 + W * 0.04, tip + U * 0.17 + W * 0.25 - F_ * 0.05
-
-        def spine(tau):
-            tau = tau[:, None]
-            return (1 - tau) ** 3 * sp0 + 3 * (1 - tau) ** 2 * tau * sp1 + 3 * (1 - tau) * tau ** 2 * sp2 \
-                + tau ** 3 * sp3
-
+        tip = B + U * EAR_LEN + W * EAR_CURL - F_ * 0.045
+        tongues = [  # (weight, spine control points)
+            (0.62, (tip - U * 0.07, tip + U * 0.13, tip + U * 0.21 + W * 0.1, tip + U * 0.08 + W * 0.27 - F_ * 0.03)),
+            (0.22, (tip - U * 0.07, tip + U * 0.07 - W * 0.01, tip + U * 0.12 - W * 0.045, tip + U * 0.14 - W * 0.11)),
+            (0.16, (tip - U * 0.07, tip + U * 0.09, tip + U * 0.16 + W * 0.02, tip + U * 0.22 + W * 0.01)),
+        ]
+        k = rng.choice(3, n_t, p=[t[0] for t in tongues])
         u = rng.random(n_t)
-        tau = 0.25 + 0.75 * u ** 0.55
-        width = 0.18 * (1 - tau) ** 1.1 + 0.012
+        tau = 0.2 + 0.8 * u ** 0.6
+        sc = np.array([1.0, 0.55, 0.5])[k]
+        width = (0.088 * (1 - tau) ** 1.25 + 0.006) * sc
         lat = rng.uniform(-1, 1, n_t)
         dep = rng.uniform(-1, 1, n_t)
-        end = spine(tau) + W * (lat * width)[:, None] + F_ * (dep * width * 0.5)[:, None]
-        mid = spine(tau * 0.6) + W * (lat * width * 1.3)[:, None] + F_ * (dep * width * 0.6)[:, None]
-        p1 = roots + U[None] * (0.07 + 0.04 * u)[:, None]
+        end, mid = np.zeros((n_t, 3)), np.zeros((n_t, 3))
+        for ki, (_, cps) in enumerate(tongues):
+            m = k == ki
+            end[m] = bezier3(*cps, tau[m])
+            mid[m] = bezier3(*cps, tau[m] * 0.5)
+        end += W * (lat * width)[:, None] + F_ * (dep * width * 0.45)[:, None]
+        mid += W * (lat * width * 1.4)[:, None] + F_ * (dep * width * 0.5)[:, None]
+        p1 = roots + U[None] * (0.05 + 0.03 * u)[:, None] - F_[None] * 0.015
         pts = bezier_pts(roots, p1, mid, end, 10)
-        pts = clump_pull(roots, pts, np.full(n_t, 0.65), 150)
-        ccol = mix(np.tile(C_FUR, (n_t, 1)), np.tile(C_PURPLE, (n_t, 1)), smoothstep(0.35, 0.6, rh))
-        ccol = mix(ccol, C_PURPLE_D, rng.random(n_t) * 0.35) * rng.uniform(0.85, 1.1, (n_t, 1))
+        pts = clump_pull(roots, pts, np.full(n_t, 0.7), 110)
+        ccol = mix(np.tile(C_FUR, (n_t, 1)), np.tile(C_PURPLE, (n_t, 1)), smoothstep(0.3, 0.52, rh))
+        ccol = mix(ccol, C_PURPLE_D, smoothstep(0.55, 1.0, tau) * 0.6 + rng.random(n_t) * 0.12)
+        ccol = ccol * rng.uniform(0.93, 1.05, (n_t, 1))
         groups.append((pts, ccol, np.zeros(n_t), np.full(n_t, 0.2)))
-        # cream fluff coming out of the ear hollow
-        sel = np.where((np.sign(V[:, 0]) == s) & ear & (inner_ear > 0.4) & (eh < 0.35) & (EW < 0.06))[0]
+        # cream "feather" fluff rising out of the lower ear hollow
+        sel = np.where((np.sign(V[:, 0]) == s) & ear & (inner_ear > 0.5) & (eh < 0.1) & (np.abs(EW) < 0.11))[0]
         if len(sel):
-            n_f = 900
+            n_f = 2200
             roots = V[rng.choice(sel, n_f)]
-            Lf = rng.uniform(0.07, 0.14, n_f)[:, None]
-            p3 = roots + U * Lf * 0.85 + F_ * Lf * 0.5 + W * Lf * 0.15
-            p1 = roots + F_ * Lf * 0.35
-            p2 = p3 - U * Lf * 0.3
+            Lf = rng.uniform(0.09, 0.18, n_f)[:, None]
+            spread = ((roots - B) @ W)[:, None]
+            p3 = roots + U * Lf * 0.9 + F_ * Lf * 0.3 + W * (Lf * 0.12 + spread * 0.7)
+            p1 = roots + F_ * Lf * 0.3 + U * Lf * 0.1
+            p2 = p3 - U * Lf * 0.35 + F_ * 0.01
             pts = bezier_pts(roots, p1, p2, p3, 8)
-            pts = clump_pull(roots, pts, np.full(n_f, 0.9), 60)
+            pts = clump_pull(roots, pts, np.full(n_f, 0.92), 170)
             groups.append((pts, np.tile(C_CREAM, (n_f, 1)), np.zeros(n_f), Lf[:, 0]))
     # assemble
     sizes, allp, allc, allg, allr = [], [], [], [], []
@@ -2081,7 +2219,7 @@ def setup_white_stage():
     nt = w.node_tree
     bg = nt.nodes.get("Background") or nt.nodes.new("ShaderNodeBackground")
     bg.inputs[0].default_value = (1, 1, 1, 1)
-    bg.inputs[1].default_value = 0.35 * LIGHT_SCALE
+    bg.inputs[1].default_value = 0.27 * LIGHT_SCALE
     out = nt.nodes.get("World Output") or nt.nodes.new("ShaderNodeOutputWorld")
     nt.links.new(bg.outputs[0], out.inputs[0])
     rig = link(bpy.data.objects.new("LightRig", None))
@@ -2148,11 +2286,11 @@ def finish(path, bloom=True):
         lum = rgb @ np.array([0.2126, 0.7152, 0.0722])
         sat = rgb.max(-1) - rgb.min(-1)
         blue = smoothstep(0.0, 0.18, rgb[..., 2] - rgb[..., 0])
-        bright = rgb * (smoothstep(0.55, 0.9, lum) * smoothstep(0.2, 0.45, sat) * blue * (al[..., 0] > 0.5))[..., None]
+        bright = rgb * (smoothstep(0.42, 0.8, lum) * smoothstep(0.2, 0.45, sat) * blue * (al[..., 0] > 0.5))[..., None]
         bimg = Image.fromarray((np.clip(bright, 0, 1) * 255).astype(np.uint8))
         acc = np.zeros_like(rgb)
         sc = im.width / 1000
-        for r, wgt in ((3, 0.55), (10, 0.5), (28, 0.35)):
+        for r, wgt in ((3, 0.4), (10, 0.35), (28, 0.28)):
             acc += np.asarray(bimg.filter(ImageFilter.GaussianBlur(r * sc))).astype(np.float32) / 255 * wgt
         out = 1 - (1 - out) * (1 - np.clip(acc, 0, 1))
     res = Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8))
@@ -2213,34 +2351,86 @@ def compose_sheet(raw, fin, labels, out_path):
     log("[sheet]", out_path)
 
 
+def publish(raw_path, name, keep_white=True):
+    """documented layout: white-background image in out/, the transparent one in out/transparent/"""
+    tdir = os.path.join(args.out, "transparent")
+    os.makedirs(tdir, exist_ok=True)
+    white = raw_path.replace(".png", "_w.png")
+    os.replace(raw_path, os.path.join(tdir, f"{name}{args.tag}.png"))
+    if keep_white:
+        os.replace(white, os.path.join(args.out, f"{name}{args.tag}.png"))
+    else:
+        os.remove(white)
+
+
+SHEET_VIEWS = (("front", 0), ("q34", -40), ("side", -84), ("back", 180))
+
+
+def sheet_view(name, ang):
+    return render(f"orion_{name}", ang, size=(S, S), ortho=2.85,
+                  target=(-0.12 if name == "front" else 0, 0.15, 1.22), height=2.2)
+
+
 views = [v for v in args.render.split(",") if v]
 S = args.size
+if "front" in views:  # debug: the sheet's front view only
+    finish(sheet_view("front", 0))
+if "sheetside" in views:  # child process: only the profile view, with the closed-mouth expression
+    finish(sheet_view("side", dict(SHEET_VIEWS)["side"]))
 if "sheet" in views:
     raw, fin = [], []
-    for name, ang in (("front", 0), ("q34", -40), ("side", -90), ("back", 180)):
-        p = render(f"orion_{name}", ang, size=(S, S), ortho=2.85, target=(-0.12 if name == "front" else 0, 0.15,
-                                                                           1.22), height=2.2)
+    for name, ang in SHEET_VIEWS:
+        if name == "side" and args.side_expr != args.expr:
+            # the concept draws the profile with a closed smile: rebuild with that expression in a child process
+            cmd = [sys.executable, os.path.abspath(__file__), "--out", args.out, "--tag", args.tag,
+                   "--res", str(args.res), "--fur", str(args.fur), "--samples", str(args.samples),
+                   "--size", str(args.size), "--seed", str(args.seed), "--expr", args.side_expr,
+                   "--light", str(args.light), "--view", args.view, "--render", "sheetside", "--no-blend", "--no-glb"]
+            if args.look:
+                cmd += ["--look", args.look]
+            subprocess.run(cmd, check=True)
+            p = os.path.join(args.out, f"orion_side{args.tag}.png")
+            raw.append(p)
+            fin.append(p.replace(".png", "_w.png"))
+            continue
+        p = sheet_view(name, ang)
         raw.append(p)
         fin.append(finish(p))
     compose_sheet(raw, fin, ["Față", "3/4 Față", "Profil (Lateral)", "Spate"],
                   os.path.join(args.out, f"orion_sheet{args.tag}.png"))
+    for (name, _), p in zip(SHEET_VIEWS, raw):
+        publish(p, f"orion_{name}", keep_white=False)
 if "face" in views:
     p = render(f"orion_face_{args.expr}", 0, size=(S, S), lens=135, dist=6.8, height=1.85, target=(0, -0.1, 1.82))
     finish(p)
+    publish(p, "orion_face" if args.expr == "happy" else f"orion_face_{args.expr}")
 if "ears" in views:
-    for nm, ang in (("ears_front", 0), ("ears_back", 180), ("ears_side", -90)):
+    for nm, ang in (("ears_front", 0), ("ears_back", 180), ("ears_side", -90), ("ears_q34", -40)):
         p = render(nm, ang, size=(600, 600), ortho=1.6, height=2.3, target=(0, 0.05, 2.1))
         finish(p)
 if "expr" in views:
     p = render(f"orion_expr_{args.expr}", 0, size=(S, int(S * 1.1)), lens=135, dist=6.9, height=1.95,
                target=(0, -0.1, 1.9))
     finish(p)
+    publish(p, f"orion_expr_{args.expr}")  # the white copy is used (then removed) by orion_expresii.py
 if "facecmp" in views:
     p = render(f"orion_facecmp_{args.expr}", 0, size=(480, 660), ortho=1.09, height=1.74, target=(0, -0.1, 1.735))
+    finish(p)
+if "prof" in views:  # debug: head in profile and 3/4
+    for nm, ang in (("prof_side", -84), ("prof_q34", -40), ("prof_front", 0)):
+        p = render(nm, ang, size=(600, 600), ortho=1.25, height=1.9, target=(0, 0.0, 1.78))
+        finish(p)
+if "pack" in views:  # debug: backpack from behind, 3/4 and the side
+    for nm, ang in (("pack_back", 180), ("pack_q34", -40), ("pack_side", -90), ("pack_bq", 140)):
+        p = render(nm, ang, size=(600, 600), ortho=1.75, height=1.4, target=(-0.1, 0.3, 1.05))
+        finish(p)
+if "glow" in views:  # debug: tail spiral, leg stars, lantern, bracers
+    p = render("glow_q34", -40, size=(700, 700), ortho=1.45, height=1.0, target=(-0.25, 0.2, 0.75))
     finish(p)
 if "hero" in views:
     p = render("orion_hero", -32, size=(S, int(S * 1.2)), lens=70, dist=7.6, height=1.55, target=(-0.08, 0.1, 1.2))
     finish(p)
+    publish(p, "orion_hero")
 
 # ----------------------------------------------------------------------------- save
 if not args.no_blend:

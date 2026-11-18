@@ -30,7 +30,7 @@ if not a.only_compose:
 
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
-ims = [Image.open(os.path.join(a.out, f"orion_expr_{k}_w.png")).convert("RGB") for k, _ in EXPR]
+ims = [Image.open(os.path.join(a.out, f"orion_expr_{k}.png")).convert("RGB") for k, _ in EXPR]
 w, h = ims[0].size
 gap = w // 20
 label_h = h // 7
@@ -47,4 +47,6 @@ for i, (im, (_, lab)) in enumerate(zip(ims, EXPR)):
     d.text((cx - tw / 2, y0 + ph * 0.13), lab, font=font, fill=(255, 255, 255))
 path = os.path.join(a.out, "orion_expresii.png")
 sheet.save(path)
+for k, _ in EXPR:  # the single white-background images live on only inside the sheet (transparent/ keeps them)
+    os.remove(os.path.join(a.out, f"orion_expr_{k}.png"))
 print("[expresii]", path)
