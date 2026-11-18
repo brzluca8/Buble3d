@@ -1671,8 +1671,9 @@ def build_cross_strap():
 def build_shoulder_straps():
     o = np.array([0, 0.02, 1.0])
     for s in (1, -1):
-        hints = resample([(s * 0.15, 0.32, 1.10), (s * 0.19, 0.20, 1.29), (s * 0.20, 0.0, 1.34),
-                          (s * 0.19, -0.18, 1.22), (s * 0.185, -0.22, 1.10)], 14)
+        # over the shoulder, low enough to stay under the scarf (they used to peek out beside the chin)
+        hints = resample([(s * 0.16, 0.32, 1.10), (s * 0.23, 0.20, 1.23), (s * 0.26, 0.0, 1.27),
+                          (s * 0.22, -0.18, 1.19), (s * 0.19, -0.22, 1.10)], 14)
         p, n = project(TORSO_SDF, o, hints, 0.05)
         side = np.cross(n, np.gradient(p, axis=0))
         band_mesh("ShoulderStrap", p, n, side, 0.08, 0.024, M_STRAP_P, closed=False)
