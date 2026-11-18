@@ -2434,6 +2434,7 @@ if "hero" in views:
 
 # ----------------------------------------------------------------------------- save
 if not args.no_blend:
+    bpy.context.preferences.filepaths.save_version = 0  # no orion.blend1 backup next to the file
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(args.out, "orion.blend"), compress=True)
     log("[save] orion.blend")
 if not args.no_glb:
