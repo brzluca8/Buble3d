@@ -82,19 +82,26 @@ Ce face scriptul:
 2. Face marcajele luminoase să emită lumină: spirala de pe coadă, stelele, cristalele, felinarul, lentilele și busola. Masca de emisie e calculată din textura de culoare (turcoaz și albastru saturat). Ochii sunt excluși.
 3. Recolorează în mov materialul rucsacului, care în Tripo ieșise vișiniu. Curelele maro și eșarfa roșie rămân neschimbate. Recolorarea se oprește cu `--no-pack-purple`.
 4. Păstrează metalul doar pe piesele de metal. Harta din Tripo făcea blana pe jumătate metalică și deci mai închisă la culoare.
-5. Exportă:
+5. Corectează privirea. Tripo pictase ambele irisuri trase spre nas, iar personajul părea că se uită încrucișat. Scriptul face următoarele:
+   - găsește deschiderea fiecărui ochi din culorile pictate;
+   - desenează un iris nou, centrat, cu pupilă și două reflexii;
+   - pune ochii într-o textură separată (`orion_eyes`, 1024×512, de ~6 ori mai detaliată decât textura din Tripo), cu material propriu (`Orion_Tripo_Eyes`) pe fețele din jurul ochilor;
+   - corectează ochii și în textura principală, ca rezervă.
+
+   La varianta pentru telefon, zona ochilor nu se reduce, ca să rămână aceleași fețe. Corectura se oprește cu `--no-eye-fix`.
+6. Exportă:
    - `orion_tripo_game.glb`: modelul complet;
    - `orion_tripo_mobile.glb`: aceleași texturi, redus la 40 de mii de triunghiuri pentru telefon.
 
    Ambele sunt la 1,2 m, cu texturi JPG compatibile cu Three.js r128 din `buble.html`. Au trecut de validatorul glTF fără erori.
-6. Randează aceeași planșă ca modelul procedural: `tripo_sheet.png`, `tripo_mobile_sheet.png`, `tripo_face.png`, iar vederile transparente în `transparent/`.
+7. Randează aceeași planșă ca modelul procedural: `tripo_sheet.png`, `tripo_mobile_sheet.png`, `tripo_face.png`, iar vederile transparente în `transparent/`.
 
 Rezultatele sunt în `out_tripo/`.
 
 ```bash
 ./bvenv/bin/python tripo_prep.py --src tripo/orion_tripo.glb --out out_tripo --render sheet,face,lodsheet
 ```
-Parametri: `--face-yaw` (rotația, implicit -15), `--lod` (triunghiuri pentru telefon, implicit 40000), `--glow` (intensitatea emisiei în randări), `--no-pack-purple`, `--size`, `--samples`.
+Parametri: `--face-yaw` (rotația, implicit -15), `--lod` (triunghiuri pentru telefon, implicit 40000), `--glow` (intensitatea emisiei în randări), `--no-eye-fix`, `--no-pack-purple`, `--size`, `--samples`.
 
 **În joc:** în `buble.html`, din panoul „🧩 Modele 3D”, la mascotă, încarci `out_tripo/orion_tripo_mobile.glb`.
 

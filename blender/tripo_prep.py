@@ -35,6 +35,8 @@ ap.add_argument("--light", type=float, default=0.6)
 ap.add_argument("--tag", default="")
 ap.add_argument("--glow", type=float, default=1.6, help="intensitatea emisiei în randări (în GLB rămâne 1)")
 ap.add_argument("--no-glb", action="store_true")
+ap.add_argument("--no-eye-fix", dest="eye_fix", action="store_false",
+                help="păstrează ochii pictați de Tripo (irisurile lor sunt trase spre nas: privire încrucișată)")
 ap.add_argument("--no-pack-purple", dest="pack_purple", action="store_false",
                 help="păstrează rucsacul în culoarea din Tripo (vișiniu)")
 ap.add_argument("--lod", type=int, default=40000, help="triunghiuri pentru varianta de telefon (0 = fără)")
@@ -220,6 +222,314 @@ def build_material(glow_strength):
 
 body.data.materials.clear()
 body.data.materials.append(build_material(args.glow))
+PRISTINE_MESH = body.data.copy()  # before the eye fix: the phone version is decimated from this
+
+
+# ============================================================================= eyes: centred irises
+# Tripo painted both irises shifted towards the nose (a cross-eyed look). The eye area is repainted in a
+# front-projected texture (1600 px/unit, ~6x the original density): openings found from the painted colours,
+# new irises centred in them. The faces around the eyes get their own material with planar UVs into it.
+EYE_RES = 1600
+
+
+def mesh_arrays(me_):
+    n = len(me_.polygons)
+    c3 = np.empty(len(me_.vertices) * 3, np.float32)
+    me_.vertices.foreach_get("co", c3)
+    f3 = np.empty(n * 3, np.int32)
+    me_.polygons.foreach_get("vertices", f3)
+    nr = np.empty(n * 3, np.float32)
+    me_.polygons.foreach_get("normal", nr)
+    l0 = np.empty(n, np.int32)
+    me_.polygons.foreach_get("loop_start", l0)
+    u2 = np.empty(len(me_.loops) * 2, np.float32)
+    me_.uv_layers.active.data.foreach_get("uv", u2)
+    return c3.reshape(-1, 3), f3.reshape(-1, 3), nr.reshape(-1, 3), l0, u2.reshape(-1, 2)
+
+
+def raster_front(me_, win, textures=()):
+    """front orthographic z-buffer raster of the mesh inside win=(x0, x1, z0, z1): frontmost face id per pixel,
+    optionally the textures sampled through the mesh UVs; plus, per face, pixels covered / pixels frontmost"""
+    from scipy.ndimage import map_coordinates
+    x0w, x1w, z0w, z1w = win
+    Wp, Hp = int(round((x1w - x0w) * EYE_RES)), int(round((z1w - z0w) * EYE_RES))
+    co_, fv_, nr_, ls_, uv_ = mesh_arrays(me_)
+    cen_ = co_[fv_].mean(1)
+    cand = np.where((cen_[:, 0] > x0w - 0.05) & (cen_[:, 0] < x1w + 0.05) & (cen_[:, 2] > z0w - 0.05)
+                    & (cen_[:, 2] < z1w + 0.05) & (nr_[:, 1] < 0.0))[0]
+    zb = np.full((Hp, Wp), 1e9, np.float32)
+    fid_ = np.full((Hp, Wp), -1, np.int64)
+    outs = [np.zeros((Hp, Wp, 3), np.float32) for _ in textures]
+    cover = {}
+    for f in cand:
+        P3 = co_[fv_[f]]
+        S = np.stack([(P3[:, 0] - x0w) * EYE_RES, (z1w - P3[:, 2]) * EYE_RES], 1)
+        bx0, by0 = np.floor(S.min(0)).astype(int)
+        bx1, by1 = np.ceil(S.max(0)).astype(int)
+        bx0, by0, bx1, by1 = max(bx0, 0), max(by0, 0), min(bx1, Wp - 1), min(by1, Hp - 1)
+        if bx1 < bx0 or by1 < by0:
+            continue
+        xs, ys = np.meshgrid(np.arange(bx0, bx1 + 1) + 0.5, np.arange(by0, by1 + 1) + 0.5)
+        v0, v1 = S[1] - S[0], S[2] - S[0]
+        den = v0[0] * v1[1] - v1[0] * v0[1]
+        if abs(den) < 1e-12:
+            continue
+        wx, wy = xs - S[0, 0], ys - S[0, 1]
+        b1 = (wx * v1[1] - v1[0] * wy) / den
+        b2 = (v0[0] * wy - wx * v0[1]) / den
+        b0 = 1 - b1 - b2
+        ins = (b0 >= -1e-4) & (b1 >= -1e-4) & (b2 >= -1e-4)
+        if not ins.any():
+            continue
+        B = np.stack([b0[ins], b1[ins], b2[ins]], 1)
+        dep = B @ P3[:, 1]
+        yy_, xx_ = np.floor(ys[ins]).astype(int), np.floor(xs[ins]).astype(int)
+        cover[f] = (yy_, xx_, dep)
+        closer = dep < zb[yy_, xx_]
+        if not closer.any():
+            continue
+        yy_, xx_, B, dep = yy_[closer], xx_[closer], B[closer], dep[closer]
+        zb[yy_, xx_] = dep
+        fid_[yy_, xx_] = f
+        if textures:
+            U = B @ np.stack([uv_[ls_[f] + k] for k in range(3)])
+            for t_img, o_img in zip(textures, outs):
+                th_, tw_ = t_img.shape[:2]
+                tu, tv = U[:, 0] * tw_ - 0.5, (1 - U[:, 1]) * th_ - 0.5
+                o_img[yy_, xx_] = np.stack([map_coordinates(t_img[..., k], [tv, tu], order=1, mode="nearest")
+                                            for k in range(3)], -1)
+    stats = {f: (len(v[0]), int((fid_[v[0], v[1]] == f).sum())) for f, v in cover.items()}
+    return fid_, outs, stats, (co_, fv_, nr_, ls_)
+
+
+def find_eye_window():
+    """bounding box (front view) of the sclera/iris-coloured faces on the front of the head, plus a margin"""
+    co_, fv_, nr_, ls_, uv_ = mesh_arrays(body.data)
+    fuv_ = (uv_[ls_] + uv_[ls_ + 1] + uv_[ls_ + 2]) / 3
+    c = base[np.clip(((1 - fuv_[:, 1]) * TH).astype(int), 0, TH - 1), np.clip((fuv_[:, 0] * TW).astype(int), 0, TW - 1)]
+    cmx, cmn = c.max(1), c.min(1)
+    csat = (cmx - cmn) / np.maximum(cmx, 1e-4)
+    cd = np.maximum(cmx - cmn, 1e-4)
+    chue = np.where(cmx == c[:, 0], ((c[:, 1] - c[:, 2]) / cd) % 6,
+                    np.where(cmx == c[:, 1], (c[:, 2] - c[:, 0]) / cd + 2, (c[:, 0] - c[:, 1]) / cd + 4)) * 60
+    cen_ = co_[fv_].mean(1)
+    head = (cen_[:, 2] > 1.25) & (cen_[:, 2] < 1.85) & (nr_[:, 1] < -0.3)
+    eyeish = head & (((chue > 188) & (chue < 250) & (csat > 0.28) & (cmx > 0.2))
+                     | ((cmx > 0.6) & (csat < 0.25) & (c[:, 2] >= c[:, 0] - 0.035)))
+    # keep the largest cluster around the face (drop the goggle lenses: they sit higher and further forward)
+    p = cen_[eyeish]
+    zmed = np.median(p[:, 2])
+    p = p[np.abs(p[:, 2] - zmed) < 0.12]
+    m = 0.11
+    return (float(p[:, 0].min() - m), float(p[:, 0].max() + m), float(p[:, 2].min() - m), float(p[:, 2].max() + m))
+
+
+def paint_eyes(img_, fid_):
+    """find the two eye openings in the front-view colour image, paint centred irises; returns image, opening mask"""
+    from scipy import ndimage as ndi
+    from skimage import measure, morphology
+    Hh, Ww = fid_.shape
+    imx, imn = img_.max(-1), img_.min(-1)
+    isat = (imx - imn) / np.maximum(imx, 1e-4)
+    idd = np.maximum(imx - imn, 1e-4)
+    ir, ig, ib = img_[..., 0], img_[..., 1], img_[..., 2]
+    ihue = np.where(imx == ir, ((ig - ib) / idd) % 6, np.where(imx == ig, (ib - ir) / idd + 2, (ir - ig) / idd + 4)) * 60
+    cool = ib >= ir - 0.035
+    scl_ = (imx > 0.55) & (isat < 0.3) & cool & (fid_ >= 0)
+    iri = (ihue > 188) & (ihue < 250) & (isat > 0.28) & (imx > 0.12) & (fid_ >= 0)
+    brt = (imx > 0.85) & (isat < 0.12) & cool & (fid_ >= 0)
+    eyeish = morphology.remove_small_objects(scl_ | iri | brt, max_size=200)
+    lab = measure.label(ndi.binary_closing(eyeish, iterations=2))
+    regs = sorted(measure.regionprops(lab), key=lambda p: -p.area)[:2]
+    if len(regs) < 2:
+        raise RuntimeError("eye fix: could not find two eye openings")
+    yy_, xx_ = np.mgrid[0:Hh, 0:Ww].astype(np.float32)
+    openings = []
+    for p in sorted(regs, key=lambda p: p.centroid[1]):
+        op = morphology.convex_hull_image(lab == p.label)
+        ys_, xs_ = np.nonzero(op)
+        cov = np.cov(np.stack([xs_, ys_]))
+        major = np.linalg.eigh(cov)[1][:, 1]
+        minor = np.array([-major[1], major[0]])
+        pm = (xs_ - xs_.mean()) * major[0] + (ys_ - ys_.mean()) * major[1]
+        pn = (xs_ - xs_.mean()) * minor[0] + (ys_ - ys_.mean()) * minor[1]
+        openings.append(dict(op=op, cx=xs_.mean(), cy=ys_.mean(), w=pm.max() - pm.min(), h=pn.max() - pn.min()))
+    allop = openings[0]["op"] | openings[1]["op"]
+    irs = iri & allop & (imx > 0.2)
+    pal = {k: np.percentile(img_[irs], q, axis=0) for k, q in (("dark", 12), ("mid", 50), ("light", 88))}
+    concept = {"dark": np.array([11, 42, 128]) / 255, "mid": np.array([18, 112, 216]) / 255,
+               "light": np.array([63, 192, 245]) / 255}
+    pal = {k: 0.5 * pal[k] + 0.5 * concept[k] for k in pal}  # halfway to the concept's vivid blue
+    sclc = np.median(img_[scl_ & allop], axis=0)
+    out_ = img_.copy()
+    mask = np.zeros((Hh, Ww), np.float32)
+    for e in openings:
+        op = e["op"]
+        R = 0.58 * e["h"]
+        cx, cy = e["cx"], e["cy"] + 0.04 * e["h"]
+        dx, dy = xx_ - cx, yy_ - cy
+        rr = np.hypot(dx, dy) / R
+        th = np.arctan2(dy, dx)
+        top = np.nonzero(op)[0].min()
+        t = np.clip((yy_ - top) / (0.55 * e["h"]), 0, 1)
+        side = np.clip(np.abs(dx) / (0.5 * e["w"]), 0, 1)
+        eye = sclc[None, None] * (0.72 + 0.28 * smooth(0.0, 1.0, t))[..., None] * (1 - 0.12 * side ** 3)[..., None]
+        streak = 1 + 0.08 * np.sin(th * 23 + 2.0 * np.sin(th * 7)) * smooth(0.45, 0.6, rr) * smooth(0.95, 0.8, rr)
+        k1 = smooth(0.75, 0.5, rr)[..., None]
+        ic = pal["light"][None, None] * k1 + pal["mid"][None, None] * (1 - k1)
+        k2 = smooth(0.78, 0.98, rr)[..., None]
+        ic = ic * (1 - k2) + pal["dark"][None, None] * k2
+        ic = ic * streak[..., None] * (0.78 + 0.22 * smooth(0.0, 1.0, (dy / R + 1) / 1.6))[..., None]
+        a_ = smooth(1.0, 0.985, rr)[..., None]
+        eye = eye * (1 - a_) + ic * a_
+        a_ = smooth(0.52, 0.48, rr)[..., None]
+        eye = eye * (1 - a_) + np.array([0.03, 0.05, 0.1]) * a_
+        for ox, oy, rad, kk in ((-0.36, -0.36, 0.2, 1.0), (0.34, 0.3, 0.085, 0.95)):
+            a_ = (smooth(1.0, 0.82, np.hypot(dx / R - ox, dy / R - oy) / rad) * kk)[..., None]
+            eye = eye * (1 - a_) + a_
+        eye = np.stack([ndi.gaussian_filter(eye[..., k], 0.9) for k in range(3)], -1)
+        m_ = ndi.gaussian_filter(ndi.binary_dilation(op, iterations=3).astype(np.float32), 1.2)
+        out_ = out_ * (1 - m_[..., None]) + eye * m_[..., None]
+        mask = np.maximum(mask, m_)
+        log("[eyes] opening %.0f x %.0f px, new iris radius %.0f px" % (e["w"], e["h"], R))
+    return out_, mask
+
+
+def eye_material(col_img, mr_img):
+    m = bpy.data.materials.new("Orion_Tripo_Eyes")
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(b.outputs[0], out.inputs[0])
+    tc = nt.nodes.new("ShaderNodeTexImage")
+    tc.image = col_img
+    nt.links.new(tc.outputs[0], b.inputs["Base Color"])
+    tm = nt.nodes.new("ShaderNodeTexImage")
+    tm.image = mr_img
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(tm.outputs[0], sep.inputs[0])
+    nt.links.new(sep.outputs[1], b.inputs["Roughness"])
+    nt.links.new(sep.outputs[2], b.inputs["Metallic"])
+    b.inputs["Emission Color"].default_value = (0, 0, 0, 1)  # eyes do not glow
+    b.inputs["Emission Strength"].default_value = 0.0
+    return m
+
+
+def apply_eyes(obj):
+    """give the faces around the eyes the eye material, with planar front UVs into the eye textures"""
+    x0w, x1w, z0w, z1w = EYE_WIN
+    fid_, _, stats, (co_, fv_, nr_, ls_) = raster_front(obj.data, EYE_WIN)
+    from scipy import ndimage as ndi
+    near = ndi.binary_dilation(EYE_MASK > 0.01, iterations=12)
+    sel = set(np.unique(fid_[near]).tolist()) - {-1}
+    sel = [f for f in sel if stats.get(f, (0, 0))[0] > 0 and stats[f][1] >= 0.97 * stats[f][0] and nr_[f, 1] < -0.2]
+    P = co_[fv_[sel]]
+    inside = ((P[..., 0] > x0w) & (P[..., 0] < x1w) & (P[..., 2] > z0w) & (P[..., 2] < z1w)).all(1)
+    sel = np.array(sel)[inside]
+    me_ = obj.data
+    if EYE_MAT.name not in [m.name for m in me_.materials if m]:
+        me_.materials.append(EYE_MAT)
+    slot = [m.name if m else "" for m in me_.materials].index(EYE_MAT.name)
+    mi = np.zeros(len(me_.polygons), np.int32)
+    me_.polygons.foreach_get("material_index", mi)
+    mi[sel] = slot
+    me_.polygons.foreach_set("material_index", mi)
+    uvd = me_.uv_layers.active.data
+    uv_all = np.empty(len(me_.loops) * 2, np.float32)
+    uvd.foreach_get("uv", uv_all)
+    uv_all = uv_all.reshape(-1, 2)
+    lv = np.empty(len(me_.loops), np.int32)
+    me_.loops.foreach_get("vertex_index", lv)
+    for f in sel:
+        for k in range(3):
+            li = ls_[f] + k
+            v = co_[lv[li]]
+            uv_all[li] = ((v[0] - x0w) / (x1w - x0w), (v[2] - z0w) / (z1w - z0w))
+    uvd.foreach_set("uv", uv_all.ravel())
+    me_.update()
+    log("[eyes]", obj.name, len(sel), "faces use the eye texture")
+
+
+def set_img(img, arr):
+    """write an HxWx3 array (top row first) into a Blender image"""
+    h, w = arr.shape[:2]
+    rgba = np.concatenate([arr[..., :3], np.ones((h, w, 1), np.float32)], -1)[::-1]
+    img.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    img.update()
+    if img.packed_file:
+        img.pack()
+
+
+def repaint_main_texture(eye_img, fid_):
+    """also correct the eyes in the main texture (at its own, lower resolution): every texel of a face that is
+    frontmost in the eye area takes the colour of the new eye image at its front-view position"""
+    from scipy import ndimage as ndi
+    from scipy.ndimage import map_coordinates
+    x0w, x1w, z0w, z1w = EYE_WIN
+    Hh, Ww = fid_.shape
+    soft = np.stack([ndi.gaussian_filter(eye_img[..., k], 2.5) for k in range(3)], -1)  # ~ one texel footprint
+    m = ndi.gaussian_filter(ndi.binary_dilation(EYE_MASK > 0.01, iterations=6).astype(np.float32), 2.0)
+    co_, fv_, nr_, ls_, uv_ = mesh_arrays(body.data)
+    faces = np.unique(fid_[m > 0.01])
+    faces = faces[faces >= 0]
+    n = 0
+    per_face = []
+    for f in faces:
+        P3 = co_[fv_[f]]
+        T = np.stack([uv_[ls_[f] + k] for k in range(3)]) * [TW, TH]
+        T[:, 1] = TH - T[:, 1]
+        bx0, by0 = np.floor(T.min(0)).astype(int)
+        bx1, by1 = np.ceil(T.max(0)).astype(int)
+        xs, ys = np.meshgrid(np.arange(bx0, bx1 + 1) + 0.5, np.arange(by0, by1 + 1) + 0.5)
+        v0, v1 = T[1] - T[0], T[2] - T[0]
+        den = v0[0] * v1[1] - v1[0] * v0[1]
+        if abs(den) < 1e-12:
+            continue
+        wx, wy = xs - T[0, 0], ys - T[0, 1]
+        b1 = (wx * v1[1] - v1[0] * wy) / den
+        b2 = (v0[0] * wy - wx * v0[1]) / den
+        b0 = 1 - b1 - b2
+        ins = (b0 >= -0.02) & (b1 >= -0.02) & (b2 >= -0.02)  # a hair outside too: bilinear reads neighbours
+        if not ins.any():
+            continue
+        B = np.stack([b0[ins], b1[ins], b2[ins]], 1)
+        p3 = B @ P3
+        sx = (p3[:, 0] - x0w) * EYE_RES - 0.5
+        sy = (z1w - p3[:, 2]) * EYE_RES - 0.5
+        ok = (sx >= 0) & (sx < Ww - 1) & (sy >= 0) & (sy < Hh - 1)
+        # only texels this face shows from the front (not hidden behind another surface)
+        fr = fid_[np.clip(np.round(sy).astype(int), 0, Hh - 1), np.clip(np.round(sx).astype(int), 0, Ww - 1)] == f
+        ok &= fr
+        if not ok.any():
+            continue
+        tx = np.clip(np.floor(xs[ins][ok]).astype(int), 0, TW - 1)
+        ty = np.clip(np.floor(ys[ins][ok]).astype(int), 0, TH - 1)
+        a_ = map_coordinates(m, [sy[ok], sx[ok]], order=1)[:, None]
+        c = np.stack([map_coordinates(soft[..., k], [sy[ok], sx[ok]], order=1) for k in range(3)], -1)
+        base[ty, tx] = base[ty, tx] * (1 - a_) + c * a_
+        n += int(ok.sum())
+        per_face.append(int(ok.sum()))
+    set_img(BASE_IMG, base)
+    log("[eyes] main texture: %d texels repainted on %d faces (max %d per face)"
+        % (n, len(per_face), max(per_face) if per_face else 0))
+
+
+if args.eye_fix:
+    EYE_WIN = find_eye_window()
+    fid0, (scr_col, scr_mr), _, _ = raster_front(body.data, EYE_WIN, textures=(base, mr_new))
+    eye_col, EYE_MASK = paint_eyes(scr_col, fid0)
+    scr_mr[..., 1] = scr_mr[..., 1] * (1 - EYE_MASK) + 0.3 * EYE_MASK  # glossy eyes
+    scr_mr[..., 2] = scr_mr[..., 2] * (1 - EYE_MASK)
+
+    def to_img(name, arr, cs):
+        from PIL import Image as PImage
+        im8 = PImage.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8)).resize((1024, 512), PImage.LANCZOS)
+        return np_img(name, np.asarray(im8).astype(np.float32) / 255, cs)
+
+    EYE_MAT = eye_material(to_img("orion_eyes", eye_col, "sRGB"), to_img("orion_eyes_metal_rough", scr_mr, "Non-Color"))
+    repaint_main_texture(eye_col, fid0)  # first: it needs the faces' original UVs
+    apply_eyes(body)
 
 
 # ============================================================================= stage (same as orion_build.py)
@@ -444,7 +754,8 @@ def export_glb(obj, path, emission=1.0):
     """export one object at 1,2 m (scene units are 2,4 high), Y-up, emission strength 1 (plain glTF)"""
     for m in obj.data.materials:
         b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-        b.inputs["Emission Strength"].default_value = emission
+        if b.inputs["Emission Color"].is_linked:  # only materials with an emission texture
+            b.inputs["Emission Strength"].default_value = emission
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
@@ -461,16 +772,31 @@ def export_glb(obj, path, emission=1.0):
 def decimate_lod(high, tris):
     """lighter copy for phones: collapse-decimated, same UVs and textures (no re-bake needed)"""
     low = high.copy()
-    low.data = high.data.copy()
+    low.data = PRISTINE_MESH.copy()
     low.name = "Orion_Tripo_Mobile"
     scene.collection.objects.link(low)
     dec = low.modifiers.new("dec", "DECIMATE")
     dec.ratio = min(1.0, tris / max(len(high.data.polygons), 1))
+    if args.eye_fix:  # keep the small triangles around the eyes (weight 0 = not collapsed)
+        x0w, x1w, z0w, z1w = EYE_WIN
+        vco = np.empty(len(low.data.vertices) * 3, np.float32)
+        low.data.vertices.foreach_get("co", vco)
+        vco = vco.reshape(-1, 3)
+        keep = (vco[:, 0] > x0w) & (vco[:, 0] < x1w) & (vco[:, 2] > z0w) & (vco[:, 2] < z1w) & (vco[:, 1] < -0.3)
+        vg = low.vertex_groups.new(name="decimate")
+        vg.add(np.where(~keep)[0].tolist(), 1.0, "REPLACE")
+        vg.add(np.where(keep)[0].tolist(), 0.0, "REPLACE")
+        dec.vertex_group = "decimate"
+        dec.vertex_group_factor = 1.0
     bpy.ops.object.select_all(action="DESELECT")
     low.select_set(True)
     bpy.context.view_layer.objects.active = low
     bpy.ops.object.modifier_apply(modifier="dec")
+    for vg_ in list(low.vertex_groups):
+        low.vertex_groups.remove(vg_)
     log("[lod]", len(low.data.polygons), "faces")
+    if args.eye_fix:
+        apply_eyes(low)
     return low
 
 
@@ -482,8 +808,10 @@ if not args.no_glb:
         export_glb(low, os.path.join(args.out, f"orion_tripo_mobile{args.tag}.glb"))
         if "lodsheet" in views:
             body.hide_render = True
-            next(n for n in low.data.materials[0].node_tree.nodes
-                 if n.type == "BSDF_PRINCIPLED").inputs["Emission Strength"].default_value = args.glow
+            for m in low.data.materials:
+                bs = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+                if bs.inputs["Emission Color"].is_linked:
+                    bs.inputs["Emission Strength"].default_value = args.glow
             scene.cycles.samples = args.samples
             scene.cycles.use_denoising = True
             raw, fin_ = [], []
