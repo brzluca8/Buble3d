@@ -39,7 +39,8 @@ ap.add_argument("--no-eye-fix", dest="eye_fix", action="store_false",
                 help="păstrează ochii pictați de Tripo (irisurile lor sunt trase spre nas: privire încrucișată)")
 ap.add_argument("--no-pack-purple", dest="pack_purple", action="store_false",
                 help="păstrează rucsacul în culoarea din Tripo (vișiniu)")
-ap.add_argument("--lod", type=int, default=40000, help="triunghiuri pentru varianta de telefon (0 = fără)")
+ap.add_argument("--lod", type=int, default=0,
+                help="o variantă redusă la atâtea triunghiuri (0 = fără; reducerea strică aspectul blănii și al ochelarilor)")
 args = ap.parse_args(argv)
 os.makedirs(args.out, exist_ok=True)
 

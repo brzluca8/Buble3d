@@ -15,9 +15,13 @@ Pe telefon sau tabletă cu Android există și editorul Godot pentru Android (�
 - **Zoom:** ciupești cu două degete sau folosești rotița mouse-ului. De aproape, camera se uită la față.
 - **Săritură:** atingi sau dai clic, iar Orion sare.
 - **Butoane:**
-  - **Model:** comuți între `telefon` (40 de mii de triunghiuri, pentru joc) și `complet` (188 de mii);
   - **Fundal:** comuți între cer și alb, ca în planșa de personaj;
   - **Rotire:** pornești sau oprești rotirea automată.
+
+La zoom 1, Orion încape întreg pe orice formă de ecran, între titlu și butoane.
+
+## Modelul
+Proiectul folosește doar **modelul complet**, cu 188 de mii de triunghiuri. O variantă redusă la 40 de mii arăta vizibil mai rău: blană zimțată, ochelari cu muchii, texturi întinse. Nu e nevoie de ea în Godot, care face singur, la import, variante mai ușoare (LOD) ale modelului. Le folosește doar când Orion e mic pe ecran, așa că diferența nu se vede, iar pe telefon merge repede.
 
 Modelul nu are încă oase. „Respirația” și săritura mișcă tot modelul, sunt doar pentru previzualizare. Pentru mers și alte animații, modelul se poate pregăti cu oase automat în Mixamo, apoi se importă aici.
 
@@ -26,14 +30,14 @@ Modelul nu are încă oase. „Respirația” și săritura mișcă tot modelul,
 |---|---|
 | `main.gd` | tot codul: cerul, luminile, platforma, camera pe orbită, butoanele, controlul tactil |
 | `main.tscn` | scena principală, care are doar scriptul de mai sus |
-| `models/orion_tripo_mobile.glb` | modelul pentru telefon (1,2 m) |
-| `models/orion_tripo_game.glb` | modelul complet |
+| `models/orion_tripo_game.glb` | modelul (1,2 m) |
 | `project.godot` | setările: ecran portret 720×1280, randare „Mobile”, texturi comprimate pentru Android |
 
 Ce poți regla în `main.gd`:
 - `GLOW_ENERGY`: cât de tare strălucesc marcajele;
 - `TARGET_FAR` / `TARGET_NEAR`: unde se uită camera;
-- `DIST_MIN` / `DIST_MAX`: limitele de zoom;
+- `ZOOM_MIN` / `ZOOM_MAX`: limitele de zoom;
+- `FIT_HEIGHT` / `FIT_WIDTH`: cât spațiu se vede în jurul lui Orion la zoom 1;
 - culorile cerului din `_build_world()`.
 
-> Proiectul a fost scris și verificat sintactic, dar nu a putut fi pornit în Godot în mediul în care a fost făcut. Modelele au trecut de validatorul glTF fără erori și au fost verificate în Three.js. Dacă Godot afișează vreo eroare, copiază mesajul din panoul **Output** sau **Debugger**.
+Dacă Godot afișează vreo eroare, mesajul apare în panoul **Output** sau **Debugger**.

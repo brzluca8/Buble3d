@@ -88,22 +88,18 @@ Ce face scriptul:
    - pune ochii într-o textură separată (`orion_eyes`, 1024×512, de ~6 ori mai detaliată decât textura din Tripo), cu material propriu (`Orion_Tripo_Eyes`) pe fețele din jurul ochilor;
    - corectează ochii și în textura principală, ca rezervă.
 
-   La varianta pentru telefon, zona ochilor nu se reduce, ca să rămână aceleași fețe. Corectura se oprește cu `--no-eye-fix`.
-6. Exportă:
-   - `orion_tripo_game.glb`: modelul complet;
-   - `orion_tripo_mobile.glb`: aceleași texturi, redus la 40 de mii de triunghiuri pentru telefon.
-
-   Ambele sunt la 1,2 m, cu texturi JPG compatibile cu Three.js r128 din `buble.html`. Au trecut de validatorul glTF fără erori.
-7. Randează aceeași planșă ca modelul procedural: `tripo_sheet.png`, `tripo_mobile_sheet.png`, `tripo_face.png`, iar vederile transparente în `transparent/`.
+   Corectura se oprește cu `--no-eye-fix`.
+6. Exportă `orion_tripo_game.glb`: 1,2 m, 188 de mii de triunghiuri, cu texturi JPG compatibile cu Three.js r128 din `buble.html`. A trecut de validatorul glTF fără erori. Varianta redusă pentru telefon (`--lod 40000`) nu se mai face implicit, pentru că strica aspectul: blană zimțată, ochelari cu muchii, texturi întinse. Godot face singur variante mai ușoare pentru distanță.
+7. Randează aceeași planșă ca modelul procedural: `tripo_sheet.png`, `tripo_face.png`, iar vederile transparente în `transparent/`.
 
 Rezultatele sunt în `out_tripo/`.
 
 ```bash
-./bvenv/bin/python tripo_prep.py --src tripo/orion_tripo.glb --out out_tripo --render sheet,face,lodsheet
+./bvenv/bin/python tripo_prep.py --src tripo/orion_tripo.glb --out out_tripo --render sheet,face
 ```
-Parametri: `--face-yaw` (rotația, implicit -15), `--lod` (triunghiuri pentru telefon, implicit 40000), `--glow` (intensitatea emisiei în randări), `--no-eye-fix`, `--no-pack-purple`, `--size`, `--samples`.
+Parametri: `--face-yaw` (rotația, implicit -15), `--glow` (intensitatea emisiei în randări), `--no-eye-fix`, `--no-pack-purple`, `--size`, `--samples`, `--lod N` (o variantă redusă la N triunghiuri, de calitate mai slabă; implicit nu se face).
 
-**În joc:** în `buble.html`, din panoul „🧩 Modele 3D”, la mascotă, încarci `out_tripo/orion_tripo_mobile.glb`.
+**În joc:** în `buble.html`, din panoul „🧩 Modele 3D”, la mascotă, încarci `out_tripo/orion_tripo_game.glb`. Același model e și în proiectul Godot din `godot/`.
 
 **Animație:** modelul e un singur mesh, fără oase. Pentru mers și sărit se poate face rig automat în Mixamo (corp umanoid). Coada și urechile au nevoie de oase adăugate în Blender.
 

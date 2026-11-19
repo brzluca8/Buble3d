@@ -3,18 +3,17 @@ extends Node3D
 ## Trage (deget sau mouse) ca să rotești, ciupește sau folosește rotița pentru zoom, atinge ca Orion să sară.
 ## Totul (cer, lumini, platformă, cameră, butoane) e construit din cod, scena main.tscn are doar acest script.
 
-const MODELS := {
-	"telefon": "res://models/orion_tripo_mobile.glb",
-	"complet": "res://models/orion_tripo_game.glb",
-}
+# modelul complet; Godot îi face singur variante mai ușoare (LOD) când e mic pe ecran, deci merge și pe telefon
+const MODEL_PATH := "res://models/orion_tripo_game.glb"
 const GLOW_ENERGY := 2.2  # cât de tare strălucesc marcajele turcoaz
-const TARGET_FAR := Vector3(0.0, 0.62, 0.0)  # privire de departe: tot corpul
+const TARGET_FAR := Vector3(0.0, 0.6, 0.0)  # privire de departe: tot corpul
 const TARGET_NEAR := Vector3(0.0, 0.98, 0.0)  # zoom mare: fața
-const DIST_MIN := 1.0
-const DIST_MAX := 5.0
+const FIT_HEIGHT := 1.95  # cât de înaltă e zona văzută la zoom 1 (Orion are 1,2 m: încape între titlu și butoane)
+const FIT_WIDTH := 1.35  # și cât de lată (coada și rucsacul ies în lateral când se rotește)
+const ZOOM_MIN := 0.3
+const ZOOM_MAX := 1.6
 const PURPLE := Color(0.3, 0.11, 0.43)
 
-var model_key := "telefon"
 var holder: Node3D
 var cam: Camera3D
 var rig: Node3D
@@ -23,7 +22,7 @@ var sky_mode := true
 
 var yaw := 0.0
 var pitch := 0.1
-var dist := 2.8
+var zoom := 1.0  # 1 = tot corpul încadrat; mai mic = mai aproape
 var auto_rotate := true
 var last_input_ms := -100000
 var touches := {}
@@ -34,7 +33,6 @@ var dragged := false
 var hop_t := -1.0
 var t := 0.0
 
-var btn_model: Button
 var btn_bg: Button
 var btn_rot: Button
 var info: Label
@@ -43,7 +41,7 @@ var info: Label
 func _ready() -> void:
 	_build_world()
 	_build_ui()
-	_load_model(model_key)
+	_load_model()
 
 
 # --------------------------------------------------------------------------- lume: cer, lumini, platformă, cameră
@@ -80,7 +78,7 @@ func _build_world() -> void:
 	key.light_energy = 1.25
 	key.light_color = Color(1.0, 0.95, 0.88)
 	key.shadow_enabled = true
-	key.directional_shadow_max_distance = 10.0
+	key.directional_shadow_max_distance = 16.0
 	rig.add_child(key)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-15.0, 60.0, 0.0)
@@ -130,21 +128,16 @@ func _apply_background() -> void:
 
 
 # --------------------------------------------------------------------------- modelul
-func _load_model(key: String) -> void:
-	var packed := load(MODELS[key]) as PackedScene
+func _load_model() -> void:
+	var packed := load(MODEL_PATH) as PackedScene
 	if packed == null:
-		info.text = "Nu găsesc %s" % MODELS[key]
+		info.text = "Nu găsesc %s" % MODEL_PATH
 		return
-	if holder:
-		holder.queue_free()
 	holder = Node3D.new()
 	add_child(holder)
 	var model := packed.instantiate()
 	holder.add_child(model)
 	_boost_emission(model)
-	model_key = key
-	btn_model.text = "Model: " + key
-	info.text = ""
 
 
 func _boost_emission(n: Node) -> void:
@@ -188,7 +181,6 @@ func _build_ui() -> void:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_place(bar, 1.0, -170.0, -92.0)
 	root.add_child(bar)
-	btn_model = _button("Model: telefon", bar, _on_model)
 	btn_bg = _button("Fundal: cer", bar, _on_bg)
 	btn_rot = _button("Rotire: auto", bar, _on_rot)
 
@@ -244,10 +236,6 @@ func _button(text: String, parent: Control, callback: Callable) -> Button:
 	return b
 
 
-func _on_model() -> void:
-	_load_model("complet" if model_key == "telefon" else "telefon")
-
-
 func _on_bg() -> void:
 	sky_mode = not sky_mode
 	_apply_background()
@@ -275,16 +263,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			dragged = true  # a pinch is not a tap
 			var d := _touch_spread()
 			if pinch_dist > 0.0 and d > 0.0:
-				dist = clampf(dist * pinch_dist / d, DIST_MIN, DIST_MAX)
+				zoom = clampf(zoom * pinch_dist / d, ZOOM_MIN, ZOOM_MAX)
 			pinch_dist = d
 			_touched()
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			dist = clampf(dist * 0.9, DIST_MIN, DIST_MAX)
+			zoom = clampf(zoom * 0.9, ZOOM_MIN, ZOOM_MAX)
 			_touched()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			dist = clampf(dist * 1.1, DIST_MIN, DIST_MAX)
+			zoom = clampf(zoom * 1.1, ZOOM_MIN, ZOOM_MAX)
 			_touched()
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
@@ -303,7 +291,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_touched()
 	elif event is InputEventMagnifyGesture:
 		var mg := event as InputEventMagnifyGesture
-		dist = clampf(dist / mg.factor, DIST_MIN, DIST_MAX)
+		zoom = clampf(zoom / mg.factor, ZOOM_MIN, ZOOM_MAX)
 		_touched()
 
 
@@ -328,14 +316,17 @@ func _process(delta: float) -> void:
 	if auto_rotate and Time.get_ticks_msec() - last_input_ms > 2500:
 		yaw += delta * 0.35
 
-	# camera pe orbită; la zoom mare se uită spre față
-	var z := clampf((dist - DIST_MIN) / (DIST_MAX - DIST_MIN), 0.0, 1.0)
-	var target := TARGET_NEAR.lerp(TARGET_FAR, smoothstep(0.0, 0.55, z))
+	# camera pe orbită: la zoom 1 încape tot corpul, oricare ar fi forma ecranului; la zoom mare se uită spre față
+	var vs := get_viewport().get_visible_rect().size
+	var aspect := vs.x / maxf(vs.y, 1.0)
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	var view := 2.0 * tan(deg_to_rad(cam.fov * 0.5))  # înălțimea văzută la 1 m distanță
+	var fit := maxf(FIT_HEIGHT / view, FIT_WIDTH / (view * aspect))
+	var dist := fit * zoom
+	var target := TARGET_NEAR.lerp(TARGET_FAR, smoothstep(0.3, 0.8, zoom))
 	var dir := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
 	cam.position = target + dir * dist
 	cam.look_at(target, Vector3.UP)
-	var vs := get_viewport().get_visible_rect().size
-	cam.keep_aspect = Camera3D.KEEP_WIDTH if vs.y > vs.x else Camera3D.KEEP_HEIGHT
 	rig.rotation.y = yaw
 
 	# „respirație” ușoară + săritură la atingere (modelul nu are oase încă)
