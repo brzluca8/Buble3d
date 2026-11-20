@@ -32,6 +32,7 @@ ap.add_argument("--samples", type=int, default=48)
 ap.add_argument("--out", default=os.path.join(ROOT, "docs", "shots"))
 ap.add_argument("--aterizare", action="store_true", help="arată efectul de aterizare pe START (la 35% din animație)")
 ap.add_argument("--tag", default="")
+ap.add_argument("--glb", default="", help="alt GLB pentru „nou” (implicit cel din godot/assets/models/insula1/)")
 args = ap.parse_args(argv)
 os.makedirs(args.out, exist_ok=True)
 GODOT = os.path.join(ROOT, "godot")
@@ -271,7 +272,7 @@ def build(cam):
                     if bsdf:
                         bsdf.inputs["Emission Strength"].default_value = 2.0  # GLOW_ISLAND din jocul vechi
     else:
-        obs = import_glb(os.path.join(GODOT, "assets", "models", "insula1", "insula1.glb"))
+        obs = import_glb(args.glb or os.path.join(GODOT, "assets", "models", "insula1", "insula1.glb"))
         wm = water_material()
         for o in obs:
             if o.type != "MESH":
