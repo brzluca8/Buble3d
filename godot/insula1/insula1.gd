@@ -342,6 +342,9 @@ func _casute_joc() -> void:
 		t.rotation.y = atan2(urm.x - t.position.x, urm.z - t.position.z)
 		t.scale = Vector3.ONE * SCALA_CASUTA
 		t.call("configureaza", Tipuri.tip(i), _m_casuta)
+		# căsuțele sunt discuri plate: umbra lor nu se vede, dar ar costa 22 de desenări în plus pe fiecare treaptă de umbră
+		for c in t.find_children("*", "GeometryInstance3D", true, false):
+			(c as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_casute.append(t)
 
 

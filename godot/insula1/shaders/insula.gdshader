@@ -4,7 +4,8 @@
 //   COLOR (din GLB): R = ocluzie ambientală (AO coaptă), A = cât se leagănă vârful în vânt (0 la sol, 1 sus)
 //   strat de detaliu: textură tileable, triplanar, în coordonate de lume (scoate aspectul de plastilină)
 //   nuanțare: gama, saturație, contrast (insula avea culorile spălate față de Orion)
-//   estompare (A11): ce ajunge între cameră și Orion (sau foarte aproape de cameră) se destramă în puncte
+//   estompare (A11): ce ajunge între cameră și Orion (un con în jurul liniei) sau foarte aproape de cameră
+//   se destramă în puncte, ca nimic să nu-l acopere pe Orion
 // Fără cull: modelul din Tripo are și fețe subțiri, văzute din ambele părți.
 shader_type spatial;
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
@@ -77,7 +78,9 @@ void fragment() {
 		float d = length(v_pos - (cam + ab * clamp(t, 0.0, 1.0)));
 		float f = 0.0;
 		if (t > 0.0 && t < 0.92) {
-			f = smoothstep(raza_estompare, raza_estompare * 0.4, d);
+			// con: raza crește spre cameră, ca să prindă și obiectele din prim-plan de sub linia spre Orion
+			float r = raza_estompare * (1.0 + 0.8 * (1.0 - t));
+			f = smoothstep(r, r * 0.4, d);
 		}
 		f = max(f, smoothstep(2.4, 1.2, length(v_pos - cam)));
 		if (f > 0.0 && f * 0.92 > destramare(FRAGCOORD.xy)) {
