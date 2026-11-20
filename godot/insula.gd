@@ -4,7 +4,7 @@ extends Node3D
 ## Totul (cer, nori, lumini, cameră, interfață) e construit din cod; pozițiile căsuțelor vin din
 ## data/insula1_casute.gd, generat de blender/island_prep.py.
 
-const ISLAND_PATH := "res://insula_v2/insula_v2.tscn"  # insula v2: tot vizualul insulei (cer, lumini, teren, apă...)
+const ISLAND_PATH := "res://insula1/insula1.tscn"  # insula 1 îmbunătățită: tot vizualul (cer, lumini, apă, efecte)
 const ORION_PATH := "res://assets/models/orion.glb"
 const Board := preload("res://data/insula1_casute.gd")
 const GLOW_ORION := 2.2
@@ -61,7 +61,7 @@ func _ready() -> void:
 
 # --------------------------------------------------------------------------- lume
 func _build_world() -> void:
-	# cerul, luminile, ceața și norii sunt acum în insula v2 (insula_v2/insula_v2.gd); aici rămâne doar camera
+	# cerul, luminile, ceața și norii sunt în scena insulei (insula1/insula1.gd); aici rămâne doar camera
 	cam = Camera3D.new()
 	cam.fov = 40.0
 	cam.far = 400.0
