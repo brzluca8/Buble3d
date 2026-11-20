@@ -183,6 +183,7 @@ func _build_ui() -> void:
 	root.add_child(bar)
 	btn_bg = _button("Fundal: cer", bar, _on_bg)
 	btn_rot = _button("Rotire: auto", bar, _on_rot)
+	_button("Insula", bar, _on_island)
 
 	var hint := _label("trage ca să rotești · ciupește sau rotița pentru zoom\natinge-l ca să sară", 20, 6)
 	_place(hint, 1.0, -84.0, -20.0)
@@ -234,6 +235,10 @@ func _button(text: String, parent: Control, callback: Callable) -> Button:
 	b.pressed.connect(callback)
 	parent.add_child(b)
 	return b
+
+
+func _on_island() -> void:
+	get_tree().change_scene_to_file("res://insula.tscn")
 
 
 func _on_bg() -> void:

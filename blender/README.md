@@ -104,3 +104,35 @@ Parametri: `--face-yaw` (rotația, implicit -15), `--glow` (intensitatea emisiei
 **Animație:** modelul e un singur mesh, fără oase. Pentru mers și sărit se poate face rig automat în Mixamo (corp umanoid). Coada și urechile au nevoie de oase adăugate în Blender.
 
 **Licență:** verifică în planul tău Tripo dacă modelul poate fi folosit comercial.
+
+## Insula 1 (pentru joc)
+`tripo/insula1_tripo.glb` este insula generată în Tripo Studio după desenul cu castelul. Are un singur mesh, 196 de mii de triunghiuri și texturi de 2048 px. Scriptul `island_prep.py` o pregătește pentru joc.
+
+Ce face scriptul:
+1. **Găsește căsuțele drumului.** Desenează insula văzută de sus, cu culorile texturii, și caută discurile rotunde, plate și bej. A găsit 22. Două erau parțial ascunse, una sub un copac și una mai palidă, și sunt adăugate doar dacă umplu un gol din drum. Căsuțele sunt ordonate în buclă: START e căsuța din fața castelului, iar drumul merge spre dreapta, în jurul castelului.
+2. **Scalează insula.** Distanța dintre două căsuțe vecine devine 1,9 m, iar o căsuță are ~1,5 m, cât să încapă Orion (1,2 m). Insula are astfel cam 19 × 23 × 13 m. START ajunge în origine, la înălțimea 0, iar drumul e centrat.
+3. **Repară materialul:**
+   - metal doar pe piesele de metal;
+   - apă lucioasă;
+   - lumină pe flăcările felinarelor, ferestre și portal.
+4. **Exportă:**
+   - `insula1.glb`: texturi JPG, trecut de validatorul glTF fără erori;
+   - `insula1_casute.json` și `insula1_casute.gd`: pozițiile căsuțelor în metri, cu X spre dreapta, Y în sus și Z spre cameră, adică coordonatele din Godot și Three.js.
+5. **Randează:**
+   - `insula1_harta_numerotat.png`: harta drumului, cu căsuțele numerotate;
+   - `insula1_vedere.png`: vedere 3/4;
+   - `insula1_orion_start.png`: Orion pe START, pentru scară.
+
+```bash
+./bvenv/bin/python island_prep.py --src tripo/insula1_tripo.glb --out out_insula1 --name insula1 \
+    --orion out_tripo/orion_tripo_game.glb --render map,hero,orion
+```
+Parametri:
+- `--spacing`: distanța dintre căsuțe, implicit 1,9 m;
+- `--yaw`: rotește insula, dacă fața nu e spre cameră;
+- `--orion`: GLB-ul lui Orion, pus pe START în randări;
+- `--render`: `map`, `hero`, `orion`;
+- `--size`, `--samples`: mărimea și calitatea randărilor;
+- `--glow`: intensitatea luminii în randări.
+
+Pentru insulele următoare se schimbă doar `--src` și `--name`. Dacă drumul are altă formă sau alte culori, pragurile de detecție din `find_tiles()` se pot regla.

@@ -11,8 +11,8 @@ config_version=5
 [application]
 
 config/name="Buble – Orion"
-config/description="Previzualizare pentru Orion, mascota jocului Buble: rotire, zoom, săritură."
-run/main_scene="res://main.tscn"
+config/description="Buble: Insula 1 cu drumul de căsuțe și Orion; plus previzualizarea lui Orion."
+run/main_scene="res://insula.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 config/icon="res://icon.svg"
 
