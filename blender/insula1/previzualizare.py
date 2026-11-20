@@ -187,7 +187,14 @@ def water_material():
     sm.interpolation_type = "SMOOTHSTEP"
     nt.links.new(sep.outputs[0], sm.inputs["Value"])
     shore = math_node(nt, "MULTIPLY", is_lake, math_node(nt, "MULTIPLY", sm.outputs[0], 0.75))
-    foam = math_node(nt, "MAXIMUM", sep.outputs[1], shore)
+    fn = nt.nodes.new("ShaderNodeTexNoise")  # ca în shader: spuma de la poduri e pătată de zgomot
+    fn.inputs["Scale"].default_value = 5.0
+    fr = nt.nodes.new("ShaderNodeMapRange")
+    fr.inputs["From Min"].default_value = 0.3
+    fr.inputs["From Max"].default_value = 0.7
+    fr.interpolation_type = "SMOOTHSTEP"
+    nt.links.new(fn.outputs[0], fr.inputs["Value"])
+    foam = math_node(nt, "MAXIMUM", math_node(nt, "MULTIPLY", sep.outputs[1], fr.outputs[0]), shore)
     c = mix_rgb(nt, foam, ramp.outputs[0], (0.92, 1.0, 1.0, 1))
     # cascadă: dungi întinse pe verticală (UV.y = metri de la buză)
     mp = nt.nodes.new("ShaderNodeMapping")
@@ -353,8 +360,8 @@ def build(cam):
         q = bpy.context.active_object
         m, nt, b = node_mat("aterizare")
         tc = nt.nodes.new("ShaderNodeTexCoord")
-        mp = nt.nodes.new("ShaderNodeMapping")
-        mp.inputs["Location"].default_value = (-0.5, -0.5, 0)
+        mp = nt.nodes.new("ShaderNodeMapping")  # Mapping scalează întâi, apoi adună: 2 * uv - 1
+        mp.inputs["Location"].default_value = (-1.0, -1.0, 0)
         mp.inputs["Scale"].default_value = (2.0, 2.0, 1.0)
         nt.links.new(tc.outputs["UV"], mp.inputs["Vector"])
         ln = nt.nodes.new("ShaderNodeVectorMath")
