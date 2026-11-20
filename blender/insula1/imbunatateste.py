@@ -24,7 +24,6 @@ import bpy  # noqa: I001  (bpy înainte de bmesh)
 import bmesh
 import numpy as np
 from mathutils import Vector
-from mathutils.bvhtree import BVHTree
 from PIL import Image
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.sparse import coo_matrix
@@ -261,9 +260,8 @@ casc = separa(apa, t2 == 2, "Cascade")
 me = ob.data
 log("[separare] Insula %d fețe, Apa %d, Cascade %d" % (len(me.polygons), len(apa.data.polygons), len(casc.data.polygons)))
 
-# BVH al insulei (pentru podurile de deasupra râului)
+# fețele insulei rămase (pentru podurile de deasupra râului)
 co_i, fv_i, _, _ = arrays(me)
-BVH = BVHTree.FromPolygons([Vector(p) for p in co_i], fv_i.tolist())
 
 
 def set_colors(obj, rgba):
@@ -367,25 +365,32 @@ if riv_v.any():
     along = np.radians(th) * rmid  # metri pe direcția curgerii (invers acelor de ceas, privit de sus)
     uvv[vi, 0] = across
     uvv[vi, 1] = 1.0 - along
-    # spumă sub poduri: ceva din insulă chiar deasupra apei
+    # spumă sub poduri. Un pod = piese din insulă deasupra râului, la înălțimea unui pod (0,3-2 m peste apă), care
+    # traversează albia de la un mal la altul. Apa de sub pod e pictată prea închis ca să fie găsită ca apă,
+    # așa că spuma merge pe apa din jurul podului.
     lvl_r = float(np.median(co_a[vi, 2]))
-    sub = np.zeros(len(vi), bool)
-    for j, p in enumerate(co_a[vi]):
-        hit = BVH.ray_cast(Vector((p[0], p[1], lvl_r + 0.35)), Vector((0, 0, 1)), 1.9)
-        sub[j] = hit[0] is not None
-    # un pod acoperă râul pe toată lățimea; malurile care atârnă deasupra apei, doar pe o parte
-    if sub.sum() > 1:
-        js = np.where(sub)[0]
-        gl = fcluster(linkage(co_a[vi][js, :2], "single"), 0.35, "distance")
-        ok = np.zeros(len(vi), bool)
+    th_lo, th_hi = th.min(), th.max()
+    ci = co_i[fv_i].mean(1)
+    xi, yi = ci[:, 0] - CASTEL[0], ci[:, 1] - CASTEL[1]
+    thi = ((np.degrees(np.arctan2(yi, xi)) % 360) - cut) % 360
+    ri_ = np.hypot(xi, yi)
+    fbi = thi / 4 - 0.5
+    a_in = (ri_ - np.interp(fbi, idx, r_in)) / np.maximum(np.interp(fbi, idx, r_out) - np.interp(fbi, idx, r_in), 0.3)
+    peste = (thi > th_lo) & (thi < th_hi) & (a_in > 0.05) & (a_in < 0.95) & (ci[:, 2] > lvl_r + 0.3) & (ci[:, 2] < lvl_r + 2.0)
+    pod_c = []
+    if peste.sum() > 1:
+        fi = np.where(peste)[0]
+        gl = fcluster(linkage(ci[fi, :2], "single"), 0.4, "distance")
         for g_ in np.unique(gl):
-            jj = js[gl == g_]
-            if len(jj) >= 8 and np.ptp(across[jj]) >= 0.6:
-                ok[jj] = True
-        sub = ok
-    if sub.any():
-        d, _ = cKDTree(co_a[vi][sub, :2]).query(co_a[vi, :2])
-        rgba[vi, 1] = np.clip(1.0 - d / 0.9, 0, 1)
+            ff = fi[gl == g_]
+            if len(ff) >= 6 and np.ptp(a_in[ff]) >= 0.6:
+                pod_c.append(ci[ff])
+    if pod_c:
+        d, _ = cKDTree(np.concatenate(pod_c)[:, :2]).query(co_a[vi, :2])
+        rgba[vi, 1] = np.clip(1.0 - d / 1.0, 0, 1)
+    PODURI = [c_.mean(0).round(2).tolist() for c_ in pod_c]
+    log("[poduri]", PODURI)
+    sub = rgba[vi, 1] > 0.5
     RAU = dict(nivel=lvl_r, raza=rmid, taietura=float(cut), poduri=int(sub.sum()))
     log("[râu] nivel %.2f, raza medie %.2f m, lungime %.1f m, %d vârfuri sub poduri" % (lvl_r, rmid, along.max(), sub.sum()))
 set_colors(apa, rgba)
