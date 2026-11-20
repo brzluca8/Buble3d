@@ -39,8 +39,8 @@ ap.add_argument("--src", default=os.path.join(ROOT, "blender/out_insula1/insula1
 ap.add_argument("--textura", required=True, help="textura de bază mărită x4 (din upscale.py)")
 ap.add_argument("--atlas", type=int, default=4096)
 ap.add_argument("--fara-coacere", action="store_true", help="doar clasificarea și apa, fără textură și export (verificări rapide)")
-ap.add_argument("--out", default=os.path.join(ROOT, "godot/assets/models/insula1/insula1.glb"))
-ap.add_argument("--data", default=os.path.join(ROOT, "godot/insula1/data/insula1_info.gd"))
+ap.add_argument("--out", default=os.path.join(ROOT, "blender/out_insula1/insula1_imbunatatita.glb"))  # intrarea pentru v3_faza_a.py
+ap.add_argument("--data", default=os.path.join(ROOT, "blender/out_insula1/insula1_imbunatatita_info.gd"))  # intrare pentru v3_faza_a.py
 ap.add_argument("--blend", default="", help="salvează și scena .blend (pentru previzualizări)")
 args = ap.parse_args(argv)
 
@@ -156,27 +156,47 @@ up = nrm[:, 2]
 zc = cen[:, 2]
 rc = np.hypot(cen[:, 0] - CASTEL[0], cen[:, 1] - CASTEL[1])
 A_, B_, _ = face_pairs(fv, nv)
+# vecinătate pe vârfuri sudate (GLB-ul dublează vârfurile la cusăturile UV; apa nu trebuie ruptă de ele)
+_, weld = np.unique(np.round(co / 1e-4).astype(np.int64), axis=0, return_inverse=True)
+weld = weld.ravel()
+Aw, Bw, _ = face_pairs(weld[fv], int(weld.max()) + 1)
 
 apa_col = (h > 168) & (h < 214) & (s > 0.22) & (v > 0.26)
 apa_pal = (h > 165) & (h < 218) & (s > 0.05) & (v > 0.70)
 plat = apa_col & (up > 0.72) & (zc < -0.9)
 # închidere pe graful fețelor: fețele înconjurate de apă devin apă (găuri mici din clasificare)
 for _ in range(3):
-    cnt = np.bincount(A_[plat[B_]], minlength=nf) + np.bincount(B_[plat[A_]], minlength=nf)
+    cnt = np.bincount(Aw[plat[Bw]], minlength=nf) + np.bincount(Bw[plat[Aw]], minlength=nf)
     plat = plat | ((cnt >= 2) & (up > 0.55) & (zc < -0.9))
-lab = components(plat, A_, B_, nf)
+lab = components(plat, Aw, Bw, nf)
 keep = np.zeros(nf, bool)
-corpuri = []
 for c in np.unique(lab[plat]):
     f = np.where((lab == c) & plat)[0]
-    a = area[f].sum()
-    if a < 0.2:
+    if area[f].sum() < 0.2:
         continue
     keep[f] = True
 plat = keep
+# a doua trecere (v3): apa pictată mai închisă (sub poduri, la margini) crește din apa găsită, la același nivel cu ea,
+# ca textura veche de apă să dispară complet (pietrele albăstrui de pe mal sunt mai puțin saturate)
+apa_inchisa = (h > 165) & (h < 230) & (s > 0.28) & (v > 0.06) & (up > 0.7) & (zc < -0.9)
+extra = np.zeros(nf, bool)
+if plat.any():
+    wi = np.where(plat)[0]
+    dxy, j = cKDTree(cen[wi, :2]).query(cen[:, :2])
+    cand = apa_inchisa & (dxy < 0.6) & (np.abs(zc - zc[wi][j]) < 0.15) & ~plat
+    for _ in range(10):
+        vec = np.zeros(nf, bool)
+        vec[Aw[plat[Bw]]] = True
+        vec[Bw[plat[Aw]]] = True
+        add = cand & vec & ~plat
+        if not add.any():
+            break
+        extra |= add
+        plat |= add
+log("[apa] a doua trecere: +%d fețe de apă pictată mai închisă" % extra.sum())
 
 cad = (apa_col | apa_pal) & (np.abs(up) < 0.7) & (zc < 2.6) & ~((rc < 3.4) & (zc > -1.0)) & ~plat
-for _ in range(2):
+for _ in range(2):  # cascadele: vecinătatea nesudată (cu sudare se lipesc de cristalele palide din jur)
     cnt = np.bincount(A_[cad[B_]], minlength=nf) + np.bincount(B_[cad[A_]], minlength=nf)
     cad = cad | ((cnt >= 2) & (np.abs(up) < 0.8) & ((h > 160) & (h < 222)) & ~plat)
 lab = components(cad, A_, B_, nf)
