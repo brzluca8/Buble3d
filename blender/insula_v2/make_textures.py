@@ -159,8 +159,8 @@ def voronoi(n, cell_w, cell_h, aniso, seed, jit=0.8):
 
 def rock():
     """natural layered rock: chunky cells stretched sideways (strata), rounded, painted light from upper-left"""
-    warp = (fbm([20, 6], [1, 0.5], seed=24) - 0.5) * 26
-    idx, edge, npts = voronoi(N, 170, 92, 2.1, seed=23)
+    warp = (fbm([28, 8], [1, 0.5], seed=24) - 0.5) * 46
+    idx, edge, npts = voronoi(N, 256, 128, 2.3, seed=23)  # big chunks: reads as natural cliff, not masonry
     idx = ndi.map_coordinates(idx.astype(float), np.mgrid[0:N, 0:N] + warp[None] * np.array([1, 0.6])[:, None, None],
                               order=0, mode="wrap").astype(int)
     edge = ndi.map_coordinates(edge, np.mgrid[0:N, 0:N] + warp[None] * np.array([1, 0.6])[:, None, None],

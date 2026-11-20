@@ -30,8 +30,11 @@ def stage(sky_strength=1.0, sun_energy=3.2):
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     nt.links.new(sep.outputs[2], ramp.inputs[0])
     cr = ramp.color_ramp
-    cr.elements[0].position, cr.elements[0].color = 0.42, (*lin("#BFE3FF"), 1)
-    cr.elements[1].position, cr.elements[1].color = 0.78, (*lin("#2F7FE0"), 1)
+    # world "Generated" = view direction: z < 0 below the horizon (sea of sky under the island), z = 1 zenith
+    cr.elements[0].position, cr.elements[0].color = 0.25, (*lin("#8CCBFF"), 1)
+    cr.elements[1].position, cr.elements[1].color = 0.85, (*lin("#2A78E0"), 1)
+    e = cr.elements.new(0.5)
+    e.color = (*lin("#BFE3FF"), 1)
     nt.links.new(ramp.outputs[0], bg.inputs[0])
     bg.inputs[1].default_value = sky_strength
     sun = bpy.data.lights.new("Sun", "SUN")
@@ -52,11 +55,7 @@ def stage(sky_strength=1.0, sun_energy=3.2):
     sc.render.engine = "CYCLES"
     sc.cycles.device = "CPU"
     sc.cycles.use_denoising = True
-    sc.view_settings.view_transform = "AgX"
-    try:
-        sc.view_settings.look = "AgX - Punchy"
-    except TypeError:
-        pass
+    sc.view_settings.view_transform = "Khronos PBR Neutral"  # keeps saturation (closer to the game's ACES + saturation)
     cd = bpy.data.cameras.new("Cam")
     cam = bpy.data.objects.new("Cam", cd)
     sc.collection.objects.link(cam)

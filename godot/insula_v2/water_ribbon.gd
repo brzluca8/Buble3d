@@ -45,7 +45,7 @@ func construieste() -> void:
 		for j in cols:
 			var u := float(j) / float(segmente_latime)
 			st.set_uv(Vector2(u, d))
-			st.set_color(Color(0.0, spuma, 0.0, 1.0))
+			st.set_color(Color(0.0, spuma, 0.0, 0.0))  # a = 0: modul râu în water_flow.gdshader
 			st.set_normal(Vector3.UP)
 			st.add_vertex(p + lat * (u - 0.5) * w)
 	for i in n:

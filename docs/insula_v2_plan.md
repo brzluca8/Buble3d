@@ -1,5 +1,8 @@
 # Insula 1, versiunea 2: plan
 
+> **Înlocuit.** Jocul nu mai folosește această insulă refăcută. Folosește insula trimisă de utilizator, îmbunătățită: vezi `docs/insula1_imbunatatita.md`. Fișierele v2 (`godot/insula_v2/`, `blender/insula_v2/`, `godot/assets/models/insula1_v2/`) au rămas în proiect, dar nu sunt folosite.
+
+
 Ramura `orion-insula-v2`. Documentul se completează pe măsură ce se construiește; secțiunea 8 (verificare) e la final.
 
 ## 1. Ce am găsit în proiect
@@ -109,4 +112,102 @@ Props-urile au câmpul `faza` în `data/props.gd`:
 Pentru fiecare asset: max. 12.000 de triunghiuri, textură de max. 2048 px, un singur material, originea la bază, scara în metri (Orion = 1,2 m). Decupajele sunt mici (225–561 px), pentru că imaginea țintă are 1122×1402 px. Dacă serviciul o cere, mărește-le la 1024 px înainte. Fundalul nu e scos: remove_background nu a fost disponibil.
 
 ## 8. Verificare
-Se completează la final, după construcție.
+
+### Ce s-a putut verifica și ce nu
+- **Godot n-a putut fi rulat** în mediul în care s-a lucrat: pornirea programului Godot descărcat a fost blocată de sistemul de permisiuni. De aceea **nu există capturi din Godot** și nici FPS măsurat.
+- **Imaginile din `docs/shots/` sunt previzualizări randate în Blender (Cycles).** Folosesc aceleași modele și date ca jocul: teren, clădiri, elemente mici, căsuțe, poziții, apă. Materialele aproximează shaderele din Godot, deci în joc culorile și lumina vor ieși puțin altfel.
+- **GDScript:** toate scripturile trec de analizorul sintactic `gdparse` (gdtoolkit 4): `insula.gd`, `main.gd`, `insula_v2/*.gd`, `insula_v2/data/*.gd`. Asta nu verifică numele de metode sau tipurile la rulare.
+- **Shaderele (`.gdshader`) n-au putut fi compilate.** Le-am scris cu funcții standard din Godot 4. La prima deschidere în Godot, panoul **Output** arată orice eroare de compilare. Ce merită urmărit:
+  - uniformele globale `vant_directie` și `vant_putere` (definite în `project.godot` > `[shader_globals]`);
+  - uniformele `instance uniform` (căsuță, semne, undă), care merg pe rendererele Forward+ și Mobile;
+  - `NORMAL_MAP` pe plasele de apă (tangente din `SurfaceTool.generate_tangents()`);
+  - `sampler2D` ca parametru de funcție (shaderul de teren).
+- **Modelele GLB** sunt generate cu exportatorul glTF din Blender 5.1.
+
+### Densitatea texelilor (măsurată)
+- **Teren și stânci:** 512 px/m peste tot, prin construcție (texturi de 1024 px pe 2 m, mapate triplanar în spațiul lumii, fără UV-uri). Imaginea `docs/shots/densitate_checker.png` arată textura de verificare: un pătrat = 25 cm = 128 px, la fel de mare peste tot.
+- **Căsuțele:** 1024 px pe 1,56 m, adică ~656 px/m.
+- **Pentru comparație:**
+  - insula v1: ~28 px/m (măsurat pe fiecare triunghi, ponderat cu aria);
+  - Orion: ~416 px/m.
+- **Clădirile placeholder și elementele mici n-au texturi**, doar culori pe vârfuri cu AO coaptă. Nu sunt încețoșate, dar nici nu au detaliu pictat; e diferența principală față de Orion care rămâne.
+
+### Buget (din fișiere, nu măsurat pe GPU)
+| Componentă | Triunghiuri | Draw calls (trecerea principală) |
+|---|---:|---:|
+| teren + platou | 27.114 | 2 |
+| clădiri (placeholder, fără marcaje) | 6.520 | 22 |
+| elemente mici (MultiMesh) | 22.004 | 27 |
+| căsuțe (22) + iconițe/inele speciale | 16.668 | 34 |
+| apă: râu, lagună, iaz, 4 cascade | 1.402 | 7 |
+| insulițe fundal (5) | 1.910 | 5 |
+| nori + raze (dreptunghiuri) | 66 | 2 |
+| particule: ceață 4 + frunze/petale 1 | 216 | 3 |
+| fluturi (6) | 24 | 6 |
+| Orion (model complet, înainte de LOD-ul automat) | 188.474 | 1 |
+| **Total** | **264.398** | **109** |
+
+- **Insula fără Orion:** ~76.000 de triunghiuri, ~108 apeluri de desenare în trecerea principală.
+- **Umbre:** obiectele care aruncă umbră se mai desenează o dată pentru fiecare din cele 2 cascade de umbră, la calitatea Mediu și Mare. La Mic, umbrele sunt oprite.
+- **Orion are 188 de mii de triunghiuri.** Godot îi face automat LOD-uri la import, iar la distanța de joc se desenează mai puține. Cât de puține nu pot spune fără să rulez Godot.
+- **Materiale unice:**
+  - teren, apă (unul singur pentru râu, lac și cascade), vegetație, cristal, portal;
+  - culori pe vârfuri (clădiri, obiecte, fluturi), lumini;
+  - căsuță, semne (iconiță și inel), undă;
+  - nori, raze, particule;
+  - Orion (2).
+
+  În total 15, plus 1 pentru marcajele magenta cât sunt placeholder-e.
+- **Particule:** ~120 în total (ceață 4 × 14–22, frunze și petale 36). Fluturii (6) sunt mișcați din script.
+- **Pentru măsurători reale:** pune `buble/debug/statistici=true` în `project.godot`. Pe ecran apar FPS-ul, triunghiurile, apelurile de desenare și obiectele, citite din Godot (`RenderingServer.get_rendering_info`).
+
+### Calitate Mic / Mediu / Mare
+Se alege automat (Mediu pe telefon, Mare pe calculator) sau din `buble/grafica/calitate`.
+
+| | Mic | Mediu | Mare |
+|---|---|---|---|
+| umbre (o lumină, 2 cascade) | nu | 32 m | 45 m |
+| hărți normale (teren, căsuțe) | nu | da | da |
+| apă avansată (al doilea strat de valuri, spumă cu zgomot, sclipiri) | nu | da | da |
+| vânt în shader | nu | da | da |
+| particule (ceață, frunze/petale) și fluturi | nu | da | da |
+| glow | nu | da | da |
+| nori | 14 | 30 | 30 |
+
+**Mișcare redusă** (`buble/accesibilitate/miscare_redusa`) oprește:
+- vântul, frunzele, fluturii și ceața;
+- rotația morii și leagănul bărcii;
+- pulsul cristalelor și al inelelor, unda de la aterizare;
+- curgerea apei, care devine foarte lentă.
+
+### Ce din țintă e prezent, ce e PLACEHOLDER, ce diferă
+
+**Prezent, construit nou (nu AI):**
+- teren cu inel de iarbă, platoul castelului cu zid și scări, piață pavată;
+- stânci în straturi, con dedesubt cu cristal;
+- râul în jurul castelului (curge, spumă sub poduri), lagună, iaz pe deal, 4 cascade cu ceață;
+- 22 de căsuțe cu chenar auriu și gravură în romb; cele speciale au iconiță și inel;
+- felinare care pâlpâie;
+- palmieri, copaci cu flori roz, copac mare, tufe, iarbă, flori, câmp de grâu cu gard, butoaie, lăzi, cristale, pietre, nuferi;
+- vânt, petale, fluturi, nori, raze de soare, 5 insulițe în fundal.
+
+**PLACEHOLDER (forme simple, marcate cu inel magenta și etichetă):** castelul, moara (pânzele se rotesc), portalul (vârtejul e shader, merge și acum), piața, atelierul, debarcaderul, barca, podurile. Le înlocuiești copiind GLB-ul generat peste fișierul din `godot/assets/models/insula1_v2/props/`, cu aceleași nume de piese. Vezi secțiunea 7.
+
+**Diferă față de țintă:**
+- **Detaliul clădirilor:** placeholder-ele sunt mult mai simple decât desenul, fără texturi pictate.
+- **Numărul de căsuțe:** 22 (ca în joc), față de ~28 în desen. Căsuțele sunt mai mici față de insulă decât în desen, pentru că distanța dintre ele (1,9 m) e fixată de joc.
+- **Vegetația** e low-poly, cu culori pe vârfuri, fără frunze pictate. Palmierii sunt mai puțini decât în desen și lipsesc din fața camerei, ca să nu acopere căsuțele.
+- **Stâncile** au plăci mari în straturi; în desen sunt bolovani mai rotunjiți și mai variați.
+- **Apa** e opacă (fără transparență); se văd fundul și pietrele doar ca nuanță mai deschisă la mal.
+- **Cascadele** sunt panglici cu dungi; în desen sunt mai voluminoase.
+- **Lumina:** fără `LightmapGI` (nu se poate coace fără Godot). AO e coaptă în culorile de vârf și există umbre de contact false sub clădiri, din AO.
+- **Faza 1 (tabăra cu cort, foc, telescop)** nu e construită: e doar propusă.
+- **Tipurile de căsuțe** sunt o propunere vizuală (`insula_v2/data/tipuri_casute.gd`); jocul nu are încă tipuri.
+
+### Imagini
+- `docs/shots/insula_v2_aproape.png`, `insula_v2_mediu.png`, `insula_v2_panorama.png`: cele trei cadre (previzualizare Blender).
+- `docs/shots/compara_panorama.png`: ținta, v2 și v1.
+- `docs/shots/compara_aproape.png`: v1 aproape, v2 aproape și v2 mediu.
+- `docs/shots/compara_claritate.png`: Orion lângă căsuțe, la aceeași scară, în v1 și v2.
+- `docs/shots/densitate_checker.png`: densitatea texelilor.
+- `docs/shots/insula_v2_panorama_marcaje.png`: aceeași panoramă, cu marcajele placeholder-elor.

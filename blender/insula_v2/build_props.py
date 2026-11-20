@@ -599,10 +599,14 @@ def place_all():
         i = int(np.argmin(d))
         return math.hypot(x - centre[0], y - centre[1]) > R_t[i] + extra
 
-    rule_rim = lambda x, y: G.free(x, y, 0.55) if outside_ring(x, y, 0.9) else None  # noqa: E731
-    palms = scatter(G, 13, 6000, rule_rim, 2.6)
+    def camera_side(x, y):
+        """in front of the front tiles (between them and the default game camera): no tall trees there"""
+        return y < -4.2 and -6.2 < x < 6.2
+
+    rule_rim = lambda x, y: G.free(x, y, 0.55) if outside_ring(x, y, 0.9) and not camera_side(x, y) else None  # noqa: E731
+    palms = scatter(G, 12, 6000, rule_rim, 2.6)
     inst["palmier"] = palms
-    blos = scatter(G, 6, 6000, lambda x, y: G.free(x, y, 0.7), 3.5, existing=palms)
+    blos = scatter(G, 6, 6000, lambda x, y: None if camera_side(x, y) else G.free(x, y, 0.7), 3.5, existing=palms)
     inst["copac_roz"] = blos
     bushes = scatter(G, 46, 9000, lambda x, y: G.free(x, y, 0.3), 1.1, existing=palms + blos)
     inst["tufa"] = bushes

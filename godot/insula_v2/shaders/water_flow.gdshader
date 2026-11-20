@@ -1,26 +1,27 @@
 // Insula 1 v2: apa (un singur shader pentru râu, lagună/iaz și cascade). Opac, fără textura de adâncime
 // (scumpă pe rendererul Mobile): adâncimea vine din UV (râu) sau din culoarea de vârf (lacuri).
-//   mod_apa 0 = râu:     UV.x = 0..1 pe lățime, UV.y = metri pe direcția curgerii
-//   mod_apa 1 = lac:     UV = poziția în metri (x, z), COLOR.r = adâncimea 0 (mal) .. 1 (mijloc)
-//   mod_apa 2 = cascadă: UV.x = 0..1 pe lățime, UV.y = metri de la buză în jos
+// Modul vine din COLOR.a (un singur material pentru toată apa):
+//   COLOR.a = 0   râu:     UV.x = 0..1 pe lățime, UV.y = metri pe direcția curgerii
+//   COLOR.a = 0.5 lac:     UV = poziția în metri (x, z), COLOR.r = adâncimea 0 (mal) .. 1 (mijloc)
+//   COLOR.a = 1   cascadă: UV.x = 0..1 pe lățime, UV.y = metri de la buză în jos
 // COLOR.g = spumă sub poduri / buza cascadei, COLOR.b = spumă la baza cascadei.
 // Tangentele trebuie să existe (SurfaceTool.generate_tangents()) pentru NORMAL_MAP.
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
 
-uniform int mod_apa = 0;
 uniform sampler2D tex_normale : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform vec3 culoare_mal : source_color = vec3(0.40, 0.93, 0.87);
 uniform vec3 culoare_adanc : source_color = vec3(0.03, 0.43, 0.80);
 uniform vec3 culoare_spuma : source_color = vec3(0.95, 1.0, 1.0);
 uniform vec3 culoare_cascada : source_color = vec3(0.58, 0.90, 1.0);
-uniform float viteza = 0.55;          // m/s, pe direcția UV.y
+uniform float viteza = 0.55;          // m/s, pe direcția UV.y (cascadele: de 5 ori mai repede)
 uniform float scala = 0.45;           // repetări ale texturii de valuri pe metru
 uniform float putere_normale = 0.55;
 uniform float emisie = 0.22;          // ușor emisiv: apa pare însorită și în umbră
 uniform bool calitate_mare = true;    // al doilea strat de valuri, spumă cu zgomot, sclipiri
 
 void fragment() {
+	int mod_apa = int(COLOR.a * 2.0 + 0.5);
 	float t = TIME;
 	vec2 uv1;
 	vec2 uv2;

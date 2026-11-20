@@ -43,9 +43,8 @@ var _t := 0.0
 var _soare: DirectionalLight3D
 var _env: Environment
 var _m_teren: ShaderMaterial
-var _m_rau: ShaderMaterial
-var _m_lac: ShaderMaterial
-var _m_cascada: ShaderMaterial
+var _m_apa: ShaderMaterial
+var _m_particule: StandardMaterial3D
 var _m_veg: ShaderMaterial
 var _m_cristal: ShaderMaterial
 var _m_portal: ShaderMaterial
@@ -104,9 +103,20 @@ func _materiale() -> void:
 	_m_teren.set_shader_parameter("debug_checker", debug_checker)
 	_m_teren.set_shader_parameter("normale", calitate >= 1)
 
-	_m_rau = _mat_apa(0)
-	_m_lac = _mat_apa(1)
-	_m_cascada = _mat_apa(2)
+	# o singură apă: modul (râu / lac / cascadă) vine din COLOR.a al fiecărei plase
+	_m_apa = ShaderMaterial.new()
+	_m_apa.shader = SH_APA
+	_m_apa.set_shader_parameter("tex_normale", _tex("apa_normal.png"))
+	_m_apa.set_shader_parameter("calitate_mare", calitate >= 1)
+	_m_apa.set_shader_parameter("viteza", 0.12 if miscare_redusa else 0.55)
+
+	# particule (ceață la cascade, petale): pete moi, culoarea din particulă
+	_m_particule = StandardMaterial3D.new()
+	_m_particule.albedo_texture = _tex("nor.png")
+	_m_particule.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_m_particule.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_m_particule.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	_m_particule.vertex_color_use_as_albedo = true
 
 	_m_veg = ShaderMaterial.new()
 	_m_veg.shader = SH_VEG
@@ -141,19 +151,6 @@ func _materiale() -> void:
 	_m_marcaj.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_m_marcaj.albedo_color = Color("ff2bd6")
 	_m_marcaj.cull_mode = BaseMaterial3D.CULL_DISABLED
-
-
-func _mat_apa(mod: int) -> ShaderMaterial:
-	var m := ShaderMaterial.new()
-	m.shader = SH_APA
-	m.set_shader_parameter("mod_apa", mod)
-	m.set_shader_parameter("tex_normale", _tex("apa_normal.png"))
-	m.set_shader_parameter("calitate_mare", calitate >= 1)
-	if mod == 0:
-		m.set_shader_parameter("viteza", 0.0 if miscare_redusa else 0.55)
-	elif mod == 2:
-		m.set_shader_parameter("viteza", 0.15 if miscare_redusa else 0.6)
-	return m
 
 
 # --------------------------------------------------------------------------- cer, lumină, ceață
@@ -237,7 +234,7 @@ func _apa() -> void:
 	rau.curve = c
 	rau.latimi = PackedFloat32Array(Teren.RAU_LATIME)
 	rau.poduri = poduri
-	rau.material = _m_rau
+	rau.material = _m_apa
 	add_child(rau)
 	rau.construieste()
 
@@ -277,14 +274,14 @@ func _lac(nume: String, contur: Array, nivel: float) -> void:
 			q.y = nivel
 			poz.append(q)
 			st.set_uv(Vector2(q.x, q.z))
-			st.set_color(Color(adanc, 0.0, 0.0, 1.0))
+			st.set_color(Color(adanc, 0.0, 0.0, 0.5))
 			st.set_normal(Vector3.UP)
 			st.add_vertex(q)
 	var ic := poz.size()
 	var cq := Vector3(centru.x, nivel, centru.z)
 	poz.append(cq)
 	st.set_uv(Vector2(cq.x, cq.z))
-	st.set_color(Color(1.0, 0.0, 0.0, 1.0))
+	st.set_color(Color(1.0, 0.0, 0.0, 0.5))
 	st.set_normal(Vector3.UP)
 	st.add_vertex(cq)
 	for k in inele.size() - 1:
@@ -302,7 +299,7 @@ func _lac(nume: String, contur: Array, nivel: float) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = nume
 	mi.mesh = st.commit()
-	mi.material_override = _m_lac
+	mi.material_override = _m_apa
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
@@ -338,7 +335,7 @@ func _cascada(nume: String, sus: Vector3, jos: Vector3, latime: float) -> void:
 			var q := pct[i] + lat * (u - 0.5) * w
 			poz.append(q)
 			st.set_uv(Vector2(u, lung))
-			st.set_color(Color(0.0, 1.0 if i <= 1 else 0.0, clampf((lung - (total - 0.9)) / 0.9, 0.0, 1.0), 1.0))
+			st.set_color(Color(0.0, 1.0 if i <= 1 else 0.0, clampf((lung - (total - 0.9)) / 0.9, 0.0, 1.0), 1.0))  # a = 1: cascadă
 			st.set_normal(normala)
 			st.add_vertex(q)
 	for i in pct.size() - 1:
@@ -350,7 +347,7 @@ func _cascada(nume: String, sus: Vector3, jos: Vector3, latime: float) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Cascada_" + nume
 	mi.mesh = st.commit()
-	mi.material_override = _m_cascada
+	mi.material_override = _m_apa
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
@@ -393,13 +390,7 @@ func _ceata(poz: Vector3, latime: float, spre_nori: bool) -> void:
 	p.process_material = pm
 	var q := QuadMesh.new()
 	q.size = Vector2(1.4, 1.4)
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = _tex("nor.png")
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	q.material = m
+	q.material = _m_particule
 	p.draw_pass_1 = q
 	p.position = poz
 	p.emitting = not miscare_redusa
@@ -649,19 +640,14 @@ func _viata() -> void:
 	pm.hue_variation_max = 0.12
 	p.process_material = pm
 	var q := QuadMesh.new()
-	q.size = Vector2(0.12, 0.09)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	q.material = m
+	q.size = Vector2(0.16, 0.16)
+	q.material = _m_particule
 	p.draw_pass_1 = q
 	p.position = Vector3(0.0, 4.0, 0.0)
 	add_child(p)
 	_particule.append(p)
 	# fluturi (6): două aripi care bat, zbor în bucle în jurul florilor
 	var flori: Array = Veg.INSTANTE.get("floare_roz", [])
-	var aripi := _plasa_fluture()
 	var culori := [Color("ff8ac2"), Color("ffd84d"), Color("7fe6ff"), Color("ffffff"), Color("c79bff"), Color("ffb36b")]
 	for k in 6:
 		var c := Vector3(0.0, 0.5, 4.0)
@@ -669,26 +655,22 @@ func _viata() -> void:
 			var idx := (k * 37 % int(flori.size() / 5.0)) * 5
 			c = Vector3(float(flori[idx]), float(flori[idx + 1]) + 0.6, float(flori[idx + 2]))
 		var mi := MeshInstance3D.new()
-		mi.mesh = aripi
-		var fm := StandardMaterial3D.new()
-		fm.albedo_color = culori[k]
-		fm.emission_enabled = true
-		fm.emission = culori[k]
-		fm.emission_energy_multiplier = 0.25
-		fm.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mi.material_override = fm
+		mi.mesh = _plasa_fluture(culori[k])
+		mi.material_override = _m_corp
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = c
 		add_child(mi)
 		_fluturi.append([mi, c, float(k) * 1.7])
 
 
-func _plasa_fluture() -> ArrayMesh:
+func _plasa_fluture(c: Color) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lin := c.srgb_to_linear()
 	for s in [-1.0, 1.0]:
 		for v in [Vector3(0.0, 0.0, 0.03), Vector3(0.11 * s, 0.0, 0.07), Vector3(0.1 * s, 0.0, -0.04),
 				Vector3(0.0, 0.0, 0.03), Vector3(0.1 * s, 0.0, -0.04), Vector3(0.0, 0.0, -0.05)]:
+			st.set_color(lin)
 			st.set_normal(Vector3.UP)
 			st.add_vertex(v)
 	return st.commit()
