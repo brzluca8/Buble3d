@@ -4,7 +4,8 @@ Texturi mici pentru atmosfera insulei (procedural, fără AI): valurile apei, no
     python blender/insula1/texturi.py
 
 Scrie în godot/insula1/textures/: apa_normal.png (hartă de normale tileable, convenția OpenGL, cum o vrea Godot),
-nor.png (sprite de nor, RGBA), raze.png (rază de soare, RGBA).
+nor.png (sprite de nor, RGBA), raze.png (rază de soare, RGBA), detaliu.png (stratul de detaliu fin al insulei,
+tileable: R stâncă cu crăpături, G iarbă în fire, B granulație; media 0.5, deci nu schimbă culoarea medie).
 """
 import os
 
@@ -68,7 +69,39 @@ def sun_rays():
     Image.fromarray((np.dstack([rgb, a]) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "raze.png"))
 
 
+def norm(a, std=0.16):
+    a = (a - a.mean()) / max(a.std(), 1e-6)
+    return np.clip(0.5 + a * std, 0, 1)
+
+
+def detail():
+    n = 512
+    r = np.random.default_rng(77)
+    # stâncă: celule Voronoi (crăpături întunecate la margini) + zgomot pe două scări
+    pts = r.random((90, 2)) * n
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d1 = np.full((n, n), 1e9, np.float32)
+    d2 = np.full((n, n), 1e9, np.float32)
+    for px, py in pts:
+        for ox in (-n, 0, n):
+            for oy in (-n, 0, n):
+                d = np.hypot(xx - (px + ox), yy - (py + oy))
+                m = d < d1
+                d2 = np.where(m, d1, np.minimum(d2, d))
+                d1 = np.where(m, d, d1)
+    crapaturi = ss(0.0, 6.0, d2 - d1)
+    rock = 0.55 * crapaturi + 0.3 * noise(10, n, 1) + 0.15 * noise(2.5, n, 2)
+    # iarbă: fire scurte (zgomot alungit pe o direcție) + pete
+    g = r.standard_normal((n, n))
+    fire = ndi.gaussian_filter(g, (6.0, 0.8), mode="wrap")
+    grass = 0.6 * norm(fire, 1) + 0.4 * noise(14, n, 3)
+    # granulație fină, pentru restul (lemn, pietre, clădiri): foarte discretă
+    grain = 0.6 * noise(1.2, n, 4) + 0.4 * noise(5, n, 5)
+    rgb = np.dstack([norm(rock), norm(grass), norm(grain, 0.12)])
+    Image.fromarray((rgb * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, "detaliu.png"))
+
+
 if __name__ == "__main__":
-    for fn in (water_normal, cloud, sun_rays):
+    for fn in (water_normal, cloud, sun_rays, detail):
         fn()
         print("[tex]", fn.__name__)
