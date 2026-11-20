@@ -136,3 +136,24 @@ Parametri:
 - `--glow`: intensitatea luminii în randări.
 
 Pentru insulele următoare se schimbă doar `--src` și `--name`. Dacă drumul are altă formă sau alte culori, pragurile de detecție din `find_tiles()` se pot regla.
+
+## Insula 1, îmbunătățită (`insula1/`)
+Pornește de la insula pregătită mai sus (`out_insula1/insula1.glb`). Nu o reface, ci o îmbunătățește. Rezultatul merge direct în proiectul Godot. Detalii și cifre sunt în `docs/insula1_imbunatatita.md`.
+
+| Script | Ce face |
+|---|---|
+| `insula1/upscale.py` | mărește textura originală de 4 ori cu Real-ESRGAN (ncnn, pe procesor), pe bucăți care se suprapun, ca să nu apară cusături |
+| `insula1/imbunatateste.py` | separă apa (râul, laguna, iazurile) și cascadele din mesh, le dă UV-uri pentru curgere și culori de vârf pentru shaderul de apă, găsește portalul, pune textura mărită (4096 px) cu culori mai vii și masca de lumină; exportă `godot/assets/models/insula1/insula1.glb` și `godot/insula1/data/insula1_info.gd` |
+| `insula1/texturi.py` | texturile mici de atmosferă: valurile apei, norul, raza de soare |
+| `insula1/previzualizare.py` | randări „vechi” / „nou” cu aceleași cadre ca jocul (`--model`, `--frames`, `--aterizare`) |
+| `insula1/compara.py` | imaginile de comparație din `docs/shots/` |
+
+```bash
+./bvenv/bin/python insula1/upscale.py textura_2048.png textura_8192.png modele/realesrgan-x4plus-anime
+./bvenv/bin/python insula1/imbunatateste.py -- --textura textura_8192.png
+./bvenv/bin/python insula1/previzualizare.py -- --model nou && ./bvenv/bin/python insula1/compara.py
+```
+
+`imbunatateste.py --fara-coacere` face doar clasificarea apei și a portalului. E util pentru verificări rapide.
+
+Modelele Real-ESRGAN (`*.param`, `*.bin`) vin din arhiva oficială `realesrgan-ncnn-vulkan-20220424-ubuntu.zip`, versiunea v0.2.5.0, cu licența BSD-3-Clause. Nu sunt incluse în proiect.
