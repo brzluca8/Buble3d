@@ -4,7 +4,7 @@ extends Node3D
 ## Totul (cer, lumini, platformă, cameră, butoane) e construit din cod, scena main.tscn are doar acest script.
 
 # modelul complet; Godot îi face singur variante mai ușoare (LOD) când e mic pe ecran, deci merge și pe telefon
-const MODEL_PATH := "res://models/orion_tripo_game.glb"
+const MODEL_PATH := "res://assets/models/orion.glb"
 const GLOW_ENERGY := 2.2  # cât de tare strălucesc marcajele turcoaz
 const TARGET_FAR := Vector3(0.0, 0.6, 0.0)  # privire de departe: tot corpul
 const TARGET_NEAR := Vector3(0.0, 0.98, 0.0)  # zoom mare: fața

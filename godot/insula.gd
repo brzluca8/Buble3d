@@ -4,8 +4,8 @@ extends Node3D
 ## Totul (cer, nori, lumini, cameră, interfață) e construit din cod; pozițiile căsuțelor vin din
 ## data/insula1_casute.gd, generat de blender/island_prep.py.
 
-const ISLAND_PATH := "res://models/insula1.glb"
-const ORION_PATH := "res://models/orion_tripo_game.glb"
+const ISLAND_PATH := "res://assets/models/_vechi/insula1_tripo_v1.glb"  # v1, păstrat doar ca referință
+const ORION_PATH := "res://assets/models/orion.glb"
 const Board := preload("res://data/insula1_casute.gd")
 const GLOW_ORION := 2.2
 const GLOW_ISLAND := 2.0
