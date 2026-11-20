@@ -626,6 +626,8 @@ ALB_IMG.pack()
 log("[A2] textura ascuțită (unsharp mask: raza 1.2 px, 45%)")
 
 # ============================================================================= export + date
+MAT_APA = bpy.data.materials.new("apa")
+MAT_APA.diffuse_color = (0.2, 0.7, 0.85, 1.0)
 # apa: culorile de vârf (adâncime, spumă, modul apei în alfa) trec pe vârfuri, ca float; importul din GLB le pune ca
 # BYTE_COLOR pe colțuri, iar exportul ar pierde alfa (modul apei: 0 râu, 0.5 lac, 1 cascadă)
 for o_ in (OB["Apa"], OB["Cascade"]):
@@ -638,6 +640,8 @@ for o_ in (OB["Apa"], OB["Cascade"]):
     m_.loops.foreach_get("vertex_index", lv)
     per_v = np.zeros((len(m_.vertices), 4), np.float32)
     per_v[lv] = vals if src.domain == "CORNER" else vals[lv]
+    log("[apa] %s: atribut %s (%s, %s), %d valori; min %s max %s" % (o_.name, src.name, src.data_type, src.domain, len(vals),
+                                                                  np.round(vals.min(0), 2).tolist(), np.round(vals.max(0), 2).tolist()))
     cv = np.empty(len(m_.vertices) * 3, np.float32)
     m_.vertices.foreach_get("co", cv)
     cv = cv.reshape(-1, 3) + np.array(o_.location)
@@ -685,9 +689,13 @@ for o_ in (OB["Apa"], OB["Cascade"]):
                 per_v[vv, 0] = 1.0
         log("[A5] cascade care cad în gol: %d vârfuri marcate" % int((per_v[:, 0] > 0.5).sum()))
     m_.color_attributes.remove(src)
-    dst = m_.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
+    # același nume („Color”) și un material simplu: materialul importat din GLB citea atributul după nume, iar cu alt
+    # nume exportul scria culori albe (toate canalele 1) și apa își pierdea modul și spuma
+    dst = m_.color_attributes.new("Color", "FLOAT_COLOR", "POINT")
     dst.data.foreach_set("color", per_v.ravel())
     m_.color_attributes.active_color = dst
+    m_.materials.clear()
+    m_.materials.append(MAT_APA)
 os.makedirs(os.path.dirname(args.out), exist_ok=True)
 bpy.ops.object.select_all(action="DESELECT")
 for o_ in scene.objects:
