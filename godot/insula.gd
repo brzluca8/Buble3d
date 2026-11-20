@@ -4,11 +4,10 @@ extends Node3D
 ## Totul (cer, nori, lumini, cameră, interfață) e construit din cod; pozițiile căsuțelor vin din
 ## data/insula1_casute.gd, generat de blender/island_prep.py.
 
-const ISLAND_PATH := "res://assets/models/_vechi/insula1_tripo_v1.glb"  # v1, păstrat doar ca referință
+const ISLAND_PATH := "res://insula_v2/insula_v2.tscn"  # insula v2: tot vizualul insulei (cer, lumini, teren, apă...)
 const ORION_PATH := "res://assets/models/orion.glb"
 const Board := preload("res://data/insula1_casute.gd")
 const GLOW_ORION := 2.2
-const GLOW_ISLAND := 2.0
 const PURPLE := Color(0.3, 0.11, 0.43)
 const HOP_TIME := 0.34  # secunde pe o săritură între căsuțe vecine
 const HOP_HEIGHT := 0.7  # metri
@@ -19,7 +18,7 @@ const ISLAND_CENTRE := Vector3(0.0, -1.5, 0.0)
 var tiles: Array[Vector3] = []
 var orion: Node3D
 var cam: Camera3D
-var env: Environment
+var insula: Node3D
 var rng := RandomNumberGenerator.new()
 
 # joc
@@ -62,45 +61,7 @@ func _ready() -> void:
 
 # --------------------------------------------------------------------------- lume
 func _build_world() -> void:
-	env = Environment.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.16, 0.42, 0.9)
-	sky_mat.sky_horizon_color = Color(0.64, 0.83, 0.98)
-	sky_mat.ground_horizon_color = Color(0.64, 0.83, 0.98)
-	sky_mat.ground_bottom_color = Color(0.3, 0.58, 0.95)  # sub insulă e tot cer
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
-	env.sky = sky
-	env.background_mode = Environment.BG_SKY
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 1.0
-	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_white = 6.0
-	env.glow_enabled = true
-	env.glow_intensity = 0.8
-	env.glow_bloom = 0.03
-	env.glow_hdr_threshold = 0.95
-	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.15
-	var world_env := WorldEnvironment.new()
-	world_env.environment = env
-	add_child(world_env)
-
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-50.0, -30.0, 0.0)
-	sun.light_energy = 1.3
-	sun.light_color = Color(1.0, 0.96, 0.9)
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 60.0
-	add_child(sun)
-	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-20.0, 70.0, 0.0)
-	fill.light_energy = 0.3
-	fill.light_color = Color(0.85, 0.9, 1.0)
-	add_child(fill)
-	_add_clouds()
-
+	# cerul, luminile, ceața și norii sunt acum în insula v2 (insula_v2/insula_v2.gd); aici rămâne doar camera
 	cam = Camera3D.new()
 	cam.fov = 40.0
 	cam.far = 400.0
@@ -108,48 +69,11 @@ func _build_world() -> void:
 	cam.make_current()
 
 
-func _add_clouds() -> void:
-	# nori pufoși: pete albe moi, mereu cu fața spre cameră, în jurul și sub insulă
-	var grad := Gradient.new()
-	grad.set_color(0, Color(1.0, 1.0, 1.0, 0.95))
-	grad.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
-	var tex := GradientTexture2D.new()
-	tex.gradient = grad
-	tex.fill = GradientTexture2D.FILL_RADIAL
-	tex.fill_from = Vector2(0.5, 0.5)
-	tex.fill_to = Vector2(1.0, 0.5)
-	tex.width = 128
-	tex.height = 128
-	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = tex
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	mat.billboard_keep_scale = true
-	var quad := QuadMesh.new()
-	var crng := RandomNumberGenerator.new()
-	crng.seed = 7
-	for _cloud in 12:
-		var a := crng.randf() * TAU
-		var r := crng.randf_range(17.0, 34.0)
-		var centre := Vector3(cos(a) * r, crng.randf_range(-15.0, -3.0), sin(a) * r)
-		for _puff in 3:
-			var c := MeshInstance3D.new()
-			c.mesh = quad
-			c.material_override = mat
-			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			var s := crng.randf_range(6.0, 11.0)
-			c.scale = Vector3(s * 1.5, s, s)
-			c.position = centre + Vector3(crng.randf_range(-4.0, 4.0), crng.randf_range(-1.0, 1.5), crng.randf_range(-3.0, 3.0))
-			add_child(c)
-
-
 func _load_models() -> void:
 	var island_scene := load(ISLAND_PATH) as PackedScene
 	if island_scene:
-		var island := island_scene.instantiate()
-		add_child(island)
-		_boost_emission(island, GLOW_ISLAND)
+		insula = island_scene.instantiate() as Node3D
+		add_child(insula)
 	var orion_scene := load(ORION_PATH) as PackedScene
 	if orion_scene and not tiles.is_empty():
 		orion = Node3D.new()
@@ -324,6 +248,8 @@ func _update_hop(delta: float) -> void:
 		orion.position = tiles[tile_index]
 		steps_left -= 1
 		land_t = 0.0
+		if insula and insula.has_method("on_landed"):
+			insula.on_landed(tile_index)
 		if tile_index == 0:
 			laps += 1
 			_flash("Tur complet!")

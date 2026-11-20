@@ -403,6 +403,7 @@ def grass_tuft():
 
 
 def flower(name, color):
+    """low-poly flower clump: 5 stems (one triangle each) with a 4-petal cross on top (~25 triangles)"""
     new_scene()
     p = Part("Frunze")
     for k in range(5):
@@ -410,9 +411,11 @@ def flower(name, color):
         r = rng.uniform(0.04, 0.12)
         x, y = r * math.cos(a), r * math.sin(a)
         h = rng.uniform(0.16, 0.28)
-        p.cyl(0.012, 0.01, h, loc=(x, y, 0), color=C("#4E9E30"), seg=4, smooth=False, sway_fn=lambda co, h=h: co.z / h)
-        p.ball(0.045, loc=(x, y, h), scale=(1, 1, 0.6), color=C(color), subdiv=1, sway=1.0)
-        p.ball(0.018, loc=(x, y, h + 0.02), color=C("#FFE45C"), subdiv=0, sway=1.0)
+        p.poly([(x - 0.012, y, 0), (x + 0.012, y, 0), (x, y, h)], color=C("#4E9E30"), sway_fn=lambda co, h=h: co.z / h)
+        s_ = 0.055
+        for (dx, dy) in ((s_, 0), (-s_, 0), (0, s_), (0, -s_)):
+            p.poly([(x, y, h + 0.01), (x + dx + dy * 0.6, y + dy - dx * 0.6, h + 0.02), (x + dx - dy * 0.6, y + dy + dx * 0.6, h + 0.02)],
+                   color=C(color), sway=1.0)
     return finish(name, [p], MICI_DIR)
 
 
@@ -493,14 +496,16 @@ def lily():
 
 
 def wheat():
+    """wheat clump: 6 stalks (one triangle) with a two-triangle ear (~18 triangles)"""
     new_scene()
     p = Part("Frunze")
     for k in range(6):
         a = 2 * math.pi * k / 6
         x, y = 0.08 * math.cos(a), 0.08 * math.sin(a)
         h = rng.uniform(0.55, 0.75)
-        p.cyl(0.012, 0.01, h, loc=(x, y, 0), color=C("#D9B44A"), seg=4, smooth=False, sway_fn=lambda co, h=h: co.z / h)
-        p.ball(0.04, loc=(x, y, h + 0.04), scale=(0.6, 0.6, 1.6), color=C("#F2C94C"), subdiv=1, sway=1.0)
+        p.poly([(x - 0.01, y, 0), (x + 0.01, y, 0), (x, y, h)], color=C("#D9B44A"), sway_fn=lambda co, h=h: co.z / h)
+        p.poly([(x, y, h - 0.02), (x + 0.035, y, h + 0.06), (x, y, h + 0.16), (x - 0.035, y, h + 0.06)], color=C("#F2C94C"),
+               sway=1.0)
     return finish("grau", [p], MICI_DIR)
 
 

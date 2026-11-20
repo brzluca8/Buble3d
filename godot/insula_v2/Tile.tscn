@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://insula_v2/tile.gd" id="1_tile"]
+[ext_resource type="PackedScene" path="res://assets/models/insula1_v2/casuta.glb" id="2_casuta"]
+
+[node name="Casuta" type="Node3D"]
+script = ExtResource("1_tile")
+
+[node name="Model" parent="." instance=ExtResource("2_casuta")]
