@@ -226,6 +226,33 @@ def inel1(checker):
     v3.log("[inel1] teren + recuzită: %d obiecte" % len(bpy.context.scene.objects))
 
 
+_island_material_v3 = v3.island_material
+
+
+def island_material_v4(alb, orm, detaliu, lumina):
+    """ca insula_comun.gdshaderinc (v4): la stânci și iarbă, luminozitatea fină vine din texturile terenului (512 px/m)"""
+    if detaliu not in (1, 2):
+        return _island_material_v3(alb, orm, detaliu, lumina)
+    m = _island_material_v3(alb, orm, 0, lumina)
+    nt = m.node_tree
+    b = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    link = b.inputs["Base Color"].links[0]
+    src = link.from_socket
+    nt.links.remove(link)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    t = tex_box(nt, img("stanca_albedo.png" if detaliu == 1 else "iarba_albedo.png"), tc.outputs["Object"])
+    bw = nt.nodes.new("ShaderNodeRGBToBW")
+    nt.links.new(t, bw.inputs[0])
+    k = mnode(nt, "ADD", mnode(nt, "MULTIPLY", mnode(nt, "DIVIDE", bw.outputs[0], 0.305 if detaliu == 1 else 0.378), 0.75), 0.25)
+    out_c = vnode(nt, "SCALE", src, scale=None)
+    nt.links.new(k, nt.nodes[-1].inputs[3])
+    nt.links.new(out_c, b.inputs["Base Color"])
+    return m
+
+
+v3.island_material = island_material_v4
+
+
 def flacari():
     out = vecs(bloc("FLACARI_RAMASE"))
     for p in vecs(bloc("FELINARE")):

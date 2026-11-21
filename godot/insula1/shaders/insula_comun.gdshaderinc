@@ -10,6 +10,11 @@
 uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic;
 uniform sampler2D tex_orm : hint_default_black, filter_linear_mipmap;
 uniform sampler2D tex_detaliu : hint_default_white, filter_linear_mipmap, repeat_enable;  // R stâncă, G iarbă, B granulație
+// v4: stâncile și iarba rămase din insula veche iau detaliul clar din texturile terenului nou (512 px/m, triplanar);
+// culoarea rămâne cea pictată (doar luminozitatea fină vine din textură)
+uniform sampler2D tex_stanca_t : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_iarba_t : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float putere_suprapunere = 0.75;
 
 global uniform vec2 vant_directie;
 global uniform float vant_putere;
@@ -77,9 +82,20 @@ void fragment() {
 	alb = max((alb - 0.18) * contrast + 0.18, vec3(0.0));
 	float ao = mix(1.0, smoothstep(0.0, 0.85, COLOR.r), putere_ao);
 	if (detaliu_activ && detaliu > 0.5) {
-		vec3 dt = detaliu_triplanar(v_pos, v_nrm);
-		float dv = detaliu < 1.5 ? dt.r : (detaliu < 2.5 ? dt.g : dt.b);
-		alb *= 1.0 + (dv - 0.5) * 2.0 * putere_detaliu;
+		if (detaliu < 2.5) {
+			vec3 w = pow(abs(v_nrm), vec3(4.0));
+			w /= max(w.x + w.y + w.z, 0.0001);
+			vec3 q = v_pos / 2.0;
+			vec3 t = detaliu < 1.5
+					? texture(tex_stanca_t, vec2(q.z, -q.y)).rgb * w.x + texture(tex_stanca_t, q.xz).rgb * w.y
+							+ texture(tex_stanca_t, vec2(q.x, -q.y)).rgb * w.z
+					: texture(tex_iarba_t, q.xz).rgb;
+			float ref = detaliu < 1.5 ? 0.305 : 0.378;  // luminanța medie (liniară) a texturii
+			alb *= mix(1.0, dot(t, vec3(0.2126, 0.7152, 0.0722)) / ref, putere_suprapunere);
+		} else {
+			vec3 dt = detaliu_triplanar(v_pos, v_nrm);
+			alb *= 1.0 + (dt.b - 0.5) * 2.0 * putere_detaliu;
+		}
 	}
 	float k = 1.0;
 	float puls = 1.0;

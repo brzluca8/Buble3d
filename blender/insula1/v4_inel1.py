@@ -562,7 +562,10 @@ for nume in ["Insula_iarba", "Insula_restul", "Insula_stanci", "Insula_flori", "
     if nume == "Insula_iarba":
         m = ir & (h < 0.6)
     elif nume == "Insula_restul":
-        m = ir & (n[:, 2] > 0.5) & (h < 0.3)
+        # sol și alei (fețele culcate, joase) peste tot în regiune; departe de clădiri și fețele în pantă sau pe
+        # muchie, joase (buza boțită a platoului), ca să nu iasă prin marginea terenului nou
+        departe = ~in_reg(c[:, 0], c[:, 1], ndi.binary_dilation(obiect, iterations=3))
+        m = ir & (h < 0.3) & ((n[:, 2] > 0.5) | departe)
     elif nume == "Insula_stanci":
         m = ir & (h < 0.35)
     elif nume in ("Insula_flori", "Insula_frunzis", "Insula_cristale"):

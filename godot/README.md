@@ -1,27 +1,24 @@
 # Buble în Godot 4
 
 Proiect Godot 4 cu primele piese ale jocului Buble:
-- **Insula 1** (scena principală, `insula.tscn`): Orion stă pe START, iar la „Aruncă zarul” sare din căsuță în căsuță pe drumul de 22 de căsuțe. Insula este **insula trimisă de tine** (din Tripo), adusă la **v3, Faza A** în `insula1/`:
-  - modelul e tăiat pe clase, cu petele negre reparate și triunghiurile aproape înjumătățite;
-  - textura e mărită cu AI, cu strat de detaliu și culori mai apropiate de Orion;
-  - apa curge, cu direcția vizibilă, iar cascadele se topesc în nori;
-  - moara se rotește, barca se leagănă, vântul mișcă frunzișul și florile;
-  - portalul și cristalele pulsează, felinarele pâlpâie;
-  - 22 de căsuțe noi, cu iconițe și efect la aterizare;
-  - cer, insulițe cu cascade, umbre vizibile;
-  - ce ajunge între cameră și Orion se estompează.
+- **Insula 1** (scena principală, `insula.tscn`): Orion stă pe START, iar la „Aruncă zarul” sare din căsuță în căsuță pe drumul de 22 de căsuțe. Insula este **insula trimisă de tine** (din Tripo), adusă la **v4** în `insula1/`:
+  - **Inelul 1 e nou, procedural** (tot ce e lângă drum): terenul pe același relief, cu texturi de 512 px/m pe triplanar (iarbă, pavaj, pământ, stâncă, mușchi), AO și umbre de contact; palmieri, arbori roz, copacul mare, tufe, felinare, cristale, garduri, butoaie, lăzi; iarbă, flori și pietricele presărate;
+  - **clădirile sunt piese separate** (castel, poduri, piață, moară, portal, atelier cu debarcader), deocamdată din insula veche (PLACEHOLDER); un GLB pus în `assets/models/cladiri/<nume>.glb` ia locul piesei fără cod;
+  - **camera de joc** stă în spatele lui Orion, pe drum, la ~50°, și arată căsuțele următoare; la zoom maxim și după aterizare intră în cadrul apropiat;
+  - fără puncte de estompare (obiectele care acoperă pe Orion devin transparente lin), fără fante negre între clase, fără fețe întoarse pe insulițe; căsuțele nu se mai ard în alb;
+  - **insula vie**: vânt cu rafale (iarbă, flori, frunze, pânze, moară), umbre de nori, apă și cascade cu ceață și stropi, barca cu valuri, pești, fum, scântei, fluturi, păsări, petale (`docs/insula_alive.md`).
 
-  Detalii în `docs/insula_v3_faza_a.md` și `docs/insula_v3_audit.md`.
+  Detalii: `docs/insula_v4.md` (raportul v4), `docs/insula_v3_faza_a.md`, `docs/insula_v3_audit.md`.
 - **Orion** (`main.tscn`): previzualizarea mascotei, cu rotire, zoom și săritură.
 - **Scena de test** (`test/test_insula.tscn`, se pornește cu F6):
-  - cadre fixe;
-  - moduri de verificare: tablă de șah, clase, AO, normale;
-  - calitate și comutatoare;
-  - cifrele din Godot pe ecran.
+  - cadre fixe: camera de joc nouă (D4) și cea veche (A/B), cadrul de aterizare, capturile tale, mediu, panoramă;
+  - moduri de verificare: tablă de șah (pe terenul nou: un pătrat = 25 cm = 128 px, adică 512 px/m), clase, AO, normale;
+  - calitate (Mic / Mediu / Mare), umbre, estompare, mișcare redusă, aterizare, **DOF fundal** (oprit implicit);
+  - cifrele din Godot pe ecran: FPS, triunghiuri, apeluri de desenare, obiecte, materiale.
 
 Modelele sunt pregătite în Blender:
 - Orion (din Tripo) cu `blender/tripo_prep.py`;
-- insula cu `blender/island_prep.py` (scară, căsuțe), `blender/insula1/imbunatateste.py` (textură, apă, cascade, portal), apoi `blender/insula1/v3_faza_a.py` (clase, reparații, moară, barcă, vânt, AO, simplificare).
+- insula cu `blender/island_prep.py` (scară, căsuțe), `blender/insula1/imbunatateste.py` (textură, apă, cascade, portal), `blender/insula1/v3_faza_a.py` (clase, reparații, moară, barcă, vânt, AO, simplificare), apoi `blender/insula1/v4_inel1.py` (Inelul 1 nou, clădirile ca piese) și `blender/insula1/v4_recuzita.py` (recuzita).
 
 ## Cum îl deschizi
 1. Instalează **Godot 4.3 sau mai nou**, varianta standard, nu .NET. E gratuit, de pe https://godotengine.org/download.
@@ -34,7 +31,7 @@ Pe telefon sau tabletă cu Android există și editorul Godot pentru Android (�
 ## Ce poți face
 **Pe insulă:**
 - **Aruncă zarul:** iese un număr de la 1 la 6, iar Orion sare atâtea căsuțe pe drum. Când trece de START, se numără o tură.
-- **Camera:** tragi ca să rotești, ciupești sau folosești rotița pentru zoom. Camera îl urmărește pe Orion, iar de departe arată toată insula.
+- **Camera:** tragi ca să rotești, ciupești sau folosești rotița pentru zoom, ca înainte. Cât sare Orion, camera se rotește lin în spatele lui, pe direcția drumului (până tragi tu de ea); la zoom maxim și după aterizare arată cadrul apropiat. Valorile implicite sunt sus în `insula.gd` (`CAM_*`, `APROAPE_*`).
 - **Orion:** butonul deschide previzualizarea mascotei.
 
 **În previzualizarea lui Orion:**

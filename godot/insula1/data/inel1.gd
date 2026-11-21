@@ -104,10 +104,10 @@ const FLACARI_RAMASE: Array[Vector3] = [
 const CLADIRI := {
 	"castel": [Vector3(0.263, -1.765, -0.481), Vector3(8.78, 7.36, 8.64)],
 	"poduri": [Vector3(-0.744, -1.612, -0.159), Vector3(9.38, 3.26, 11.19)],
-	"portal": [Vector3(8.010, -0.412, -4.269), Vector3(3.36, 2.62, 3.90)],
-	"moara": [Vector3(-0.836, -1.168, -8.255), Vector3(9.66, 5.27, 5.99)],
-	"piata": [Vector3(6.251, -0.539, -0.087), Vector3(4.50, 2.49, 4.88)],
-	"atelier_debarcader": [Vector3(-4.484, -4.378, 7.923), Vector3(6.51, 5.88, 5.76)],
+	"portal": [Vector3(8.112, -0.412, -4.375), Vector3(3.16, 2.62, 3.29)],
+	"moara": [Vector3(-0.991, -1.168, -8.417), Vector3(9.21, 5.27, 5.66)],
+	"piata": [Vector3(5.651, -0.539, 0.110), Vector3(3.30, 2.49, 4.10)],
+	"atelier_debarcader": [Vector3(-4.484, -4.378, 8.054), Vector3(6.51, 5.88, 5.49)],
 }
 const CLADIRI_ROTATIE := {}
 ## iarba: x, y, z, rotație, scară (câte 5 numere pe bucată)

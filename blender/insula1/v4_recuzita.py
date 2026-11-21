@@ -318,7 +318,7 @@ def coroana(P, centre, culori, seg=12, inele=8, seed=0, vant=0.35, flori=None):
             dirl = Vector((-0.55, -0.35, 0.75)).normalized()
             nn = (p - Vector(c)).normalized()
             base = base * (0.86 + 0.22 * max(0.0, nn.dot(dirl)))
-            if flori is not None and zgomot(p, 6.0, seed + 3) > 0.28:
+            if flori is not None and zgomot(p, 15.0, seed + 3) > 0.42:  # flori mici, nu pete mari
                 base = flori * (0.9 + 0.2 * h)
             return pictat(base, p, 0.07, 4.0, seed)
         P.sfera(Vector(c), r, col, seg=seg, inele=inele, turtire=0.88, vant=vant, deformare=0.06, seed=seed + k)
@@ -408,14 +408,14 @@ def iarba_smoc(seed=5):
     rng = np.random.default_rng(seed)
     P = Piesa("iarba_smoc")
     D, M, L = lin("#3F8E2D"), lin("#6DB83A"), lin("#B4DB5A")
-    for k in range(7):
-        a = 2 * math.pi * k / 7 + rng.uniform(-0.3, 0.3)
+    for k in range(6):
+        a = 2 * math.pi * k / 6 + rng.uniform(-0.3, 0.3)
         h = rng.uniform(0.2, 0.34)
         aplec = rng.uniform(0.05, 0.14)
         d = Vector((math.cos(a), math.sin(a), 0))
         baza = d * rng.uniform(0.0, 0.05)
-        spina = [baza + d * (aplec * t * t) + Vector((0, 0, h * t)) for t in np.linspace(0, 1, 4)]
-        lat = [0.022 * (1 - t) + 0.002 for t in np.linspace(0, 1, 4)]
+        spina = [baza + d * (aplec * t * t) + Vector((0, 0, h * t)) for t in np.linspace(0, 1, 3)]
+        lat = [0.024 * (1 - t) + 0.002 for t in np.linspace(0, 1, 3)]
 
         def c(t, e):
             b = D * (1 - ss(0.0, 0.6, t)) + M * ss(0.0, 0.6, t)
@@ -429,17 +429,17 @@ def floare(seed=6):
     P = Piesa("floare")
     VERDE = lin("#4C9A35")
     # tulpină
-    pts = [Vector((0.01 * math.sin(t * 3), 0, 0.2 * t)) for t in np.linspace(0, 1, 4)]
-    P.tub(pts, [0.008] * 4, lambda t, p: VERDE * (0.8 + 0.3 * t), seg=4, vant=lambda t: t, capac=False)
+    pts = [Vector((0.01 * math.sin(t * 3), 0, 0.2 * t)) for t in np.linspace(0, 1, 3)]
+    P.tub(pts, [0.008] * 3, lambda t, p: VERDE * (0.8 + 0.3 * t), seg=3, vant=lambda t: t, capac=False)
     c = pts[-1]
     # 5 petale albe (culoarea vine pe instanță, în Godot), mijloc galben
     for k in range(5):
         a = 2 * math.pi * k / 5
         d = Vector((math.cos(a), math.sin(a), 0))
-        spina = [c + d * (0.075 * t) + Vector((0, 0, 0.018 * math.sin(t * math.pi))) for t in np.linspace(0, 1, 4)]
-        lat = [0.012, 0.032, 0.03, 0.012]
+        spina = [c + d * (0.075 * t) + Vector((0, 0, 0.018 * math.sin(t * math.pi))) for t in np.linspace(0, 1, 3)]
+        lat = [0.012, 0.034, 0.012]
         P.banda(spina, lat, lambda t, e: np.array([1.0, 1.0, 1.0]) * (0.85 + 0.15 * t), pliu=0.2, vant=lambda t: 1.0)
-    P.sfera(c + Vector((0, 0, 0.012)), 0.022, lambda t, p: lin("#FFD23F") * 0.6, seg=6, inele=4, vant=1.0)
+    P.sfera(c + Vector((0, 0, 0.012)), 0.022, lambda t, p: lin("#FFD23F") * 0.6, seg=5, inele=3, vant=1.0)
     return P
 
 

@@ -87,9 +87,11 @@ var _barca: Node3D
 var _barca_baza := Transform3D.IDENTITY
 var _casute: Array = []
 var _nori: Array = []
+var _nori_mm: MultiMesh  # toți norii într-un singur apel de desenare
 var _insulite: Array = []
-var _fluturi: Array = []
-var _pasari: Array = []
+var _fluturi: Array = []  # [instanța, centrul, faza, poziția de dinainte]
+var _pasari: Array = []  # [instanța, raza, înălțimea, faza, poziția de dinainte]
+var _zbor_mm: MultiMesh  # fluturii și păsările: un singur apel de desenare
 var _stat: Label
 var _orion: Node3D
 
@@ -138,6 +140,8 @@ func _materiale() -> void:
 	_m_insula = ShaderMaterial.new()
 	_m_insula.shader = SH_INSULA
 	_m_insula.set_shader_parameter("tex_detaliu", _tex("detaliu.png"))
+	_m_insula.set_shader_parameter("tex_stanca_t", load(TEX_TEREN + "stanca_albedo.png"))
+	_m_insula.set_shader_parameter("tex_iarba_t", load(TEX_TEREN + "iarba_albedo.png"))
 	_m_insula.set_shader_parameter("animat", not miscare_redusa)
 	_m_insula.set_shader_parameter("vant_activ", not miscare_redusa)  # vântul de bază rămâne și la Mic
 	_m_insula.set_shader_parameter("detaliu_activ", calitate >= 1)
@@ -363,10 +367,10 @@ func _teren() -> void:
 	_m_teren = ShaderMaterial.new()
 	_m_teren.shader = SH_TEREN
 	for k in ["iarba", "pavaj", "pamant", "stanca", "muschi"]:
-		var f := "piatra" if k == "pavaj" else k
+		var f: String = "piatra" if k == "pavaj" else String(k)
 		_m_teren.set_shader_parameter("tex_" + k, load(TEX_TEREN + f + "_albedo.png"))
 	for k in ["iarba", "pavaj", "pamant", "stanca"]:
-		var f := "piatra" if k == "pavaj" else k
+		var f: String = "piatra" if k == "pavaj" else String(k)
 		_m_teren.set_shader_parameter("norm_" + k, load(TEX_TEREN + f + "_normal.png"))
 	_m_teren.set_shader_parameter("tex_zgomot", load(TEX_TEREN + "zgomot.png"))
 	_m_teren.set_shader_parameter("tex_checker", load(TEX_TEREN + "checker_1024.png"))
@@ -456,10 +460,19 @@ func _inel1() -> void:
 		(tufe[int(t[3])] as Array).append(Transform3D(_baza(float(t[1]), float(t[2])), t[0]))
 	for k in 3:
 		_multi("tufa_%d" % k, tufe[k], [], true)
-	var fel: Array = []
+	# felinarele: câte un nod (fără umbră), ca să se estompeze lin când stâlpul ajunge între cameră și Orion
+	var plasa_f := _plasa("felinar")
 	for p in Inel1.FELINARE:
-		fel.append(Transform3D(Basis.IDENTITY, p))
-	var mf := _multi("felinar", fel, [], true)
+		if plasa_f == null:
+			break
+		var mi := MeshInstance3D.new()
+		mi.name = "Felinar"
+		mi.mesh = plasa_f
+		mi.position = p
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.set_instance_shader_parameter("vant_obiect", 0.0)
+		add_child(mi)
+		estompabil(mi, _m_recuzita, _m_recuzita_estompat)
 	var cri := [[], [], []]
 	for c in Inel1.CRISTALE:
 		(cri[int(c[3])] as Array).append(Transform3D(_baza(float(c[1]), float(c[2])), c[0]))
@@ -498,8 +511,6 @@ func _inel1() -> void:
 		var v := 0.85 + 0.3 * fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0)
 		cp.append(Color(v, v * 0.98, v * 1.02))
 	_multi("pietricica", tp, cp)
-	if mf:
-		mf.set_instance_shader_parameter("vant_obiect", 0.0)
 
 
 func _transformari(date: Array, pas: int) -> Array:
@@ -636,21 +647,27 @@ func _atmosfera() -> void:
 	var quad := QuadMesh.new()
 	var r := RandomNumberGenerator.new()
 	r.seed = 21
-	var n_nori := 30 if calitate >= 1 else 14
+	var n_nori := 24 if calitate >= 1 else 12
+	# v4: un singur MultiMesh (1 apel de desenare în loc de 30); fiecare nor își mută transformarea în _process
+	_nori_mm = MultiMesh.new()
+	_nori_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_nori_mm.mesh = quad
+	_nori_mm.instance_count = n_nori
 	for i in n_nori:
 		var marea := i < int(n_nori * 0.7)  # marea de nori de dedesubt
 		var a := r.randf() * TAU
 		var raza := r.randf_range(10.0, 28.0) if marea else r.randf_range(45.0, 75.0)
 		var y := r.randf_range(-14.0, -9.0) if marea else r.randf_range(-2.0, 16.0)
-		var mi := MeshInstance3D.new()
-		mi.mesh = quad
-		mi.material_override = nor_mat
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var s := r.randf_range(7.0, 13.0) if marea else r.randf_range(10.0, 20.0)
-		mi.scale = Vector3(s * 1.6, s, 1.0)
-		mi.position = Vector3(cos(a) * raza, y, sin(a) * raza)
-		add_child(mi)
-		_nori.append([mi, a, raza, y, r.randf_range(0.004, 0.012) * (1.0 if r.randf() < 0.5 else -1.0)])
+		var sc := Vector3(s * 1.6, s, 1.0)
+		_nori_mm.set_instance_transform(i, Transform3D(Basis.from_scale(sc), Vector3(cos(a) * raza, y, sin(a) * raza)))
+		_nori.append([i, a, raza, y, r.randf_range(0.004, 0.012) * (1.0 if r.randf() < 0.5 else -1.0), sc])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "Nori"
+	mmi.multimesh = _nori_mm
+	mmi.material_override = nor_mat
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
 	# raze de soare false (sus-stânga, din partea soarelui; aditive)
 	var raze := StandardMaterial3D.new()
 	raze.albedo_texture = _tex("raze.png")
@@ -738,26 +755,30 @@ func _viata() -> void:
 	# 6 fluturi pe lângă drum + 3 păsări departe (maxim 10)
 	var culori := [Color("ff8ac2"), Color("ffd84d"), Color("7fe6ff"), Color("ffffff"), Color("c79bff"), Color("ffb36b")]
 	var n := Board.CASUTE.size()
+	_zbor_mm = MultiMesh.new()
+	_zbor_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_zbor_mm.use_colors = true
+	_zbor_mm.mesh = _plasa_fluture(Color.WHITE, 1.0)  # culoarea vine pe instanță
+	_zbor_mm.instance_count = 9
 	for k in 6:
 		var a: Vector3 = Board.CASUTE[(k * 4 + 2) % n]
 		var b: Vector3 = Board.CASUTE[(k * 4 + 3) % n]
 		var m := (a + b) * 0.5
 		var spre_margine := Vector3(m.x, 0.0, m.z).normalized()
 		var c := m + spre_margine * 1.3 + Vector3(0.0, 0.7, 0.0)
-		var mi := MeshInstance3D.new()
-		mi.mesh = _plasa_fluture(culori[k], 1.0)
-		mi.material_override = _m_corp
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.position = c
-		add_child(mi)
-		_fluturi.append([mi, c, float(k) * 1.7])
+		_zbor_mm.set_instance_color(k, (culori[k] as Color).srgb_to_linear())
+		_zbor_mm.set_instance_transform(k, Transform3D(Basis.IDENTITY, c))
+		_fluturi.append([k, c, float(k) * 1.7, c])
 	for k in 3:
-		var mi := MeshInstance3D.new()
-		mi.mesh = _plasa_fluture(Color("3d4a66"), 4.0)
-		mi.material_override = _m_corp
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mi)
-		_pasari.append([mi, 20.0 + 4.0 * k, 9.0 + 2.5 * k, float(k) * 2.1])
+		_zbor_mm.set_instance_color(6 + k, Color("3d4a66").srgb_to_linear())
+		_zbor_mm.set_instance_transform(6 + k, Transform3D(Basis.from_scale(Vector3.ONE * 4.0), Vector3.ZERO))
+		_pasari.append([6 + k, 20.0 + 4.0 * k, 9.0 + 2.5 * k, float(k) * 2.1, Vector3.ZERO])
+	var zb := MultiMeshInstance3D.new()
+	zb.name = "FluturiSiPasari"
+	zb.multimesh = _zbor_mm
+	zb.material_override = _m_corp
+	zb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(zb)
 
 
 ## v4: valuri la barcă, pești care sar, fum, licurici la portal, stropi la cascade (tabelul: docs/insula_alive.md)
@@ -1040,30 +1061,29 @@ func _process(delta: float) -> void:
 			_barca.transform = Transform3D(b * _barca_baza.basis, _barca_baza.origin + Vector3(0.0, 0.04 * sin(_t * 1.3), 0.0))
 		for nd in _nori:
 			var a: float = nd[1] + _t * float(nd[4])
-			(nd[0] as Node3D).position = Vector3(cos(a) * float(nd[2]), float(nd[3]), sin(a) * float(nd[2]))
+			_nori_mm.set_instance_transform(int(nd[0]), Transform3D(Basis.from_scale(nd[5]),
+				Vector3(cos(a) * float(nd[2]), float(nd[3]), sin(a) * float(nd[2]))))
 		for it in _insulite:
 			var m: Node3D = it[0]
 			m.position.y = float(it[1]) + 0.35 * sin(_t * 0.45 + float(it[2]))
 			m.rotation = Vector3(0.025 * sin(_t * 0.3 + float(it[2])), float(it[3]), 0.02 * sin(_t * 0.37 + float(it[2]) * 1.3))
 		for f in _fluturi:
-			var mi: MeshInstance3D = f[0]
 			var c: Vector3 = f[1]
 			var ph: float = f[2]
 			var tt := _t * 0.6 + ph
 			var p := c + Vector3(sin(tt) * 0.9, 0.25 * sin(tt * 2.3), sin(tt * 2.0) * 0.6)
-			var dir := p - mi.position
-			mi.position = p
-			if dir.length() > 0.0001:
-				mi.rotation.y = atan2(dir.x, dir.z)
-			mi.scale = Vector3(0.25 + 0.75 * absf(sin(_t * 14.0 + ph)), 1.0, 1.0)
+			var dir := p - (f[3] as Vector3)
+			f[3] = p
+			var ry := atan2(dir.x, dir.z) if dir.length() > 0.0001 else 0.0
+			var bz := Basis(Vector3.UP, ry) * Basis.from_scale(Vector3(0.25 + 0.75 * absf(sin(_t * 14.0 + ph)), 1.0, 1.0))
+			_zbor_mm.set_instance_transform(int(f[0]), Transform3D(bz, p))
 		for pa in _pasari:
-			var mi: MeshInstance3D = pa[0]
 			var a := _t * 0.12 + float(pa[3])
 			var p := Vector3(cos(a) * float(pa[1]), float(pa[2]) + 0.6 * sin(_t * 0.7 + float(pa[3])), sin(a) * float(pa[1]))
-			var dir := p - mi.position
-			mi.position = p
-			if dir.length() > 0.0001:
-				mi.rotation.y = atan2(dir.x, dir.z)
-			mi.scale = Vector3(0.3 + 0.7 * absf(sin(_t * 4.0 + float(pa[3]))), 1.0, 1.0)
+			var dir := p - (pa[4] as Vector3)
+			pa[4] = p
+			var ry := atan2(dir.x, dir.z) if dir.length() > 0.0001 else 0.0
+			var bz := Basis(Vector3.UP, ry) * Basis.from_scale(Vector3(4.0 * (0.3 + 0.7 * absf(sin(_t * 4.0 + float(pa[3])))), 4.0, 4.0))
+			_zbor_mm.set_instance_transform(int(pa[0]), Transform3D(bz, p))
 	if _stat:
 		_stat.text = text_statistici()

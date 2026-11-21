@@ -130,7 +130,7 @@ def zgomot_unghiular(rng, seg, amplitudini):
 def islet(seed, R, H, n_copaci, latura_cascadei):
     rng = np.random.default_rng(seed)
     p = Part()
-    SEG = 40
+    SEG = 28
     # profilul corpului, de sus în jos: dom de iarbă, buza care atârnă, stânca în trepte rotunjite, vârful
     prof = [(0.0, 0.42), (R * 0.35, 0.38), (R * 0.65, 0.27), (R * 0.88, 0.13), (R * 0.99, 0.0), (R * 1.03, -0.12),
             (R * 0.98, -0.24)]
@@ -172,20 +172,20 @@ def islet(seed, R, H, n_copaci, latura_cascadei):
         d_ = rng.uniform(0.05, 0.42) * R
         baza = Vector((math.cos(a_) * d_, math.sin(a_) * d_, 0.3))
         h_ = rng.uniform(1.3, 2.0)
-        varf = p.trunchi(baza, h_, 0.14, 0.08, (rng.normal(0, 0.25), rng.normal(0, 0.25)), TRUNCHI)
+        varf = p.trunchi(baza, h_, 0.14, 0.08, (rng.normal(0, 0.25), rng.normal(0, 0.25)), TRUNCHI, seg=6, n=4)
         roz = (t_ + seed) % 3 == 0
         for b_ in range(4):
             off = Vector((rng.normal(0, 0.32), rng.normal(0, 0.32), rng.uniform(0.05, 0.45)))
             rr = rng.uniform(0.45, 0.72) * (0.85 if b_ == 3 else 1.0)
             cc = ROZ[b_ % 2] if roz else COROANA[b_ % 3]
-            p.sfera(varf + off, rr, lambda t, cc=cc: cc * (1.08 - 0.38 * t), seg=14, inele=9, turtire=0.86)
+            p.sfera(varf + off, rr, lambda t, cc=cc: cc * (1.08 - 0.38 * t), seg=10, inele=7, turtire=0.86)
     # tufe rotunde, pe jumătate în iarbă
     for _ in range(3):
         a_ = rng.random() * 2 * np.pi
         d_ = rng.uniform(0.45, 0.75) * R
         c = Vector((math.cos(a_) * d_, math.sin(a_) * d_, 0.2))
         cc = COROANA[rng.integers(3)]
-        p.sfera(c, rng.uniform(0.25, 0.38), lambda t, cc=cc: cc * (1.05 - 0.4 * t), seg=12, inele=7, turtire=0.75)
+        p.sfera(c, rng.uniform(0.25, 0.38), lambda t, cc=cc: cc * (1.05 - 0.4 * t), seg=9, inele=6, turtire=0.75)
 
     me = bpy.data.meshes.new("Corp")
     bmesh.ops.recalc_face_normals(p.bm, faces=p.bm.faces)  # fiecare piesă e închisă: orientarea e sigură

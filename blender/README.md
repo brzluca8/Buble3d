@@ -157,3 +157,26 @@ Pornește de la insula pregătită mai sus (`out_insula1/insula1.glb`). Nu o ref
 `imbunatateste.py --fara-coacere` face doar clasificarea apei și a portalului. E util pentru verificări rapide.
 
 Modelele Real-ESRGAN (`*.param`, `*.bin`) vin din arhiva oficială `realesrgan-ncnn-vulkan-20220424-ubuntu.zip`, versiunea v0.2.5.0, cu licența BSD-3-Clause. Nu sunt incluse în proiect.
+
+## Insula 1, v4 (`insula1/`)
+Inelul 1 (tot ce e la ≤ 8 m de drum) e refăcut procedural, fără credite; insula veche rămâne pentru clădiri, apă și
+faleze. Raportul: `docs/insula_v4.md`.
+
+| Script | Ce face |
+|---|---|
+| `insula1/v3_faza_a.py` | Faza A (v3), cu simplificarea mutată înaintea tăierii pe clase (fără fante); scrie `out_insula1/insula1_faza_a.glb` (intermediar, ignorat de git) |
+| `insula1/v4_inel1.py` | harta de înălțimi (0,25 m) din insula veche, solul și clădirile recunoscute, terenul nou (`teren.glb`), tăierea a ce se înlocuiește, clădirile ca piese, pozițiile recuzitei și ale presăratelor (`godot/insula1/data/inel1.gd`), harta de verificare |
+| `insula1/v4_recuzita.py` | recuzita nouă (copaci, tufe, iarbă, floare, pietricică, gard, felinar, butoi, ladă, cristale), cu AO coaptă |
+| `insula1/texturi_teren.py` | texturile terenului, 1024 px pe 2 m (512 px/m) |
+| `insula1/insulite.py` | insulițele din fundal, netede, cu normale verificate |
+| `insula1/decupaje_v4.py` | decupajele clădirilor din imaginea-țintă, pentru generarea imagine→3D (OpenCV) |
+| `insula1/previzualizare_v4.py` | randările de verificare (camera de joc, aproape, panoramă, aterizare, `--checker`) |
+| `insula1/previzualizare_recuzita.py`, `insula1/compara_v4.py` | foaia recuzitei și imaginile de comparație |
+
+```bash
+./bvenv/bin/python insula1/v3_faza_a.py -- --fara-imagini
+./bvenv/bin/python insula1/v4_recuzita.py && ./bvenv/bin/python insula1/texturi_teren.py
+./bvenv/bin/python insula1/v4_inel1.py
+./bvenv/bin/python insula1/previzualizare_v4.py -- --frames joc,aproape,panorama
+```
+
