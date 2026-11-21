@@ -271,7 +271,7 @@ def checker_insula():
     nt.links.new(uv.outputs[0], ch.inputs["Vector"])
     nt.links.new(ch.outputs["Color"], b.inputs["Base Color"])
     for o in bpy.context.scene.objects:
-        if o.type == "MESH" and o.name.startswith(("Insula_", "Barca", "Moara")):
+        if o.type == "MESH" and o.name.startswith(("Insula_", "Barca", "Moara", "Cladire_")):
             o.data.materials.clear()
             o.data.materials.append(m)
 

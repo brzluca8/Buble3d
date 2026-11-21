@@ -6,6 +6,20 @@
 
 Ramura: `orion-insula-v4`, câte un commit pe pas. Credite cheltuite: **0** (plafon 500).
 
+## Capturile (`docs/shots/`, randări Blender)
+
+| Fișier | Ce arată |
+|---|---|
+| `insula_v4_joc.png` | camera de joc nouă (D4), pe START, format portret |
+| `insula_v4_aproape.png`, `insula_v4_captura1.png` | aproape, din unghiurile capturilor tale |
+| `insula_v4_panorama.png` | toată insula |
+| `insula_v4_aterizare.png` | cadrul apropiat de la aterizare (căsuțele, gravura, iconițele) |
+| `insula_v4_checker.png` (+ `_joc_checker`, `_aproape_checker`) | densitatea: 512 px/m pe terenul nou, tabla în UV pe insula veche |
+| `insula_v4_inainte_dupa_1.png`, `insula_v4_inainte_dupa_2.png` | captura ta din Godot, v3 și v4 din același unghi |
+| `insula_v4_orion_si_insula.png` | Orion, Inelul 1 nou și o clădire veche, decupate din același cadru |
+| `insula_v4_camera_AB.png` | camera veche, camera nouă, cadrul de aterizare |
+| `insula_v4_recuzita.png`, `insula_v4_inel1_harta.png`, `insula_v4_decupaje.png` | recuzita lângă Orion, harta Inelului 1 de sus, decupajele clădirilor |
+
 ## Pasul 1: defecte rapide
 
 | Defect | Cauza reală | Ce am făcut | Dovada |
