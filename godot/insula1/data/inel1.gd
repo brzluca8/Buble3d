@@ -93,6 +93,18 @@ const FLACARI_RAMASE: Array[Vector3] = [
 	Vector3(1.963, 1.909, -0.503),
 	Vector3(2.288, 1.918, 0.336),
 ]
+## clădirile ca piese separate (Cladire_<nume> în insula1.glb): ancora la bază (centrul amprentei, cel mai
+## de jos punct) și mărimea (x, y, z în metri). Un GLB nou în res://assets/models/cladiri/<nume>.glb, cu originea
+## la bază, se pune aici și ascunde piesa veche (rotația o potrivești în CLADIRI_ROTATIE, în grade).
+const CLADIRI := {
+	"castel": [Vector3(0.263, -1.765, -0.481), Vector3(8.78, 7.36, 8.64)],
+	"poduri": [Vector3(-0.744, -1.612, -0.159), Vector3(9.38, 3.26, 11.19)],
+	"portal": [Vector3(8.010, -0.412, -4.269), Vector3(3.36, 2.62, 3.90)],
+	"moara": [Vector3(-0.836, -1.168, -8.255), Vector3(9.66, 5.27, 5.99)],
+	"piata": [Vector3(6.251, -0.539, -0.087), Vector3(4.50, 2.49, 4.88)],
+	"atelier_debarcader": [Vector3(-4.484, -4.378, 7.923), Vector3(6.51, 5.88, 5.76)],
+}
+const CLADIRI_ROTATIE := {}
 ## iarba: x, y, z, rotație, scară (câte 5 numere pe bucată)
 const IARBA := [
 	3.374, -0.482, 8.990, 4.12, 1.24,

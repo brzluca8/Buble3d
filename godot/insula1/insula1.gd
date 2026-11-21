@@ -23,6 +23,7 @@ const Tipuri := preload("res://insula1/data/tipuri_casute.gd")
 const CasutaScene := preload("res://insula1/casuta/Casuta.tscn")
 const MODEL := "res://assets/models/insula1/insula1.glb"
 const TEREN := "res://assets/models/insula1/teren.glb"
+const CLADIRI_NOI := "res://assets/models/cladiri/"  # GLB-uri generate: <nume>.glb ia locul piesei Cladire_<nume>
 const RECUZITA := "res://assets/models/inel1/"
 const TEX_TEREN := "res://insula1/textures/teren/"
 const SH_TEREN := preload("res://insula1/shaders/teren.gdshader")
@@ -96,6 +97,7 @@ func _ready() -> void:
 	_materiale()
 	_mediu()
 	_insula()
+	_cladiri()
 	_teren()
 	_inel1()
 	_ceata_cascade()
@@ -311,6 +313,38 @@ func _clasa(nume: String) -> String:
 		if nume.begins_with(k):
 			return k
 	return "Insula_restul"
+
+
+# --------------------------------------------------------------------------- Inelul 2 (v4): clădirile ca piese
+## Clădirile (castel, poduri, piață, moară, portal, atelier cu debarcader) sunt piese separate în insula1.glb
+## (Cladire_<nume>, tăiate de blender/insula1/v4_inel1.py), deocamdată PLACEHOLDER din insula veche. Se estompează
+## lin când acoperă pe Orion. Înlocuire fără cod: pune res://assets/models/cladiri/<nume>.glb (originea la bază,
+## în metri, Orion = 1,15 m); scena îl așază la ancora din data/inel1.gd (CLADIRI) și ascunde piesa veche.
+func _cladiri() -> void:
+	var model := get_node_or_null("Insula1")
+	if model == null:
+		return
+	for n in model.find_children("Cladire_*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var nume := String(mi.name).trim_prefix("Cladire_")
+		for k in Inel1.CLADIRI:
+			if nume.begins_with(String(k)):
+				nume = String(k)
+				break
+		var cale := CLADIRI_NOI + nume + ".glb"
+		if Inel1.CLADIRI.has(nume) and ResourceLoader.exists(cale):
+			var sc := load(cale) as PackedScene
+			if sc:
+				var nou := sc.instantiate() as Node3D
+				nou.name = "Nou_" + nume
+				var anc: Array = Inel1.CLADIRI[nume]
+				nou.position = anc[0]
+				nou.rotation.y = deg_to_rad(float(Inel1.CLADIRI_ROTATIE.get(nume, 0.0)))
+				add_child(nou)
+				mi.visible = false
+				continue
+		if nume != "poduri":  # podurile sunt lungi și joase: nu le estompăm (ar dispărea fără motiv)
+			estompabil(mi, _m_insula, _m_insula_estompat)
 
 
 # --------------------------------------------------------------------------- Inelul 1 (v4): terenul nou

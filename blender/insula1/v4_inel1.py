@@ -852,6 +852,64 @@ log("[verificare]", os.path.join(args.shots, "insula_v4_inel1_harta.png"))
 if args.fara_export:
     sys.exit(0)
 
+# ============================================================================= 6b. clădirile, piese separate (Inelul 2)
+# Castelul, podurile, piața, moara, portalul, atelierul cu debarcaderul: fețele clasei „restul” din amprenta fiecăreia
+# devin un obiect „Cladire_<nume>”, cu ancora la bază. În Godot: se estompează lin când acoperă pe Orion și pot fi
+# înlocuite fără cod: un GLB nou în godot/assets/models/cladiri/<nume>.glb (originea la bază, metri) ia locul piesei.
+lab_o, n_o = ndi.label(ndi.binary_dilation(obiect & ~castel, iterations=2))
+cen_o = ndi.center_of_mass(np.ones_like(lab_o), lab_o, range(1, n_o + 1)) if n_o else []
+cen_o = [(X[0] + c[1] * args.pas, Y[0] + c[0] * args.pas) for c in cen_o]
+c_portal = fete("Insula_portal")[0].mean(0) if len(OB["Insula_portal"].data.polygons) else np.array([5.0, 8.5, 1.0])
+ANCORE = {"piata": (6.3, 0.8), "moara": (-3.0, 7.6), "portal": (c_portal[0], c_portal[1]), "atelier_debarcader": (-4.6, -8.6)}
+amprente = {"castel": castel.copy(), "poduri": ndi.binary_dilation(pod, iterations=2)}
+for nume, (ax, ay) in ANCORE.items():
+    if not n_o:
+        break
+    d = [np.hypot(cx - ax, cy - ay) for cx, cy in cen_o]
+    k = int(np.argmin(d))
+    if d[k] < 3.5:
+        amprente[nume] = ndi.binary_dilation(lab_o == k + 1, iterations=3)
+amprente["atelier_debarcader"] = amprente.get("atelier_debarcader", np.zeros_like(reg)) | \
+    ((XX < -1.5) & (YY < -6.8) & (np.hypot(XX - ANCORE["atelier_debarcader"][0], YY - ANCORE["atelier_debarcader"][1]) < 3.2))
+def fete_acum(nume):
+    """centrele fețelor din mesh-ul de acum (după tăieri), în coordonate de lume"""
+    o = OB[nume]
+    me_ = o.data
+    co = np.array([o.matrix_world @ v.co for v in me_.vertices])
+    return np.array([co[list(p.vertices)].mean(0) for p in me_.polygons])
+
+
+c = fete_acum("Insula_restul")
+alocat = np.zeros(len(c), bool)
+CLADIRI = {}
+for nume in ("castel", "poduri", "portal", "moara", "piata", "atelier_debarcader"):
+    if nume not in amprente:
+        continue
+    m = ~alocat & in_reg(c[:, 0], c[:, 1], amprente[nume])
+    if m.sum() < 30:
+        continue
+    alocat |= m
+    o = OB["Insula_restul"]
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in np.where(~m)[0]], context="FACES")
+    me_c = bpy.data.meshes.new("Cladire_" + nume)
+    bm.to_mesh(me_c)
+    bm.free()
+    for mat in o.data.materials:
+        me_c.materials.append(mat)
+    ob_c = bpy.data.objects.new("Cladire_" + nume, me_c)
+    ob_c.matrix_world = o.matrix_world
+    scene.collection.objects.link(ob_c)
+    P_ = np.array([ob_c.matrix_world @ v.co for v in me_c.vertices])
+    lo, hi = P_.min(0), P_.max(0)
+    CLADIRI[nume] = dict(baza=((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, float(lo[2])), marime=(hi - lo).tolist(),
+                         fete=int(m.sum()))
+    OB["Cladire_" + nume] = ob_c
+sterge_fete("Insula_restul", alocat)
+log("[clădiri] piese separate: %s" % {k: v["fete"] for k, v in CLADIRI.items()})
+
 # ============================================================================= 7. export
 # culorile pe vârfuri ale insulei vechi: importul le dă pe colțuri (BYTE_COLOR); le trecem pe vârfuri, ca float,
 # cu același nume „Color” (altfel exportul pierde alfa: legănarea în vânt, modul apei)
@@ -938,6 +996,14 @@ with open(args.data, "w") as f:
     for p in FLACARI_RAMASE:
         f.write("\t%s,\n" % gd(p))
     f.write("]\n")
+    f.write("## clădirile ca piese separate (Cladire_<nume> în insula1.glb): ancora la bază (centrul amprentei, cel mai\n")
+    f.write("## de jos punct) și mărimea (x, y, z în metri). Un GLB nou în res://assets/models/cladiri/<nume>.glb, cu originea\n")
+    f.write("## la bază, se pune aici și ascunde piesa veche (rotația o potrivești în CLADIRI_ROTATIE, în grade).\n")
+    f.write("const CLADIRI := {\n")
+    for nume, d in CLADIRI.items():
+        mx, my, mz = d["marime"]
+        f.write('\t"%s": [%s, Vector3(%.2f, %.2f, %.2f)],\n' % (nume, gd(d["baza"]), mx, mz, my))
+    f.write("}\nconst CLADIRI_ROTATIE := {}\n")
     f.write(lista_puncte("IARBA", IARBA, z_teren))
     f.write(lista_puncte("FLORI", FLORI, z_teren))
     f.write(lista_puncte("PIETRICELE", PIETRE, z_teren))
