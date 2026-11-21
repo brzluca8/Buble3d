@@ -21,7 +21,7 @@ imbunatateste.py) și o pregătește pentru joc, fără credite și fără să-i
 
     python blender/insula1/v3_faza_a.py -- [--doar-clase] [--fara-simplificare] [--doar-simplificare]
 
-Ieșiri: godot/assets/models/insula1/insula1.glb, godot/insula1/data/insula1_info.gd,
+Ieșiri: blender/out_insula1/insula1_faza_a.glb (v4: intrarea pentru v4_inel1.py), godot/insula1/data/insula1_info.gd,
 docs/shots/insula_v3_A_clase_*.png (verificarea clasificării).
 """
 import argparse
@@ -49,7 +49,8 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 ap = argparse.ArgumentParser()
 ap.add_argument("--src", default=os.path.join(ROOT, "blender/out_insula1/insula1_imbunatatita.glb"))
 ap.add_argument("--info", default=os.path.join(ROOT, "blender/out_insula1/insula1_imbunatatita_info.gd"))
-ap.add_argument("--out", default=os.path.join(ROOT, "godot/assets/models/insula1/insula1.glb"))
+# v4: ieșirea Fazei A e intrarea pentru v4_inel1.py (care scrie godot/assets/models/insula1/insula1.glb, tăiat)
+ap.add_argument("--out", default=os.path.join(ROOT, "blender/out_insula1/insula1_faza_a.glb"))
 ap.add_argument("--data", default=os.path.join(ROOT, "godot/insula1/data/insula1_info.gd"))
 ap.add_argument("--shots", default=os.path.join(ROOT, "docs/shots"))
 ap.add_argument("--doar-clase", action="store_true", help="doar clasificarea și imaginile de verificare")

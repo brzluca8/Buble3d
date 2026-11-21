@@ -1,5 +1,8 @@
 extends Node3D
-## Insula 1 (v3, Faza A): insula trimisă de tine (din Tripo), îmbunătățită pentru joc, fără s-o refacem.
+## Insula 1 (v4): insula trimisă de tine (din Tripo) rămâne pentru clădiri, apă și faleze; tot ce e lângă drumul
+## căsuțelor (Inelul 1: solul, cărările, iarba, florile, pietrele, copacii, tufele, gardurile, felinarele, cristalele)
+## e nou, procedural: terenul (teren.glb, texturi de 512 px/m) și recuzita din godot/assets/models/inel1.
+## Din v3, Faza A: insula ta, îmbunătățită pentru joc, fără s-o refacem.
 ## Modelul e tăiat în Blender pe clase (blender/insula1/v3_faza_a.py): stânci, iarbă, frunziș, flori, pânze,
 ## cristale, felinare, portal, barca, palele morii, restul + apa și cascadele. Toate clasele folosesc un singur
 ## material (insula.gdshader); diferențele (detaliul, vântul, lumina proprie) sunt uniforme pe instanță.
@@ -14,10 +17,18 @@ extends Node3D
 ##   mod_debug (buble/debug/mod_insula): 0 normal, 1 tablă de șah, 2 clase, 3 AO, 4 normale
 
 const Info := preload("res://insula1/data/insula1_info.gd")
+const Inel1 := preload("res://insula1/data/inel1.gd")
 const Board := preload("res://data/insula1_casute.gd")
 const Tipuri := preload("res://insula1/data/tipuri_casute.gd")
 const CasutaScene := preload("res://insula1/casuta/Casuta.tscn")
 const MODEL := "res://assets/models/insula1/insula1.glb"
+const TEREN := "res://assets/models/insula1/teren.glb"
+const RECUZITA := "res://assets/models/inel1/"
+const TEX_TEREN := "res://insula1/textures/teren/"
+const SH_TEREN := preload("res://insula1/shaders/teren.gdshader")
+const SH_RECUZITA := preload("res://insula1/shaders/recuzita.gdshader")
+const SH_RECUZITA_ESTOMPAT := preload("res://insula1/shaders/recuzita_estompat.gdshader")
+const CULORI_FLORI := [Color("ff8ac2"), Color("ffd84d"), Color("ffffff"), Color("c79bff"), Color("ff7b5c"), Color("8fd3ff")]
 const FUNDAL := "res://assets/models/fundal/"
 const SH_INSULA := preload("res://insula1/shaders/insula.gdshader")
 const SH_INSULA_ESTOMPAT := preload("res://insula1/shaders/insula_estompat.gdshader")
@@ -62,6 +73,10 @@ var _m_apa: ShaderMaterial
 var _m_particule: StandardMaterial3D
 var _m_corp: StandardMaterial3D
 var _m_casuta: ShaderMaterial
+var _m_teren: ShaderMaterial
+var _m_recuzita: ShaderMaterial
+var _m_recuzita_estompat: ShaderMaterial
+var _plase := {}  # recuzita nouă: nume -> Mesh
 var _moara: Node3D
 var _barca: Node3D
 var _barca_baza := Transform3D.IDENTITY
@@ -81,6 +96,8 @@ func _ready() -> void:
 	_materiale()
 	_mediu()
 	_insula()
+	_teren()
+	_inel1()
 	_ceata_cascade()
 	_portal()
 	_halouri()
@@ -296,6 +313,167 @@ func _clasa(nume: String) -> String:
 	return "Insula_restul"
 
 
+# --------------------------------------------------------------------------- Inelul 1 (v4): terenul nou
+## Terenul nou de lângă drum (teren.glb, din blender/insula1/v4_inel1.py): aceeași formă ca insula veche, dar cu
+## texturi tileable de 512 px/m pe triplanar, AO și umbre de contact pe vârfuri.
+func _teren() -> void:
+	var sc := load(TEREN) as PackedScene
+	if sc == null:
+		push_warning("Insula 1: lipsește " + TEREN)
+		return
+	_m_teren = ShaderMaterial.new()
+	_m_teren.shader = SH_TEREN
+	for k in ["iarba", "pavaj", "pamant", "stanca", "muschi"]:
+		var f := "piatra" if k == "pavaj" else k
+		_m_teren.set_shader_parameter("tex_" + k, load(TEX_TEREN + f + "_albedo.png"))
+	for k in ["iarba", "pavaj", "pamant", "stanca"]:
+		var f := "piatra" if k == "pavaj" else k
+		_m_teren.set_shader_parameter("norm_" + k, load(TEX_TEREN + f + "_normal.png"))
+	_m_teren.set_shader_parameter("tex_zgomot", load(TEX_TEREN + "zgomot.png"))
+	_m_teren.set_shader_parameter("tex_checker", load(TEX_TEREN + "checker_1024.png"))
+	_m_teren.set_shader_parameter("normale", calitate >= 1)
+	_m_teren.set_shader_parameter("mod_debug", mod_debug)
+	var t := sc.instantiate() as Node3D
+	t.name = "Teren"
+	add_child(t)
+	for n in t.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		mi.material_override = _m_teren
+		# terenul primește umbre, dar nu le aruncă (e dedesubtul a tot; economisim o desenare pe treaptă de umbră)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func _plasa(nume: String) -> Mesh:
+	if _plase.has(nume):
+		return _plase[nume]
+	var m: Mesh = null
+	var sc := load(RECUZITA + nume + ".glb") as PackedScene
+	if sc:
+		var nod := sc.instantiate()
+		for n in nod.find_children("*", "MeshInstance3D", true, false):
+			m = (n as MeshInstance3D).mesh
+			break
+		nod.free()
+	_plase[nume] = m
+	return m
+
+
+func _baza(rot: float, scara: float) -> Basis:
+	return Basis(Vector3.UP, rot).scaled(Vector3.ONE * scara)
+
+
+## MultiMesh pentru o piesă repetată (un singur apel de desenare); culori opțional (flori, pietricele)
+func _multi(nume: String, transformari: Array, culori: Array = [], umbre := false) -> MultiMeshInstance3D:
+	var plasa := _plasa(nume)
+	if plasa == null or transformari.is_empty():
+		return null
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = not culori.is_empty()
+	mm.mesh = plasa
+	mm.instance_count = transformari.size()
+	for i in transformari.size():
+		mm.set_instance_transform(i, transformari[i])
+		if mm.use_colors:
+			mm.set_instance_color(i, culori[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "Inel1_" + nume
+	mmi.multimesh = mm
+	mmi.material_override = _m_recuzita
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if umbre and calitate >= 1 else \
+		GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	return mmi
+
+
+## Recuzita nouă a Inelului 1 (godot/assets/models/inel1, din blender/insula1/v4_recuzita.py), la pozițiile din
+## data/inel1.gd: copacii (separat, ca să se poată estompa lin), restul în MultiMesh-uri.
+func _inel1() -> void:
+	_m_recuzita = ShaderMaterial.new()
+	_m_recuzita.shader = SH_RECUZITA
+	_m_recuzita.set_shader_parameter("animat", not miscare_redusa)
+	_m_recuzita.set_shader_parameter("vant_activ", not miscare_redusa)
+	_m_recuzita_estompat = ShaderMaterial.new()
+	_m_recuzita_estompat.shader = SH_RECUZITA_ESTOMPAT
+	_m_recuzita_estompat.set_shader_parameter("animat", not miscare_redusa)
+	_m_recuzita_estompat.set_shader_parameter("vant_activ", not miscare_redusa)
+	# copacii: câte un nod, ca să se estompeze lin când ajung între cameră și Orion
+	for c in Inel1.COPACI:
+		var plasa := _plasa(String(c[0]))
+		if plasa == null:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = "Copac_" + String(c[0])
+		mi.mesh = plasa
+		mi.transform = Transform3D(_baza(float(c[2]), float(c[3])), c[1])
+		mi.set_instance_shader_parameter("vant_obiect", 1.0)
+		if calitate == 0:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		estompabil(mi, _m_recuzita, _m_recuzita_estompat)
+	# tufe (3 variante), felinare, cristale (3 variante), butoaie, lăzi
+	var tufe := [[], [], []]
+	for t in Inel1.TUFE:
+		(tufe[int(t[3])] as Array).append(Transform3D(_baza(float(t[1]), float(t[2])), t[0]))
+	for k in 3:
+		_multi("tufa_%d" % k, tufe[k], [], true)
+	var fel: Array = []
+	for p in Inel1.FELINARE:
+		fel.append(Transform3D(Basis.IDENTITY, p))
+	var mf := _multi("felinar", fel, [], true)
+	var cri := [[], [], []]
+	for c in Inel1.CRISTALE:
+		(cri[int(c[3])] as Array).append(Transform3D(_baza(float(c[1]), float(c[2])), c[0]))
+	for k in 3:
+		_multi("cristal_%d" % k, cri[k])
+	var but: Array = []
+	for b in Inel1.BUTOAIE:
+		but.append(Transform3D(_baza(float(b[1]), float(b[2])), b[0]))
+	_multi("butoi", but, [], true)
+	var laz: Array = []
+	for b in Inel1.LAZI:
+		laz.append(Transform3D(_baza(float(b[1]), float(b[2])), b[0]))
+	_multi("lada", laz, [], true)
+	# garduri: segmentul de 1,2 m se întinde între capete
+	var gar: Array = []
+	for g in Inel1.GARDURI:
+		var a: Vector3 = g[0]
+		var b: Vector3 = g[1]
+		var d := b - a
+		var lung := Vector2(d.x, d.z).length()
+		# scara pe lungimea segmentului, în axa lui (nu în axa lumii: Basis.scaled ar întinde pe X-ul lumii)
+		var bz := Basis(Vector3.UP, atan2(-d.z, d.x)) * Basis.from_scale(Vector3(lung / 1.2, 1.0, 1.0))
+		gar.append(Transform3D(bz, Vector3(a.x, minf(a.y, b.y), a.z)))
+	_multi("gard", gar, [], true)
+	# presărate: smocuri de iarbă, flori (culori pe instanță), pietricele; la calitatea Mic, jumătate
+	var pas := 2 if calitate == 0 else 1
+	_multi("iarba_smoc", _transformari(Inel1.IARBA, pas))
+	var tf := _transformari(Inel1.FLORI, pas)
+	var cf: Array = []
+	for i in tf.size():
+		cf.append((CULORI_FLORI[i % CULORI_FLORI.size()] as Color).srgb_to_linear())
+	_multi("floare", tf, cf)
+	var tp := _transformari(Inel1.PIETRICELE, pas)
+	var cp: Array = []
+	for i in tp.size():
+		var v := 0.85 + 0.3 * fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0)
+		cp.append(Color(v, v * 0.98, v * 1.02))
+	_multi("pietricica", tp, cp)
+	if mf:
+		mf.set_instance_shader_parameter("vant_obiect", 0.0)
+
+
+func _transformari(date: Array, pas: int) -> Array:
+	var out: Array = []
+	var i := 0
+	while i + 4 < date.size():
+		if (i / 5) % pas == 0:
+			out.append(Transform3D(_baza(float(date[i + 3]), float(date[i + 4])),
+				Vector3(float(date[i]), float(date[i + 1]), float(date[i + 2]))))
+		i += 5
+	return out
+
+
 # ceață la baza cascadelor; cele care cad în gol se topesc într-un nor mai mare
 func _ceata_cascade() -> void:
 	if calitate == 0:
@@ -355,7 +533,12 @@ func _portal() -> void:
 
 # halouri calde la flăcările felinarelor (un singur MultiMesh)
 func _halouri() -> void:
-	if Info.FLACARI.is_empty():
+	# v4: flăcările rămase pe clădirile vechi + felinarele noi de pe stâlpi (Inelul 1)
+	var flacari: Array[Vector3] = []
+	flacari.append_array(Inel1.FLACARI_RAMASE)
+	for p in Inel1.FELINARE:
+		flacari.append((p as Vector3) + Vector3(0.0, 1.36, 0.0))
+	if flacari.is_empty():
 		return
 	var m := ShaderMaterial.new()
 	m.shader = SH_HALOU
@@ -366,9 +549,9 @@ func _halouri() -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = q
-	mm.instance_count = Info.FLACARI.size()
-	for i in Info.FLACARI.size():
-		mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, Info.FLACARI[i] + Vector3(0.0, 0.05, 0.0)))
+	mm.instance_count = flacari.size()
+	for i in flacari.size():
+		mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, flacari[i] + Vector3(0.0, 0.05, 0.0)))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Halouri"
 	mmi.multimesh = mm

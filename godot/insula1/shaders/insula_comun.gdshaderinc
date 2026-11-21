@@ -5,6 +5,8 @@
 //   nuanțare: gama, saturație, contrast (insula avea culorile spălate față de Orion)
 // v4: fără destrămare în puncte. Ce poate ajunge între cameră și Orion (barca, copacii, tufele, felinarele,
 // clădirile ca piese separate) primește pe rând varianta estompată, cu `alfa` care scade lin (insula1.gd).
+#include "res://insula1/shaders/umbre_nori.gdshaderinc"
+
 uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic;
 uniform sampler2D tex_orm : hint_default_black, filter_linear_mipmap;
 uniform sampler2D tex_detaliu : hint_default_white, filter_linear_mipmap, repeat_enable;  // R stâncă, G iarbă, B granulație
@@ -80,7 +82,7 @@ void fragment() {
 		puls = 0.65 + 0.35 * sin(TIME * 1.7 + faza * 0.37);
 		k = mix(palpaie, puls, rece);
 	}
-	ALBEDO = alb * ao;
+	ALBEDO = alb * ao * umbra_nori(v_pos);
 	ROUGHNESS = orm.g;
 	METALLIC = orm.b;
 	EMISSION = alb * orm.r * putere_lumina * k + alb * lumina_proprie * puls;

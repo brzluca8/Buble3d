@@ -54,3 +54,11 @@ orion_pozitie={
 "type": "vec3",
 "value": Vector3(0, 0, 0)
 }
+nori_deplasare={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+nori_umbra={
+"type": "float",
+"value": 0.0
+}

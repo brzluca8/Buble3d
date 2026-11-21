@@ -36,7 +36,7 @@ ap.add_argument("--out", default=os.path.join(ROOT, "docs", "shots"))
 ap.add_argument("--tag", default="")
 ap.add_argument("--prefix", default="insula_v3_A_", help="începutul numelui capturii (v4: insula_v4_)")
 ap.add_argument("--fara-casute", action="store_true")
-args = ap.parse_args(argv)
+args = ap.parse_known_args(argv)[0]  # v4: previzualizare_v4.py îl importă, cu argumentele lui
 os.makedirs(args.out, exist_ok=True)
 TILES = json.load(open(os.path.join(ROOT, "blender", "out_insula1", "insula1_casute.json")))
 INFO = open(os.path.join(GODOT, "insula1", "data", "insula1_info.gd")).read()
@@ -361,7 +361,7 @@ def billboard(mat, loc, sx, sy, cam):
 
 
 # ----------------------------------------------------------------------------- scena
-def build(cam):
+def build(cam, flacari=None):
     obs = import_glb(os.path.join(GODOT, "assets", "models", "insula1", "insula1.glb"))
     wm = water_material()
     alb = orm = None
@@ -423,7 +423,7 @@ def build(cam):
     q.visible_shadow = False
     # halourile felinarelor (puncte calde)
     hm = emit_material("halou", srgb2lin((1.0, 0.70, 0.32)), 6.0)
-    for p in vec3s("FLACARI"):
+    for p in (vec3s("FLACARI") if flacari is None else flacari):
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.07, segments=10, ring_count=6, location=g2b(p) + Vector((0, 0, 0.05)))
         h = bpy.context.active_object
         h.data.materials.append(hm)
