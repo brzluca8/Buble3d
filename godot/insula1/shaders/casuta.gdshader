@@ -1,6 +1,8 @@
 // Insula 1: căsuța de joc. Piatră bej cu gravura în romb (textură + normal map pe UV), chenar auriu
 // (COLOR.r = 1), AO în COLOR.g. `aprindere` e un uniform pe instanță: căsuța se aprinde scurt la aterizare;
 // `culoare_tip` colorează aprinderea (și inelul căsuțelor speciale).
+// v4: piatra nu mai trece de albedo 0,85 (nu se mai arde în alb), gravura se vede prin normal map (adâncime mai mare),
+// iar luciul pietrei e mic (reflexia soarelui o albea).
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
@@ -8,18 +10,21 @@ uniform sampler2D tex_piatra : source_color, filter_linear_mipmap_anisotropic;
 uniform sampler2D norm_piatra : hint_normal, filter_linear_mipmap_anisotropic;
 uniform vec3 culoare_aur : source_color = vec3(0.98, 0.76, 0.30);
 uniform bool normale = true;
+uniform float albedo_max = 0.85;
+uniform float adancime_gravura = 1.7;
 instance uniform float aprindere = 0.0;
 instance uniform vec3 culoare_tip = vec3(1.0, 0.86, 0.5);
 
 void fragment() {
 	float aur = COLOR.r;
-	vec3 piatra = texture(tex_piatra, UV).rgb * COLOR.g;
+	vec3 piatra = min(texture(tex_piatra, UV).rgb, vec3(albedo_max)) * COLOR.g;
 	ALBEDO = mix(piatra, culoare_aur, aur);
 	METALLIC = aur * 0.85;
-	ROUGHNESS = mix(0.82, 0.32, aur);
+	ROUGHNESS = mix(0.88, 0.32, aur);
+	SPECULAR = mix(0.3, 0.5, aur);
 	if (normale) {
 		NORMAL_MAP = texture(norm_piatra, UV).rgb;
-		NORMAL_MAP_DEPTH = 0.8 * (1.0 - aur);
+		NORMAL_MAP_DEPTH = adancime_gravura * (1.0 - aur);
 	}
 	EMISSION = culoare_tip * aprindere * 0.9;
 }

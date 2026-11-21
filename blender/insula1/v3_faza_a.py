@@ -14,9 +14,12 @@ imbunatateste.py) și o pregătește pentru joc, fără credite și fără să-i
       completate la 4 pale (Tripo a făcut doar 2, în „V”);
   A8  discurile căsuțelor coapte în model sunt scoase (le înlocuiesc căsuțele Tile.tscn din joc);
   A9  ocluzie ambientală (AO) coaptă în culorile de vârf;
-  perf: simplificare pe clase (stâncile și dedesubtul mai mult), ca să intre în bugetul de triunghiuri.
+  perf: simplificare (stâncile și dedesubtul mai mult, detaliile mici deloc), ca să intre în bugetul de triunghiuri.
+        v4: simplificarea se face pe tot mesh-ul, ÎNAINTE de tăierea pe clase. În v3 fiecare clasă era simplificată
+        separat, după tăiere, iar marginile dintre clase ieșeau diferit pe cele două părți: fante de până la ~7 cm
+        prin care se vedea fundalul întunecat (liniile negre din joc).
 
-    python blender/insula1/v3_faza_a.py -- [--doar-clase] [--fara-simplificare]
+    python blender/insula1/v3_faza_a.py -- [--doar-clase] [--fara-simplificare] [--doar-simplificare]
 
 Ieșiri: godot/assets/models/insula1/insula1.glb, godot/insula1/data/insula1_info.gd,
 docs/shots/insula_v3_A_clase_*.png (verificarea clasificării).
@@ -52,6 +55,9 @@ ap.add_argument("--shots", default=os.path.join(ROOT, "docs/shots"))
 ap.add_argument("--doar-clase", action="store_true", help="doar clasificarea și imaginile de verificare")
 ap.add_argument("--fara-simplificare", action="store_true")
 ap.add_argument("--fara-ao", action="store_true")
+ap.add_argument("--doar-simplificare", action="store_true", help="se oprește după simplificare (pentru reglaj)")
+ap.add_argument("--fara-imagini", action="store_true", help="fără imaginea de verificare a claselor (e deja făcută)")
+ap.add_argument("--pondere-factor", type=float, default=4.0, help="cât de tare sunt ferite clasele cu pondere mică")
 args = ap.parse_args(argv)
 TILES = json.load(open(os.path.join(ROOT, "blender", "out_insula1", "insula1_casute.json")))
 
@@ -414,7 +420,8 @@ def render_clase(tag):
     return p
 
 
-render_clase("")
+if not args.fara_imagini:
+    render_clase("")
 if args.doar_clase:
     sys.exit(0)
 # nuferii: modelul are doar câteva pete (sub 20 de fețe); nu merită un obiect separat
@@ -450,6 +457,54 @@ gone = separa(ob, cls == CI["casute"], "casute_vechi")
 bpy.data.objects.remove(gone)
 cls = np.empty(len(me.polygons), np.int32)
 me.attributes["clasa"].data.foreach_get("value", cls)
+
+# ============================================================================= perf: simplificare, pe tot mesh-ul (v4)
+# o singură simplificare, înainte de tăierea pe clase: marginile dintre clase rămân muchii comune, deci după tăiere
+# cele două părți au exact aceleași vârfuri (fără fante). Cât se simplifică fiecare clasă: o grupă de vârfuri
+# (1 = se simplifică liber, 0 = ferit), ca țintele pe clase de dinainte să rămână aproximativ aceleași.
+RATIO = {"stanci": 0.35, "restul": 0.6, "iarba": 0.5, "frunzis": 0.6, "flori": 0.7}
+PONDERE = {"stanci": 1.0, "restul": 0.7, "iarba": 0.85, "frunzis": 0.7, "flori": 0.5}
+tri_inainte = len(me.polygons)
+if not args.fara_simplificare:
+    bpy.ops.object.select_all(action="DESELECT")
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    # sudăm vârfurile (UV-urile rămân pe colțuri), ca simplificarea să vadă cusăturile UV și marginile ca muchii comune
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.remove_doubles(threshold=1e-5)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    cls = np.empty(len(me.polygons), np.int32)
+    me.attributes["clasa"].data.foreach_get("value", cls)
+    nume_cls = np.array([n for n, _ in CLASE])
+    lt = np.empty(len(me.polygons), np.int32)
+    me.polygons.foreach_get("loop_total", lt)
+    lvi = np.empty(len(me.loops), np.int32)
+    me.loops.foreach_get("vertex_index", lvi)
+    w_f = np.array([PONDERE.get(n, 0.0) for n in nume_cls])[cls]
+    w_v = np.ones(len(me.vertices), np.float32)
+    np.minimum.at(w_v, lvi, np.repeat(w_f, lt).astype(np.float32))  # vârful de pe margine ia ponderea mai mică
+    vg = ob.vertex_groups.new(name="simplificare")
+    for val in np.unique(w_v):
+        vg.add(np.where(w_v == val)[0].tolist(), float(val), "REPLACE")
+    tinta = {n: int(round((cls == CI[n]).sum() * RATIO.get(n, 1.0))) for n, _ in CLASE if (cls == CI[n]).any()}
+    md = ob.modifiers.new("simplificare", "DECIMATE")
+    md.decimate_type = "COLLAPSE"
+    md.ratio = sum(tinta.values()) / len(me.polygons)
+    md.use_collapse_triangulate = True
+    md.vertex_group = "simplificare"
+    md.vertex_group_factor = args.pondere_factor
+    n0 = {n: int((cls == CI[n]).sum()) for n in tinta}
+    bpy.ops.object.modifier_apply(modifier=md.name)
+    if "simplificare" in ob.vertex_groups:
+        ob.vertex_groups.remove(ob.vertex_groups["simplificare"])
+    cls = np.empty(len(me.polygons), np.int32)
+    me.attributes["clasa"].data.foreach_get("value", cls)
+    for n in tinta:
+        log("[perf] %-9s %6d -> %6d triunghiuri (ținta %6d)" % (n, n0[n], int((cls == CI[n]).sum()), tinta[n]))
+    log("[perf] tot mesh-ul: %d -> %d (ținta %d, factor %.1f)" % (tri_inainte, len(me.polygons), sum(tinta.values()), args.pondere_factor))
+    if args.doar_simplificare:
+        sys.exit(0)
 
 # ============================================================================= A9: AO coaptă în culorile de vârf (pe toată insula)
 ao = None
@@ -577,29 +632,6 @@ if "barca" in objs:
     BARCA = dict(pivot=piv, ax_lung=np.array([ax[0], ax[1], 0.0]))
     log("[A4] barca: pivot %s, %d fețe" % (np.round(piv, 2).tolist(), len(bo.data.polygons)))
 
-# ============================================================================= perf: simplificare pe clase
-RATIO = {"stanci": 0.35, "restul": 0.6, "iarba": 0.5, "frunzis": 0.6, "flori": 0.7}
-tri_inainte = sum(len(o_.data.polygons) for o_ in scene.objects if o_.type == "MESH" and not o_.name.startswith(("Apa", "Cascade")))
-if not args.fara_simplificare:
-    for n, r in RATIO.items():
-        o_ = objs.get(n)
-        if o_ is None:
-            continue
-        bpy.ops.object.select_all(action="DESELECT")
-        o_.select_set(True)
-        bpy.context.view_layer.objects.active = o_
-        # sudăm vârfurile (păstrând UV-urile pe colțuri), ca simplificarea să vadă cusăturile UV și să le păstreze
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.remove_doubles(threshold=1e-5)
-        bpy.ops.object.mode_set(mode="OBJECT")
-        n0 = len(o_.data.polygons)
-        md = o_.modifiers.new("simplificare", "DECIMATE")
-        md.decimate_type = "COLLAPSE"
-        md.ratio = r
-        md.use_collapse_triangulate = True
-        bpy.ops.object.modifier_apply(modifier=md.name)
-        log("[perf] %-8s %6d -> %6d triunghiuri" % (n, n0, len(o_.data.polygons)))
 # normale netede, despărțite la muchiile ascuțite (simplificarea strică normalele salvate din fișier)
 for o_ in scene.objects:
     if o_.type != "MESH" or o_.name.startswith(("Apa", "Cascade")):

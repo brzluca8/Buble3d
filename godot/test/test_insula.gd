@@ -3,7 +3,7 @@ extends Node3D
 ## „Run Current Scene”, F6). Nu atinge jocul; încarcă doar insula și pe Orion pe START.
 ##
 ## Butoane:
-##   Cadru      - aproape (camera de joc), captura 1 și captura 2 (unghiurile capturilor tale), mediu, panoramă
+##   Cadru      - joc nou (D4), joc vechi, aproape (aterizare), captura 1 și 2 (unghiurile capturilor tale), mediu, panoramă
 ##   Mod        - normal, tablă de șah (densitatea texturii), clase (fiecare clasă o culoare), AO, normale
 ##   Calitate   - Mic / Mediu / Mare (reface insula)
 ##   Umbre, Estompare, Mișcare redusă - comutatoare
@@ -13,12 +13,15 @@ extends Node3D
 const INSULA := preload("res://insula1/insula1.tscn")
 const ORION_PATH := "res://assets/models/orion.glb"
 const Board := preload("res://data/insula1_casute.gd")
+# nume, yaw (null = în spatele lui Orion, pe direcția drumului, ca în joc), pitch, distanță, metri priviți înainte
 const CADRE := [
-	["aproape (joc)", 0.0, 0.85, 16.0],
-	["captura 1", 0.0, 0.42, 12.5],
-	["captura 2", -0.95, 0.5, 7.0],
-	["mediu", 0.0, 0.85, 28.0],
-	["panoramă", 0.0, 0.92, 47.0],
+	["joc nou (D4)", null, 0.87, 16.0, 3.0],
+	["joc vechi", 0.0, 0.85, 16.0, 0.0],
+	["aproape (aterizare)", null, 0.55, 6.0, 0.0],
+	["captura 1", 0.0, 0.42, 12.5, 0.0],
+	["captura 2", -0.95, 0.5, 7.0, 0.0],
+	["mediu", 0.0, 0.85, 28.0, 0.0],
+	["panoramă", 0.0, 0.92, 47.0, 0.0],
 ]
 const MODURI := ["normal", "tablă de șah", "clase", "AO", "normale"]
 
@@ -87,13 +90,26 @@ func _numara_materiale(n: Node) -> int:
 func _pune_camera() -> void:
 	var c: Array = CADRE[cadru]
 	var focus := Board.CASUTE[0] + Vector3(0.0, 0.7, 0.0)
-	if cadru == 3:
+	var nume := String(c[0])
+	if nume == "mediu":
 		focus = focus.lerp(Vector3(0.0, -1.0, 0.0), 0.45)
-	elif cadru == 4:
+	elif nume == "panoramă":
 		focus = Vector3(0.6, -2.4, -0.2)
-	var yaw: float = c[1]
+	var yaw := 0.0
+	if c[1] == null:
+		# ca în joc (insula.gd): spre mijlocul următoarelor 6 căsuțe
+		var m := Vector3.ZERO
+		for j in range(1, 7):
+			m += Board.CASUTE[j % Board.CASUTE.size()]
+		m = m / 6.0 - Board.CASUTE[0]
+		m.y = 0.0
+		m = m.normalized()
+		yaw = atan2(-m.x, -m.z)
+	else:
+		yaw = float(c[1])
 	var pitch: float = c[2]
 	var dist: float = c[3]
+	focus += Vector3(-sin(yaw), 0.0, -cos(yaw)) * float(c[4])
 	var dir := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
 	cam.position = focus + dir * dist
 	cam.look_at(focus, Vector3.UP)

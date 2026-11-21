@@ -71,4 +71,4 @@ const FLACARI: Array[Vector3] = [
 	Vector3(-2.935, 3.166, -7.138),
 ]
 ## obiectele insulei pe clase (numele din GLB), cu triunghiurile după simplificare
-const CLASE := {"Insula_restul": 43226, "Apa": 1368, "Cascade": 1075, "Insula_stanci": 17046, "Insula_iarba": 5604, "Insula_frunzis": 27918, "Insula_flori": 4455, "Insula_panze": 161, "Insula_cristale": 423, "Insula_felinare": 2412, "Insula_portal": 1670, "Barca": 1562, "Moara_pale": 726}
+const CLASE := {"Insula_restul": 44994, "Apa": 1368, "Cascade": 1075, "Insula_stanci": 14394, "Insula_iarba": 6422, "Insula_frunzis": 27004, "Insula_flori": 5269, "Insula_panze": 161, "Insula_cristale": 423, "Insula_felinare": 2388, "Insula_portal": 1666, "Barca": 1552, "Moara_pale": 726}

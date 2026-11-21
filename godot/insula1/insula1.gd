@@ -5,7 +5,7 @@ extends Node3D
 ## material (insula.gdshader); diferențele (detaliul, vântul, lumina proprie) sunt uniforme pe instanță.
 ## Aici: lumina și cerul, apa care curge, moara care se rotește, barca care se leagănă, halouri la felinare,
 ## vârtejul portalului, cele 22 de căsuțe noi (Casuta.tscn) peste discurile vechi, nori, insulițe cu cascade,
-## petale, fluturi, păsări și estomparea a ce ajunge între cameră și Orion.
+## petale, fluturi, păsări și estomparea lină (pe obiect, fără puncte) a ce ajunge între cameră și Orion.
 ## Logica jocului (zar, mutare, date, UI, cameră) rămâne în insula.gd; de aici se folosește doar on_landed(i).
 ##
 ## Setări (Project Settings > buble/..., sau din inspector):
@@ -20,6 +20,7 @@ const CasutaScene := preload("res://insula1/casuta/Casuta.tscn")
 const MODEL := "res://assets/models/insula1/insula1.glb"
 const FUNDAL := "res://assets/models/fundal/"
 const SH_INSULA := preload("res://insula1/shaders/insula.gdshader")
+const SH_INSULA_ESTOMPAT := preload("res://insula1/shaders/insula_estompat.gdshader")
 const SH_APA := preload("res://insula1/shaders/water_flow.gdshader")
 const SH_PORTAL := preload("res://insula1/shaders/portal_vartej.gdshader")
 const SH_CASUTA := preload("res://insula1/shaders/casuta.gdshader")
@@ -27,6 +28,9 @@ const SH_HALOU := preload("res://insula1/shaders/halou.gdshader")
 const SH_CER := preload("res://insula1/shaders/cer.gdshader")
 const TEX := "res://insula1/textures/"
 const VANT_DIRECTIE := Vector2(0.8, -0.6)
+const ESTOMPARE_ALFA := 0.22  # cât de transparent devine un obiect care acoperă pe Orion
+const ESTOMPARE_SECUNDE := 0.35  # cât durează trecerea (lină, fără puncte)
+const ESTOMPARE_REVENIRE := 0.5  # histerezis: obiectul revine abia după atâtea secunde în care nu mai acoperă
 const SCALA_CASUTA := 1.1  # căsuța nouă (raza 0,78 m) acoperă marginea discului vechi (raza 0,76 m)
 ## clasele insulei: [detaliu (0 fără, 1 stâncă, 2 iarbă, 3 granulație), vânt, lumină proprie, culoare de verificare]
 const CLASE := {
@@ -52,6 +56,8 @@ var _t := 0.0
 var _env: Environment
 var _soare: DirectionalLight3D
 var _m_insula: ShaderMaterial
+var _m_insula_estompat: ShaderMaterial
+var _estompabile: Array = []  # [obiect, material opac, material estompat, alfa, secunde rămase de estompare]
 var _m_apa: ShaderMaterial
 var _m_particule: StandardMaterial3D
 var _m_corp: StandardMaterial3D
@@ -107,7 +113,6 @@ func _materiale() -> void:
 	_m_insula.set_shader_parameter("animat", not miscare_redusa)
 	_m_insula.set_shader_parameter("vant_activ", calitate >= 1 and not miscare_redusa)
 	_m_insula.set_shader_parameter("detaliu_activ", calitate >= 1)
-	_m_insula.set_shader_parameter("estompare", estompare)
 	_m_insula.set_shader_parameter("mod_debug", mod_debug)
 	# nuanțare măsurată pe captura din Godot: insula era mai deschisă (0,64) și mult mai puțin saturată (0,23)
 	# decât blana lui Orion (0,57 și 0,55); o aducem spre contrastul și culorile lui
@@ -185,8 +190,9 @@ func _mediu() -> void:
 	_soare.light_color = Color("ffe7c4")
 	_soare.light_energy = 1.4
 	_soare.shadow_enabled = calitate >= 1
-	_soare.shadow_bias = 0.04
-	_soare.shadow_normal_bias = 1.2
+	# valorile implicite din Godot: cu cele micșorate în v3 (0,04 / 1,2) apăreau dungi de umbră pe fețele înclinate
+	_soare.shadow_bias = 0.1
+	_soare.shadow_normal_bias = 2.0
 	_soare.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	_soare.directional_shadow_max_distance = 45.0 if calitate >= 2 else 30.0
 	add_child(_soare)
@@ -238,6 +244,48 @@ func _insula() -> void:
 		elif nume.begins_with("Barca"):
 			_barca = mi
 			_barca_baza = mi.transform
+	# varianta estompată are aceiași parametri; o primesc pe rând doar obiectele care acoperă pe Orion
+	_m_insula_estompat = ShaderMaterial.new()
+	_m_insula_estompat.shader = SH_INSULA_ESTOMPAT
+	for u in SH_INSULA.get_shader_uniform_list():
+		var nume_u: String = u["name"]
+		_m_insula_estompat.set_shader_parameter(nume_u, _m_insula.get_shader_parameter(nume_u))
+	if _barca:
+		estompabil(_barca as GeometryInstance3D, _m_insula, _m_insula_estompat)
+
+
+## Un obiect care poate ajunge între cameră și Orion: cât îl acoperă, devine transparent lin (alfa pe instanță),
+## apoi revine. Merge pentru obiecte separate (barca, copaci, tufe, felinare, clădiri ca piese), nu pentru clasele
+## întinse pe toată insula.
+func estompabil(g: GeometryInstance3D, opac: Material, estompat: Material) -> void:
+	g.material_override = opac
+	_estompabile.append([g, opac, estompat, 1.0, 0.0])
+
+
+func _estompeaza(delta: float) -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var a := cam.global_position
+	var b := (_orion.global_position if _orion else Board.CASUTE[0]) + Vector3(0.0, 0.6, 0.0)
+	for e in _estompabile:
+		var g: GeometryInstance3D = e[0]
+		if not is_instance_valid(g):
+			continue
+		var acopera := false
+		if estompare and g.is_visible_in_tree():
+			var box: AABB = (g.global_transform * g.get_aabb()).grow(0.1)
+			acopera = box.intersects_segment(a, b) != null or box.grow(0.6).has_point(a)
+		e[4] = ESTOMPARE_REVENIRE if acopera else maxf(0.0, float(e[4]) - delta)
+		var tinta := ESTOMPARE_ALFA if float(e[4]) > 0.0 else 1.0
+		var alfa := move_toward(float(e[3]), tinta, delta * (1.0 - ESTOMPARE_ALFA) / ESTOMPARE_SECUNDE)
+		e[3] = alfa
+		if alfa < 0.999:
+			if g.material_override != e[2]:
+				g.material_override = e[2]
+			g.set_instance_shader_parameter("alfa", alfa)
+		elif g.material_override != e[1]:
+			g.material_override = e[1]
 
 
 # numele din GLB pot primi sufixe la import („Insula_iarba_001”): păstrăm doar prefixul clasei
@@ -530,6 +578,7 @@ func _process(delta: float) -> void:
 			_orion = o
 	if _orion:
 		RenderingServer.global_shader_parameter_set("orion_pozitie", _orion.global_position)
+	_estompeaza(delta)
 	if not miscare_redusa:
 		if _moara:
 			_moara.rotate(Info.MOARA_AX.normalized(), -delta * (0.55 + 0.35 * vant))

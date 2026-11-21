@@ -61,11 +61,11 @@ func configureaza(tip_casuta: String, mat_piatra: Material) -> void:
 
 func _adauga_iconita(c3: Vector3) -> void:
 	var q := QuadMesh.new()
-	q.size = Vector2(0.78, 0.78)
+	q.size = Vector2(0.98, 0.98)  # v4: mai mare, ca să se citească din camera de joc
 	var mi := MeshInstance3D.new()
 	mi.mesh = q
 	mi.rotation_degrees = Vector3(-90.0, 0.0, 0.0)  # culcat pe piatră, cu fața în sus
-	mi.position = Vector3(0.0, 0.012, 0.0)
+	mi.position = Vector3(0.0, 0.014, 0.0)
 	mi.material_override = _mat_semn
 	mi.set_instance_shader_parameter("celula", float(Tipuri.ICONITA.get(tip, 0)))
 	mi.set_instance_shader_parameter("culoare", c3)
@@ -75,8 +75,8 @@ func _adauga_iconita(c3: Vector3) -> void:
 
 func _adauga_inel(c3: Vector3) -> void:
 	var t := TorusMesh.new()
-	t.inner_radius = 0.80
-	t.outer_radius = 0.88
+	t.inner_radius = 0.81
+	t.outer_radius = 0.92
 	t.rings = 48
 	t.ring_segments = 6
 	_inel = MeshInstance3D.new()

@@ -14,6 +14,16 @@ const HOP_HEIGHT := 0.7  # metri
 const DIST_MIN := 5.0
 const DIST_MAX := 55.0
 const ISLAND_CENTRE := Vector3(0.0, -1.5, 0.0)
+# camera de joc: valori implicite (D4). Controalele (tragere, ciupire, rotiță) sunt aceleași ca înainte.
+const CAM_PITCH := 0.87  # ~50° în jos
+const CAM_DIST := 16.0  # cadrul de joc: se văd 6 căsuțe înainte (cât arată zarul cel mai mare)
+const CAM_INAINTE := 3.0  # metri pe drum: camera privește înaintea lui Orion, Orion stă în sfertul de jos al ecranului
+const CAM_CASUTE_INAINTE := 6  # câte căsuțe înainte arată cadrul de joc
+const CAM_URMARESTE_DRUMUL := true  # cât sare Orion, camera se rotește lin în spatele lui, pe direcția drumului
+# cadrul apropiat (cel de dinainte): la zoom maxim și câteva secunde după aterizare
+const APROAPE_DIST := 6.0
+const APROAPE_PITCH := 0.55
+const APROAPE_SECUNDE := 2.6
 
 var tiles: Array[Vector3] = []
 var orion: Node3D
@@ -35,12 +45,15 @@ var flash_t := -1.0
 
 # cameră
 var yaw := 0.0
-var pitch := 0.85
-var dist := 16.0
+var pitch := CAM_PITCH
+var dist := CAM_DIST
 var focus := Vector3.ZERO
 var touches := {}
 var pinch_dist := 0.0
 var last_input_ms := -100000
+var urmareste := CAM_URMARESTE_DRUMUL  # se oprește când tragi de cameră; repornește la următoarea aruncare
+var aproape_k := 0.0  # 0 cadrul de joc, 1 cadrul apropiat (după aterizare)
+var aproape_t := -1.0  # secunde rămase în cadrul apropiat
 
 # interfață
 var btn_roll: Button
@@ -55,7 +68,9 @@ func _ready() -> void:
 	_build_world()
 	_load_models()
 	_build_ui()
-	focus = _orion_focus()
+	if CAM_URMARESTE_DRUMUL and not tiles.is_empty():
+		yaw = _yaw_drum(tile_index)
+	focus = _focus_dorit()
 	_update_info()
 
 
@@ -197,6 +212,8 @@ func _on_roll() -> void:
 	roll_tick = 0.0
 	roll_value = rng.randi_range(1, 6)
 	btn_roll.disabled = true
+	aproape_t = -1.0
+	urmareste = CAM_URMARESTE_DRUMUL
 
 
 # --------------------------------------------------------------------------- joc: zar, sărituri
@@ -258,6 +275,7 @@ func _update_hop(delta: float) -> void:
 			_start_hop()
 		else:
 			btn_roll.disabled = false
+			aproape_t = APROAPE_SECUNDE  # cadrul apropiat la aterizare
 		return
 	var p := hop_t
 	orion.position = a.lerp(b, p) + Vector3.UP * ((HOP_HEIGHT + maxf(0.0, d.y)) * 4.0 * p * (1.0 - p))
@@ -275,7 +293,52 @@ func _orion_focus() -> Vector3:
 	return ISLAND_CENTRE
 
 
+func _directie_drum(i: int) -> Vector3:
+	# direcția (orizontală) spre mijlocul următoarelor căsuțe: acolo privește cadrul de joc
+	if tiles.is_empty():
+		return Vector3.FORWARD
+	var c := Vector3.ZERO
+	for j in range(1, CAM_CASUTE_INAINTE + 1):
+		c += tiles[(i + j) % tiles.size()]
+	c = c / float(CAM_CASUTE_INAINTE) - tiles[i]
+	c.y = 0.0
+	return c.normalized() if c.length() > 0.01 else Vector3.FORWARD
+
+
+func _yaw_drum(i: int) -> float:
+	var d := _directie_drum(i)
+	return atan2(-d.x, -d.z)  # camera stă în spatele lui Orion și privește de-a lungul drumului
+
+
+func _focus_dorit() -> Vector3:
+	# cadrul de joc privește puțin înaintea lui Orion, pe drum; cadrul apropiat și zoom-ul maxim, chiar pe Orion
+	var z := clampf((dist - DIST_MIN) / (DIST_MAX - DIST_MIN), 0.0, 1.0)
+	var inainte := CAM_INAINTE * smoothstep(DIST_MIN, CAM_DIST * 0.8, dist) * (1.0 - smoothstep(0.0, 1.0, aproape_k))
+	var fata := Vector3(-sin(yaw), 0.0, -cos(yaw))  # înainte, dinspre cameră
+	var f := _orion_focus() + fata * inainte
+	return f.lerp(ISLAND_CENTRE, smoothstep(0.35, 0.9, z))  # de departe se uită la toată insula
+
+
+func _preia_camera() -> void:
+	# mâna jucătorului are prioritate: cadrul apropiat se transformă în valorile lui, fără salt
+	if aproape_k > 0.0:
+		var k := smoothstep(0.0, 1.0, aproape_k)
+		dist = lerpf(dist, APROAPE_DIST, k)
+		pitch = lerpf(pitch, APROAPE_PITCH, k)
+	aproape_k = 0.0
+	aproape_t = -1.0
+	urmareste = false
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenDrag or event is InputEventMagnifyGesture:
+		_preia_camera()
+	elif event is InputEventMouseButton:
+		var b := event as InputEventMouseButton
+		if b.pressed and (b.button_index == MOUSE_BUTTON_WHEEL_UP or b.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			_preia_camera()
+	elif event is InputEventMouseMotion and ((event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_preia_camera()
 	if event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
 		if st.pressed:
@@ -325,10 +388,26 @@ func _process(delta: float) -> void:
 		if flash_t > 2.0:
 			flash_t = -1.0
 			flash.text = ""
-	# camera urmărește lin pe Orion; de departe se uită la toată insula
-	var z := clampf((dist - DIST_MIN) / (DIST_MAX - DIST_MIN), 0.0, 1.0)
-	var want := _orion_focus().lerp(ISLAND_CENTRE, smoothstep(0.35, 0.9, z))
-	focus = focus.lerp(want, minf(1.0, delta * 4.0))
-	var dir := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
-	cam.position = focus + dir * dist
+	_update_camera(delta)
+
+
+func _update_camera(delta: float) -> void:
+	# cât sare Orion, camera se rotește lin în spatele lui, pe direcția drumului (dacă n-ai rotit-o tu)
+	if urmareste and orion and (steps_left > 0 or roll_t >= 0.0):
+		var i := tile_index
+		var tinta := _yaw_drum(i)
+		if steps_left > 0 and hop_t > 0.5:
+			tinta = lerp_angle(tinta, _yaw_drum((i + 1) % tiles.size()), (hop_t - 0.5) * 2.0)
+		yaw = lerp_angle(yaw, tinta, minf(1.0, delta * 1.8))
+	# cadrul apropiat după aterizare, apoi înapoi la cadrul de joc
+	if aproape_t >= 0.0:
+		aproape_t -= delta
+	var k_tinta := 1.0 if aproape_t > 0.0 else 0.0
+	aproape_k = move_toward(aproape_k, k_tinta, delta / 0.9)
+	var k := smoothstep(0.0, 1.0, aproape_k)
+	var d := lerpf(dist, APROAPE_DIST, k)
+	var p := lerpf(pitch, APROAPE_PITCH, k)
+	focus = focus.lerp(_focus_dorit(), minf(1.0, delta * 4.0))
+	var dir := Vector3(sin(yaw) * cos(p), sin(p), cos(yaw) * cos(p))
+	cam.position = focus + dir * d
 	cam.look_at(focus, Vector3.UP)

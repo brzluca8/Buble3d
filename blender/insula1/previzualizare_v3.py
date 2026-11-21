@@ -34,6 +34,7 @@ ap.add_argument("--size", type=int, default=1100)
 ap.add_argument("--samples", type=int, default=48)
 ap.add_argument("--out", default=os.path.join(ROOT, "docs", "shots"))
 ap.add_argument("--tag", default="")
+ap.add_argument("--prefix", default="insula_v3_A_", help="începutul numelui capturii (v4: insula_v4_)")
 ap.add_argument("--fara-casute", action="store_true")
 args = ap.parse_args(argv)
 os.makedirs(args.out, exist_ok=True)
@@ -448,7 +449,13 @@ def build(cam):
         cc = mix_rgb(tnt, sp.outputs[0], stone, (*srgb2lin((0.98, 0.76, 0.30)), 1))
         tnt.links.new(cc, tb.inputs["Base Color"])
         tnt.links.new(sp.outputs[0], tb.inputs["Metallic"])
-        tb.inputs["Roughness"].default_value = 0.6
+        tb.inputs["Roughness"].default_value = 0.88  # v4: piatră mată (casuta.gdshader)
+        tn = tnt.nodes.new("ShaderNodeTexImage")
+        tn.image = image("casuta_normal.png", non_color=True)
+        nm_ = tnt.nodes.new("ShaderNodeNormalMap")
+        nm_.inputs["Strength"].default_value = 1.7  # adâncimea gravurii din casuta.gdshader
+        tnt.links.new(tn.outputs["Color"], nm_.inputs["Color"])
+        tnt.links.new(nm_.outputs["Normal"], tb.inputs["Normal"])
         cs = TILES["casute"]
         n_ = len(cs)
         atlas = image("iconite_casute.png")
@@ -467,12 +474,12 @@ def build(cam):
             tip = TIPURI.get(i)
             if tip:
                 col = srgb2lin(CULORI[tip])
-                bpy.ops.mesh.primitive_torus_add(major_radius=0.84 * 1.1, minor_radius=0.04 * 1.1, major_segments=48,
+                bpy.ops.mesh.primitive_torus_add(major_radius=0.865 * 1.1, minor_radius=0.055 * 1.1, major_segments=48,
                                                  minor_segments=6, location=pos + Vector((0, 0, -0.044)))
                 ring = bpy.context.active_object
-                ring.data.materials.append(emit_material("inel_" + tip, col, 2.0))
+                ring.data.materials.append(emit_material("inel_" + tip, col, 2.4))
                 ring.visible_shadow = False
-                bpy.ops.mesh.primitive_plane_add(size=0.78 * 1.1, location=pos + Vector((0, 0, 0.014)))
+                bpy.ops.mesh.primitive_plane_add(size=0.98 * 1.1, location=pos + Vector((0, 0, 0.016)))
                 ic = bpy.context.active_object
                 ic.rotation_euler = (0, 0, yaw)
                 im_, int_, ib, _ = node_mat("iconita_" + tip)
@@ -486,7 +493,7 @@ def build(cam):
                 int_.links.new(mpp.outputs[0], tx.inputs[0])
                 int_.links.new(tx.outputs["Color"], ib.inputs["Base Color"])
                 int_.links.new(tx.outputs["Color"], ib.inputs["Emission Color"])
-                ib.inputs["Emission Strength"].default_value = 0.6
+                ib.inputs["Emission Strength"].default_value = 0.22
                 int_.links.new(tx.outputs["Alpha"], ib.inputs["Alpha"])
                 ic.data.materials.append(im_)
                 ic.visible_shadow = False
@@ -524,12 +531,23 @@ def clouds(cam):
         billboard(m, (math.cos(a) * rad, math.sin(a) * rad, z), s_ * 1.6, s_, cam)
 
 
-def frame(cam, cd, name, yaw, pitch, dist, focus=None, wh=None):
+def yaw_drum(i=0, n=6):
+    """ca în insula.gd: camera în spatele lui Orion, privind spre mijlocul următoarelor n căsuțe"""
+    cs = TILES["casute"]
+    m = np.mean([[cs[(i + j) % len(cs)]["x"], cs[(i + j) % len(cs)]["z"]] for j in range(1, n + 1)], 0)
+    d = m - np.array([cs[i]["x"], cs[i]["z"]])
+    d /= np.linalg.norm(d)
+    return math.atan2(-d[0], -d[1])
+
+
+def frame(cam, cd, name, yaw, pitch, dist, focus=None, wh=None, inainte=0.0):
     cd.type = "PERSP"
     cd.sensor_fit = "VERTICAL"
     cd.angle = math.radians(40)
     cs = TILES["casute"]
-    start = (cs[0]["x"], cs[0]["y"] + 0.7, cs[0]["z"])
+    if yaw == "drum":
+        yaw = yaw_drum()
+    start = (cs[0]["x"] - math.sin(yaw) * inainte, cs[0]["y"] + 0.7, cs[0]["z"] - math.cos(yaw) * inainte)
     f = g2b(focus or start)
     d = g2b((math.sin(yaw) * math.cos(pitch), math.sin(pitch), math.cos(yaw) * math.cos(pitch)))
     eye = f + d * dist
@@ -539,7 +557,7 @@ def frame(cam, cd, name, yaw, pitch, dist, focus=None, wh=None):
     sc = bpy.context.scene
     sc.render.resolution_x, sc.render.resolution_y = w, h
     sc.cycles.samples = args.samples
-    sc.render.filepath = os.path.join(args.out, f"insula_v3_A_{name}{args.tag}.png")
+    sc.render.filepath = os.path.join(args.out, f"{args.prefix}{name}{args.tag}.png")
     bpy.ops.render.render(write_still=True)
     log("[render]", sc.render.filepath)
 
@@ -558,7 +576,12 @@ def main():
     cadre = {"aproape": (0.0, 0.85, 16.0, None, None), "captura1": (0.0, 0.30, 13.5, None, sq),
              "captura2": (1.25, 0.38, 8.5, None, sq),
              "mediu": (0.0, 0.85, 28.0, None, None),
-             "panorama": (0.0, 0.92, 47.0, (0.6, -2.4, -0.2), (args.size * 1122 // 1402, args.size))}
+             "panorama": (0.0, 0.92, 47.0, (0.6, -2.4, -0.2), (args.size * 1122 // 1402, args.size)),
+             # v4 (D4): camera de joc veche și cea nouă (în spatele lui Orion pe drum, ~50°, privește 3 m înainte),
+             # cadrul apropiat de la aterizare; format portret, ca pe telefon
+             "joc_vechi": (0.0, 0.85, 16.0, None, None), "joc_nou": ("drum", 0.87, 16.0, None, None),
+             "aterizare": ("drum", 0.55, 6.0, None, None)}
+    inainte = {"joc_nou": 3.0}
     if args.cam:
         y_, p_, d_ = [float(v) for v in args.cam.split(",")]
         frame(cam, cd, "cadru", y_, p_, d_, wh=sq)
@@ -568,7 +591,7 @@ def main():
             cs = TILES["casute"]
             s0 = Vector((cs[0]["x"], cs[0]["y"] + 0.7, cs[0]["z"]))
             foc = tuple(s0.lerp(Vector((0.0, -1.0 + 0.7, 0.0)), 0.45))
-        frame(cam, cd, fr, y_, p_, d_, foc, wh)
+        frame(cam, cd, fr, y_, p_, d_, foc, wh, inainte.get(fr, 0.0))
 
 
 if __name__ == "__main__":
