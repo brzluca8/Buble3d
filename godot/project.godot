@@ -62,3 +62,7 @@ nori_umbra={
 "type": "float",
 "value": 0.0
 }
+contur_cyan={
+"type": "vec4",
+"value": Vector4(0.5, 0.9, 1, 0.35)
+}

@@ -20,6 +20,15 @@ instance uniform float alfa = 1.0;   // doar în varianta estompată
 instance uniform float vant_obiect = 1.0;
 
 varying vec3 v_pos;
+varying vec3 v_nrm;
+
+// contur cyan discret, ca la Orion, fără a doua lumină direcțională: fresnel pe partea dinspre spate-dreapta-sus
+global uniform vec4 contur_cyan;   // rgb = culoarea, a = puterea (0 = oprit)
+vec3 contur(vec3 n_lume, vec3 n_vedere, vec3 spre_camera) {
+	float f = pow(1.0 - clamp(dot(n_vedere, spre_camera), 0.0, 1.0), 4.0);
+	float spate = clamp(dot(n_lume, normalize(vec3(0.27, 0.53, -0.80))) * 0.5 + 0.5, 0.0, 1.0);
+	return contur_cyan.rgb * contur_cyan.a * f * spate;
+}
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -37,6 +46,7 @@ void vertex() {
 		wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	}
 	v_pos = wp;
+	v_nrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {
@@ -49,10 +59,11 @@ void fragment() {
 	float k = 1.0;
 	if (animat) {
 		float faza = dot(floor(v_pos * 2.0), vec3(1.7, 3.1, 2.3));
-		k = flacara ? 0.84 + 0.11 * sin(TIME * 11.0 + faza) + 0.05 * sin(TIME * 17.3 + faza * 1.3)
+		// sticla felinarelor (UV.x = 1) pâlpâie ca o flacără; cristalele (UV.x < 1) pulsează încet
+		k = (flacara || e > 0.9) ? 0.84 + 0.11 * sin(TIME * 11.0 + faza) + 0.05 * sin(TIME * 17.3 + faza * 1.3)
 				: 0.7 + 0.3 * sin(TIME * 1.7 + faza * 0.37);
 	}
-	EMISSION = alb * e * putere_lumina * k;
+	EMISSION = alb * e * putere_lumina * k + contur(v_nrm, NORMAL, VIEW);
 #ifdef ESTOMPAT
 	ALPHA = alfa;
 #endif

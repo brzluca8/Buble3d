@@ -8,6 +8,7 @@ extends Node3D
 ##   Calitate   - Mic / Mediu / Mare (reface insula)
 ##   Umbre, Estompare, Mișcare redusă - comutatoare
 ##   Aterizare  - pornește efectul de aterizare pe căsuța de sub Orion
+##   DOF        - estompare ușoară a fundalului (CameraAttributesPractical); oprită implicit: măsoară FPS cu și fără
 ## Sus apar cifrele din Godot: FPS, triunghiuri, apeluri de desenare, obiecte, materiale unice.
 
 const INSULA := preload("res://insula1/insula1.tscn")
@@ -34,6 +35,7 @@ var calitate := 1
 var miscare_redusa := false
 var estompare := true
 var umbre := true
+var dof := false
 var _lbl: Label
 var _btn: Dictionary = {}
 var _t_stat := 0.0
@@ -129,7 +131,7 @@ func _ui() -> void:
 	box.position = Vector2(10.0, 130.0)
 	box.add_theme_constant_override("separation", 8)
 	cl.add_child(box)
-	for k in ["cadru", "mod", "calitate", "umbre", "estompare", "miscare", "aterizare"]:
+	for k in ["cadru", "mod", "calitate", "umbre", "estompare", "miscare", "aterizare", "dof"]:
 		var b := Button.new()
 		b.add_theme_font_size_override("font_size", 22)
 		b.custom_minimum_size = Vector2(300.0, 56.0)
@@ -147,6 +149,7 @@ func _texte() -> void:
 	_btn["estompare"].text = "Estompare: " + ("da" if estompare else "nu")
 	_btn["miscare"].text = "Mișcare redusă: " + ("da" if miscare_redusa else "nu")
 	_btn["aterizare"].text = "Aterizare pe START"
+	_btn["dof"].text = "DOF fundal: " + ("da" if dof else "nu")
 
 
 func _apasat(k: String) -> void:
@@ -172,7 +175,24 @@ func _apasat(k: String) -> void:
 		"aterizare":
 			if insula and insula.has_method("on_landed"):
 				insula.on_landed(0)
+		"dof":
+			dof = not dof
+			_pune_dof()
 	_texte()
+
+
+## blur ușor de adâncime pentru fundal (insulițe, marea de nori), nu pentru insula din față; pe Mobile costă o
+## trecere în plus pe tot ecranul, de aceea e oprit implicit: compară FPS-ul cu da/nu
+func _pune_dof() -> void:
+	if not dof:
+		cam.attributes = null
+		return
+	var ca := CameraAttributesPractical.new()
+	ca.dof_blur_far_enabled = true
+	ca.dof_blur_far_distance = 32.0
+	ca.dof_blur_far_transition = 24.0
+	ca.dof_blur_amount = 0.06
+	cam.attributes = ca
 
 
 func _process(delta: float) -> void:

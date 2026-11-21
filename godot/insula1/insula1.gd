@@ -13,7 +13,8 @@ extends Node3D
 ##
 ## Setări (Project Settings > buble/..., sau din inspector):
 ##   calitate: -1 automat (Mediu pe telefon, Mare pe calculator), 0 Mic, 1 Mediu, 2 Mare
-##   miscare_redusa: oprește vântul, particulele, pâlpâitul, pulsul, moara, barca, fluturii și păsările
+##   miscare_redusa: oprește vântul, particulele, pâlpâitul, pulsul, moara, barca, fluturii, păsările, peștii;
+##                   umbrele norilor rămân, dar stau pe loc
 ##   mod_debug (buble/debug/mod_insula): 0 normal, 1 tablă de șah, 2 clase, 3 AO, 4 normale
 
 const Info := preload("res://insula1/data/insula1_info.gd")
@@ -28,6 +29,7 @@ const RECUZITA := "res://assets/models/inel1/"
 const TEX_TEREN := "res://insula1/textures/teren/"
 const SH_TEREN := preload("res://insula1/shaders/teren.gdshader")
 const SH_RECUZITA := preload("res://insula1/shaders/recuzita.gdshader")
+const SH_UNDE := preload("res://insula1/shaders/unde_apa.gdshader")
 const SH_RECUZITA_ESTOMPAT := preload("res://insula1/shaders/recuzita_estompat.gdshader")
 const CULORI_FLORI := [Color("ff8ac2"), Color("ffd84d"), Color("ffffff"), Color("c79bff"), Color("ff7b5c"), Color("8fd3ff")]
 const FUNDAL := "res://assets/models/fundal/"
@@ -78,6 +80,8 @@ var _m_teren: ShaderMaterial
 var _m_recuzita: ShaderMaterial
 var _m_recuzita_estompat: ShaderMaterial
 var _plase := {}  # recuzita nouă: nume -> Mesh
+var _pesti: Array = []  # [nod, punctul din apă, defazaj, unda]
+var _nori_dep := Vector2.ZERO
 var _moara: Node3D
 var _barca: Node3D
 var _barca_baza := Transform3D.IDENTITY
@@ -94,6 +98,10 @@ func _ready() -> void:
 	_citeste_setari()
 	RenderingServer.global_shader_parameter_set("vant_directie", VANT_DIRECTIE)
 	RenderingServer.global_shader_parameter_set("orion_pozitie", Board.CASUTE[0])
+	# umbrele norilor (merg cu vântul; la mișcare redusă stau pe loc) și conturul cyan discret (fără a doua lumină)
+	RenderingServer.global_shader_parameter_set("nori_umbra", 0.28)
+	RenderingServer.global_shader_parameter_set("nori_deplasare", Vector2.ZERO)
+	RenderingServer.global_shader_parameter_set("contur_cyan", Vector4(0.5, 0.9, 1.0, 0.35))
 	_materiale()
 	_mediu()
 	_insula()
@@ -106,6 +114,7 @@ func _ready() -> void:
 	_casute_joc()
 	_atmosfera()
 	_viata()
+	_viata_v4()
 	_statistici()
 
 
@@ -130,7 +139,7 @@ func _materiale() -> void:
 	_m_insula.shader = SH_INSULA
 	_m_insula.set_shader_parameter("tex_detaliu", _tex("detaliu.png"))
 	_m_insula.set_shader_parameter("animat", not miscare_redusa)
-	_m_insula.set_shader_parameter("vant_activ", calitate >= 1 and not miscare_redusa)
+	_m_insula.set_shader_parameter("vant_activ", not miscare_redusa)  # vântul de bază rămâne și la Mic
 	_m_insula.set_shader_parameter("detaliu_activ", calitate >= 1)
 	_m_insula.set_shader_parameter("mod_debug", mod_debug)
 	# nuanțare măsurată pe captura din Godot: insula era mai deschisă (0,64) și mult mai puțin saturată (0,23)
@@ -198,6 +207,7 @@ func _mediu() -> void:
 	_env.fog_light_color = Color("c4e0ff")
 	_env.fog_density = 0.0035
 	_env.fog_sky_affect = 0.0
+	_env.fog_aerial_perspective = 0.35  # departe (insulițele), culorile se duc spre cer: aer, adâncime
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	add_child(we)
@@ -216,13 +226,8 @@ func _mediu() -> void:
 	_soare.directional_shadow_max_distance = 45.0 if calitate >= 2 else 30.0
 	add_child(_soare)
 	_soare.look_at_from_position(Vector3(-14.0, 12.0, 6.0), Vector3.ZERO, Vector3.UP)
-	var rim := DirectionalLight3D.new()
-	rim.name = "ContourCyan"
-	rim.light_color = Color("7fe6ff")
-	rim.light_energy = 0.35
-	rim.shadow_enabled = false
-	add_child(rim)
-	rim.look_at_from_position(Vector3(4.0, 8.0, -12.0), Vector3.ZERO, Vector3.UP)
+	# o singură lumină direcțională (cerința v4): conturul cyan discret de la Orion îl dau shaderele (fresnel pe partea
+	# dinspre spate-dreapta, global `contur_cyan`), nu o a doua lumină
 
 
 # --------------------------------------------------------------------------- insula ta, pe clase, + apa ei
@@ -687,11 +692,13 @@ func _atmosfera() -> void:
 
 # --------------------------------------------------------------------------- viață: petale, fluturi, păsări
 func _viata() -> void:
-	if calitate == 0 or miscare_redusa:
+	# la Mic rămân (sunt ieftine): petalele și frunzele (pe jumătate), fluturii și păsările; pleacă doar particulele
+	# scumpe (ceața de la cascade, fumul, scânteile, stropii)
+	if miscare_redusa:
 		return
 	var p := GPUParticles3D.new()
 	p.name = "Petale"
-	p.amount = 36  # maxim 40
+	p.amount = 26 if calitate >= 1 else 13  # cu frunzele de mai jos: maxim 40
 	p.lifetime = 7.0
 	p.preprocess = 7.0
 	p.visibility_aabb = AABB(Vector3(-16.0, -6.0, -16.0), Vector3(32.0, 14.0, 32.0))
@@ -719,6 +726,15 @@ func _viata() -> void:
 	p.draw_pass_1 = q
 	p.position = Vector3(0.0, 4.0, 0.0)
 	add_child(p)
+	var fr := p.duplicate() as GPUParticles3D
+	fr.name = "Frunze"
+	fr.amount = 12 if calitate >= 1 else 6
+	var pmf := pm.duplicate() as ParticleProcessMaterial
+	pmf.color = Color("8fd05a")
+	pmf.scale_min = 0.9
+	pmf.scale_max = 1.5
+	fr.process_material = pmf
+	add_child(fr)
 	# 6 fluturi pe lângă drum + 3 păsări departe (maxim 10)
 	var culori := [Color("ff8ac2"), Color("ffd84d"), Color("7fe6ff"), Color("ffffff"), Color("c79bff"), Color("ffb36b")]
 	var n := Board.CASUTE.size()
@@ -742,6 +758,189 @@ func _viata() -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
 		_pasari.append([mi, 20.0 + 4.0 * k, 9.0 + 2.5 * k, float(k) * 2.1])
+
+
+## v4: valuri la barcă, pești care sar, fum, licurici la portal, stropi la cascade (tabelul: docs/insula_alive.md)
+func _viata_v4() -> void:
+	var m_unde := ShaderMaterial.new()
+	m_unde.shader = SH_UNDE
+	m_unde.set_shader_parameter("animat", not miscare_redusa)
+	# valurile din jurul bărcii: mereu (și la Mic); barca se leagănă pe ele
+	if _barca:
+		var q := MeshInstance3D.new()
+		q.name = "ValuriBarca"
+		var pm := PlaneMesh.new()
+		pm.size = Vector2(4.4, 4.4)
+		q.mesh = pm
+		q.material_override = m_unde
+		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		q.position = Info.BARCA_PIVOT + Vector3(0.0, 0.03, 0.0)
+		q.set_instance_shader_parameter("putere", 0.5)
+		q.set_instance_shader_parameter("gol", 0.4)
+		add_child(q)
+	if miscare_redusa:
+		return
+	# pești care sar din lagună (din când în când), cu un val la ieșire și la intrare
+	for i in Inel1.PESTI.size():
+		var peste := MeshInstance3D.new()
+		peste.name = "Peste_%d" % i
+		peste.mesh = _plasa_peste(i)
+		peste.material_override = _m_corp
+		peste.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		peste.visible = false
+		add_child(peste)
+		var u := MeshInstance3D.new()
+		var pu := PlaneMesh.new()
+		pu.size = Vector2(1.8, 1.8)
+		u.mesh = pu
+		u.material_override = m_unde
+		u.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		u.position = (Inel1.PESTI[i] as Vector3) + Vector3(0.0, 0.03, 0.0)
+		u.set_instance_shader_parameter("putere", 0.0)
+		u.set_instance_shader_parameter("gol", 0.05)
+		add_child(u)
+		_pesti.append([peste, Inel1.PESTI[i], 1.7 + float(i) * 2.6, u])
+	if calitate == 0:
+		return  # la Mic: fără particulele scumpe (fum, scântei, stropi)
+	# fum din coșul atelierului
+	if Inel1.CLADIRI.has("atelier_debarcader"):
+		var anc: Array = Inel1.CLADIRI["atelier_debarcader"]
+		var fum := GPUParticles3D.new()
+		fum.name = "Fum"
+		fum.amount = 10
+		fum.lifetime = 5.0
+		fum.preprocess = 5.0
+		var pf := ParticleProcessMaterial.new()
+		pf.direction = Vector3(VANT_DIRECTIE.x * 0.4, 1.0, VANT_DIRECTIE.y * 0.4)
+		pf.spread = 12.0
+		pf.initial_velocity_min = 0.25
+		pf.initial_velocity_max = 0.4
+		pf.gravity = Vector3(VANT_DIRECTIE.x * 0.12, 0.05, VANT_DIRECTIE.y * 0.12)
+		pf.scale_min = 0.5
+		pf.scale_max = 0.8
+		var sc := Curve.new()
+		sc.add_point(Vector2(0.0, 0.45))
+		sc.add_point(Vector2(1.0, 1.6))
+		var sct := CurveTexture.new()
+		sct.curve = sc
+		pf.scale_curve = sct
+		var g := Gradient.new()
+		g.set_color(0, Color(0.92, 0.9, 0.95, 0.0))
+		g.set_color(1, Color(0.92, 0.9, 0.95, 0.0))
+		g.add_point(0.15, Color(0.95, 0.93, 0.97, 0.55))
+		var gt := GradientTexture1D.new()
+		gt.gradient = g
+		pf.color_ramp = gt
+		fum.process_material = pf
+		var q := QuadMesh.new()
+		q.size = Vector2(0.9, 0.9)
+		q.material = _m_particule
+		fum.draw_pass_1 = q
+		fum.position = (anc[0] as Vector3) + Vector3(0.4, (anc[1] as Vector3).y + 0.1, -0.3)
+		add_child(fum)
+	# licurici și scântei: la portal și sub copacul mare
+	var m_sc := StandardMaterial3D.new()
+	m_sc.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m_sc.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m_sc.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m_sc.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m_sc.vertex_color_use_as_albedo = true
+	var gr := GradientTexture2D.new()
+	gr.fill = GradientTexture2D.FILL_RADIAL
+	gr.fill_from = Vector2(0.5, 0.5)
+	gr.fill_to = Vector2(1.0, 0.5)
+	var gg := Gradient.new()
+	gg.set_color(0, Color(1, 1, 1, 1))
+	gg.set_color(1, Color(1, 1, 1, 0))
+	gr.gradient = gg
+	m_sc.albedo_texture = gr
+	var locuri: Array = [[Info.PORTAL_CENTRU, Color("9ff7ff"), 16]]
+	for c in Inel1.COPACI:
+		if String(c[0]) == "copac_mare":
+			locuri.append([(c[1] as Vector3) + Vector3(0.0, 1.2, 0.0), Color("f4ff8a"), 10])
+	for l in locuri:
+		var sp := GPUParticles3D.new()
+		sp.name = "Scantei"
+		sp.amount = int(l[2])
+		sp.lifetime = 4.0
+		sp.preprocess = 4.0
+		var ps := ParticleProcessMaterial.new()
+		ps.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		ps.emission_box_extents = Vector3(2.0, 0.9, 2.0)
+		ps.direction = Vector3(0.0, 1.0, 0.0)
+		ps.spread = 180.0
+		ps.initial_velocity_min = 0.05
+		ps.initial_velocity_max = 0.2
+		ps.gravity = Vector3(0.0, 0.02, 0.0)
+		ps.turbulence_enabled = false
+		ps.scale_min = 0.6
+		ps.scale_max = 1.0
+		var g2 := Gradient.new()
+		var c0: Color = l[1]
+		g2.set_color(0, Color(c0, 0.0))
+		g2.set_color(1, Color(c0, 0.0))
+		g2.add_point(0.3, Color(c0, 1.0))
+		g2.add_point(0.7, Color(c0, 0.8))
+		var gt2 := GradientTexture1D.new()
+		gt2.gradient = g2
+		ps.color_ramp = gt2
+		sp.process_material = ps
+		var q2 := QuadMesh.new()
+		q2.size = Vector2(0.09, 0.09)
+		q2.material = m_sc
+		sp.draw_pass_1 = q2
+		sp.position = l[0]
+		add_child(sp)
+	# stropi la baza cascadelor care cad în apă (cele care cad în gol au deja norul de ceață)
+	for c in Info.CASCADE:
+		var baza: Vector3 = c[1]
+		if baza.y < -4.0:
+			continue
+		var st := GPUParticles3D.new()
+		st.name = "Stropi"
+		st.amount = 14
+		st.lifetime = 0.9
+		var pst := ParticleProcessMaterial.new()
+		pst.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		pst.emission_box_extents = Vector3(float(c[2]) * 0.4, 0.05, 0.2)
+		pst.direction = Vector3(0.0, 1.0, 0.0)
+		pst.spread = 35.0
+		pst.initial_velocity_min = 1.0
+		pst.initial_velocity_max = 2.0
+		pst.gravity = Vector3(0.0, -6.0, 0.0)
+		pst.scale_min = 0.12
+		pst.scale_max = 0.25
+		pst.color = Color(1.0, 1.0, 1.0, 0.85)
+		st.process_material = pst
+		var q3 := QuadMesh.new()
+		q3.size = Vector2(0.5, 0.5)
+		q3.material = _m_particule
+		st.draw_pass_1 = q3
+		st.position = baza + Vector3(0.0, 0.1, 0.0)
+		add_child(st)
+
+
+## un pește mic (portocaliu sau argintiu), turtit, cu coadă; capul spre -Z (ca să se poată orienta cu looking_at)
+func _plasa_peste(i: int) -> ArrayMesh:
+	var sus := (Color("ff8a3d") if i % 2 == 0 else Color("8fc3ea")).srgb_to_linear()
+	var jos := (Color("ffd9a8") if i % 2 == 0 else Color("e9f4ff")).srgb_to_linear()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nas := Vector3(0.0, 0.0, -0.13)
+	var coada := Vector3(0.0, 0.0, 0.1)
+	var inel := [Vector3(0.035, 0.0, 0.0), Vector3(0.0, 0.045, 0.0), Vector3(-0.035, 0.0, 0.0), Vector3(0.0, -0.04, 0.0)]
+	for k in 4:
+		var a: Vector3 = inel[k]
+		var b: Vector3 = inel[(k + 1) % 4]
+		for tri in [[nas, a, b], [coada, b, a]]:
+			for v in tri:
+				st.set_color(sus if (v as Vector3).y >= 0.0 else jos)
+				st.add_vertex(v)
+	for v in [coada, Vector3(0.0, 0.055, 0.17), Vector3(0.0, -0.05, 0.17)]:
+		st.set_color(sus)
+		st.add_vertex(v)
+	st.generate_normals()
+	return st.commit()
 
 
 func _plasa_fluture(c: Color, marime: float) -> ArrayMesh:
@@ -772,6 +971,33 @@ func _statistici() -> void:
 	cl.add_child(_stat)
 
 
+func _misca_pesti() -> void:
+	for f in _pesti:
+		var nod: MeshInstance3D = f[0]
+		var p0: Vector3 = f[1]
+		var per := 5.0 + float(f[2]) * 0.45
+		var tt := _t + float(f[2])
+		var t := fmod(tt, per)
+		var ciclu := floorf(tt / per)
+		var dur := 0.95
+		var u: MeshInstance3D = f[3]
+		var ang := ciclu * 2.399  # altă direcție la fiecare săritură
+		var dir := Vector3(cos(ang), 0.0, sin(ang))
+		if t < dur:
+			var k := t / dur
+			nod.visible = true
+			nod.position = p0 - dir * 0.45 + dir * (0.9 * k) + Vector3(0.0, 2.2 * k * (1.0 - k), 0.0)
+			var tg := (dir * 0.9 + Vector3(0.0, 2.2 * (1.0 - 2.0 * k), 0.0)).normalized()
+			nod.basis = Basis.looking_at(tg, Vector3.UP)
+			u.position = p0 - dir * 0.45 + Vector3(0.0, 0.03, 0.0)
+			u.set_instance_shader_parameter("progres_fix", t * 0.9)
+		else:
+			nod.visible = false
+			u.position = p0 + dir * 0.45 + Vector3(0.0, 0.03, 0.0)
+			u.set_instance_shader_parameter("progres_fix", (t - dur) * 0.9)
+		u.set_instance_shader_parameter("putere", 0.8 if (t < dur or t - dur < 1.6) else 0.0)
+
+
 ## textul cu cifrele din Godot (FPS, triunghiuri, apeluri de desenare, obiecte), pentru scena de test
 func text_statistici() -> String:
 	return "FPS %d | triunghiuri %d | draw calls %d | obiecte %d | calitate %s" % [
@@ -784,10 +1010,18 @@ func text_statistici() -> String:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# Aliseron: vânt constant + rafale periodice (două ritmuri care se suprapun rar); la Mic, vântul de bază
 	var vant := 0.0
-	if calitate >= 1 and not miscare_redusa:
-		vant = 1.0 + 0.35 * sin(_t * 0.37) + 0.2 * sin(_t * 1.13)
+	if not miscare_redusa:
+		if calitate == 0:
+			vant = 0.85 + 0.15 * sin(_t * 0.5)
+		else:
+			var rafala := pow(maxf(0.0, sin(_t * 0.62)), 6.0) * 0.9 + pow(maxf(0.0, sin(_t * 0.41 + 1.7)), 8.0) * 0.6
+			vant = 0.8 + 0.12 * sin(_t * 1.13) + rafala
+		_nori_dep += VANT_DIRECTIE * delta * (0.9 + 0.5 * vant)
+		RenderingServer.global_shader_parameter_set("nori_deplasare", _nori_dep)
 	RenderingServer.global_shader_parameter_set("vant_putere", vant)
+	_misca_pesti()
 	# estomparea are nevoie de poziția lui Orion (doar citită din scena jocului)
 	if _orion == null:
 		var o: Variant = get_parent().get("orion") if get_parent() else null

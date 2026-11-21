@@ -35,6 +35,14 @@ instance uniform float alfa = 1.0;            // doar în varianta estompată: o
 varying vec3 v_pos;
 varying vec3 v_nrm;
 
+// contur cyan discret, ca la Orion, fără a doua lumină direcțională: fresnel pe partea dinspre spate-dreapta-sus
+global uniform vec4 contur_cyan;   // rgb = culoarea, a = puterea (0 = oprit)
+vec3 contur(vec3 n_lume, vec3 n_vedere, vec3 spre_camera) {
+	float f = pow(1.0 - clamp(dot(n_vedere, spre_camera), 0.0, 1.0), 4.0);
+	float spate = clamp(dot(n_lume, normalize(vec3(0.27, 0.53, -0.80))) * 0.5 + 0.5, 0.0, 1.0);
+	return contur_cyan.rgb * contur_cyan.a * f * spate;
+}
+
 void vertex() {
 	if (vant_activ && vant > 0.0 && COLOR.a > 0.001) {
 		vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -85,7 +93,7 @@ void fragment() {
 	ALBEDO = alb * ao * umbra_nori(v_pos);
 	ROUGHNESS = orm.g;
 	METALLIC = orm.b;
-	EMISSION = alb * orm.r * putere_lumina * k + alb * lumina_proprie * puls;
+	EMISSION = alb * orm.r * putere_lumina * k + alb * lumina_proprie * puls + contur(v_nrm, NORMAL, VIEW);
 #ifdef ESTOMPAT
 	ALPHA = alfa;
 #endif

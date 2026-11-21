@@ -534,6 +534,22 @@ FLORI = presara(loc_flori, 0.6 + 9.0 * flori_vechi + 1.6 * ss(1.7, 1.0, d_cas))
 loc_piet = interior & (d_cas > RAZA_CASUTA + 0.05) & ~ndi.binary_dilation(obiect, iterations=1)
 PIETRE = presara(loc_piet, 0.35 + 2.0 * ss(0.4, 0.9, m_pam + m_mus * 0.5) + 1.4 * ss(1.3, 0.95, d_cas))
 log("[presărate] smocuri de iarbă %d, flori %d, pietricele %d" % (len(IARBA), len(FLORI), len(PIETRE)))
+# locurile peștilor care sar: apă deschisă în laguna bărcii (la nivelul ei), departe de mal și de barcă
+info_txt = open(args.info).read()
+barca = [float(v) for v in re.search(r"BARCA_PIVOT := Vector3\(([^)]*)\)", info_txt).group(1).split(",")]
+bx_, by_, bz_ = barca[0], -barca[2], barca[1]
+lac = apa & (np.abs(np.nan_to_num(zw, nan=-99) - bz_) < 0.12)
+lac_int = ndi.binary_erosion(lac, iterations=1)
+log("[viață] celule de lagună: %d, în interior: %d (nivel %.2f)" % (int(lac.sum()), int(lac_int.sum()), bz_))
+jj, ii = np.where(lac_int)
+PESTI = []
+for k in rng.permutation(len(jj)):
+    x_, y_ = X[ii[k]], Y[jj[k]]
+    if np.hypot(x_ - bx_, y_ - by_) > 1.0 and all(np.hypot(x_ - q[0], y_ - q[1]) > 1.2 for q in PESTI):
+        PESTI.append((x_, y_, float(zw[jj[k], ii[k]])))
+    if len(PESTI) >= 2:
+        break
+log("[viață] locuri pentru pești în lagună: %d" % len(PESTI))
 
 # ============================================================================= 4. tăierea mesh-ului vechi
 reg_scos = ndi.binary_erosion(reg, iterations=1)  # pe margine rămâne suprafața veche, sub marginea terenului nou
@@ -992,6 +1008,9 @@ with open(args.data, "w") as f:
     f.write("]\nconst LAZI := [\n")
     for p in LAZI:
         f.write("\t[%s, %.2f, %.2f],\n" % (gd(p[:3]), p[3], p[4]))
+    f.write("]\n## peștii care sar din laguna bărcii (punctul de la suprafața apei)\nconst PESTI: Array[Vector3] = [\n")
+    for p in PESTI:
+        f.write("\t%s,\n" % gd(p))
     f.write("]\n## flăcările felinarelor rămase pe clădirile vechi (halouri)\nconst FLACARI_RAMASE: Array[Vector3] = [\n")
     for p in FLACARI_RAMASE:
         f.write("\t%s,\n" % gd(p))
