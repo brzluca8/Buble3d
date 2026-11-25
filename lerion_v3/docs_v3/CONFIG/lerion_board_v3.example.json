@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "title": "Lerion Board V3",
+    "status": "prototype defaults, not final economy",
+    "version": 3,
+    "note": "Example only. Codex must translate to typed Godot resources; preserve saves."
+  },
+  "board": {
+    "tile_count": 36,
+    "start_index": 0,
+    "closed_loop": true,
+    "no_branches": true,
+    "tile_reward_on_landing_only": true,
+    "dice": {
+      "count": 2,
+      "faces_per_die": 6,
+      "energy_cost": 1
+    },
+    "preferred_steps_duration_sec": {
+      "min": 1.5,
+      "max": 2.5
+    },
+    "start_pass_reward_coins": 100
+  },
+  "economy": {
+    "energy_max": 100,
+    "energy_regeneration_seconds": 300,
+    "landing_rewards": {
+      "coin": {
+        "coins": 100
+      },
+      "crystal": {
+        "crystals": 5
+      },
+      "construction": {
+        "building_points": 2
+      },
+      "energy": {
+        "energy": 2
+      },
+      "magic": {
+        "random_choice": [
+          {
+            "coins": 75
+          },
+          {
+            "crystals": 2
+          }
+        ]
+      },
+      "quest": {
+        "quest_tokens": 1
+      }
+    }
+  },
+  "building_level_reward_multipliers": {
+    "0": 1.0,
+    "1": 1.1,
+    "2": 1.25,
+    "3": 1.5
+  },
+  "buildings": [
+    {
+      "id": "han",
+      "name": "Hanul Aventurierilor",
+      "side": "right",
+      "row": "bottom",
+      "sector_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "influence_example": [
+        1,
+        2,
+        3
+      ],
+      "tile_reward_type": "quest"
+    },
+    {
+      "id": "laborator",
+      "name": "Laboratorul lui Pufi",
+      "side": "right",
+      "row": "middle",
+      "sector_indices": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "influence_example": [
+        7,
+        8,
+        9
+      ],
+      "tile_reward_type": "magic"
+    },
+    {
+      "id": "moara",
+      "name": "Moara Trăsnită",
+      "side": "right",
+      "row": "top",
+      "sector_indices": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "influence_example": [
+        13,
+        14,
+        15
+      ],
+      "tile_reward_type": "energy"
+    },
+    {
+      "id": "mina",
+      "name": "Mina de Cristale",
+      "side": "left",
+      "row": "top",
+      "sector_indices": [
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "influence_example": [
+        19,
+        20,
+        21
+      ],
+      "tile_reward_type": "crystal"
+    },
+    {
+      "id": "atelier",
+      "name": "Atelierul lui Pongo",
+      "side": "left",
+      "row": "middle",
+      "sector_indices": [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "influence_example": [
+        25,
+        26,
+        27
+      ],
+      "tile_reward_type": "construction"
+    },
+    {
+      "id": "piata",
+      "name": "Piața Poznașă",
+      "side": "left",
+      "row": "bottom",
+      "sector_indices": [
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "influence_example": [
+        31,
+        32,
+        33
+      ],
+      "tile_reward_type": "coin"
+    }
+  ],
+  "upgrade_costs": {
+    "0_to_1": {
+      "coins": 1000,
+      "building_points": 10
+    },
+    "1_to_2": {
+      "coins": 3000,
+      "building_points": 25
+    },
+    "2_to_3": {
+      "coins": 8000,
+      "building_points": 45
+    }
+  },
+  "super_crystal": {
+    "charge_target": 30,
+    "gain_per_valid_roll": 1,
+    "reward_multiplier": 2,
+    "remaining_landings_on_activation": 3,
+    "start_bonus_multiplied": false,
+    "stacking": false,
+    "charge_while_active": false
+  },
+  "safety": {
+    "save_migration_required": true,
+    "debug_cheats_only": true,
+    "no_ads_or_purchases": true,
+    "no_external_assets_without_approval": true
+  }
+}
