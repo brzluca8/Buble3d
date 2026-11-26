@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/board/board_rules.gd" id="rules"]
+[resource]
+script = ExtResource("rules")
+tile_count = 36
+energy_cost = 1
+energy_max = 100
+regeneration_seconds = 300
+shortest_move = 1.5
+longest_move = 2.5

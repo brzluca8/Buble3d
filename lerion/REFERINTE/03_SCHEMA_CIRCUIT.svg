@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220" width="1000" height="1220">
+<rect x="0" y="0" width="1000" height="1220" rx="40" fill="#d8f7d3"/>
+<text x="500" y="53" font-size="34" text-anchor="middle" font-family="Arial" fill="#153a2b" font-weight="bold">LERION V3 — SCHEMĂ TOPOLOGICĂ</text>
+<text x="500" y="85" font-size="21" text-anchor="middle" font-family="Arial" fill="#306344">Un singur loop; teren continuu, nu insulă</text>
+<rect x="365" y="113" width="270" height="100" rx="28" fill="#fee7a5" stroke="#bd8c40" stroke-width="7"/>
+<text x="500" y="157" font-size="28" font-weight="bold" text-anchor="middle" font-family="Arial" fill="#503520">CASTEL</text>
+<text x="500" y="184" font-size="18" text-anchor="middle" font-family="Arial" fill="#75553b">existent, în fundal</text>
+<!-- six building pads outside game loop -->
+<g font-family="Arial" font-weight="bold" font-size="23" text-anchor="middle">
+<rect x="72" y="272" width="215" height="110" rx="40" fill="#a9d5e7" stroke="#4c7c96" stroke-width="6"/><text x="180" y="320" fill="#173c54">MINĂ</text><text x="180" y="350" fill="#173c54" font-size="17">stânga sus</text>
+<rect x="713" y="272" width="215" height="110" rx="40" fill="#e7d6ae" stroke="#b69a60" stroke-width="6"/><text x="820" y="320" fill="#59411c">MOARĂ</text><text x="820" y="350" fill="#59411c" font-size="17">dreapta sus</text>
+<rect x="72" y="542" width="215" height="110" rx="40" fill="#f6bfba" stroke="#b66f6b" stroke-width="6"/><text x="180" y="590" fill="#5c2d2a">ATELIER</text><text x="180" y="620" fill="#5c2d2a" font-size="17">Pongo</text>
+<rect x="713" y="542" width="215" height="110" rx="40" fill="#d9c6f4" stroke="#8c71ba" stroke-width="6"/><text x="820" y="590" fill="#50356b">LABORATOR</text><text x="820" y="620" fill="#50356b" font-size="17">Pufi</text>
+<rect x="72" y="822" width="215" height="110" rx="40" fill="#ffdcb7" stroke="#d79f5d" stroke-width="6"/><text x="180" y="870" fill="#683d1c">PIAȚĂ</text><text x="180" y="900" fill="#683d1c" font-size="17">stânga jos</text>
+<rect x="713" y="822" width="215" height="110" rx="40" fill="#bdd6ff" stroke="#698ccc" stroke-width="6"/><text x="820" y="870" fill="#283f73">HAN</text><text x="820" y="900" fill="#283f73" font-size="17">dreapta jos</text>
+</g>
+<!-- Single physically closed track with wavy sides, physically clear from platforms and crystal -->
+<path id="loop" d="M 500,1062 C 605,1062 641,988 639,905 C 627,828 588,769 636,672 C 664,612 635,553 621,477 C 602,385 628,330 600,286 C 568,236 534,233 500,233 C 466,233 432,236 400,286 C 372,330 398,385 379,477 C 365,553 336,612 364,672 C 412,769 373,828 361,905 C 359,988 395,1062 500,1062 Z" stroke="#b28046" stroke-width="64" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 500,1062 C 605,1062 641,988 639,905 C 627,828 588,769 636,672 C 664,612 635,553 621,477 C 602,385 628,330 600,286 C 568,236 534,233 500,233 C 466,233 432,236 400,286 C 372,330 398,385 379,477 C 365,553 336,612 364,672 C 412,769 373,828 361,905 C 359,988 395,1062 500,1062 Z" stroke="#fee6ac" stroke-width="49" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<!-- Crystal off track -->
+<circle cx="500" cy="626" r="75" fill="#8edffb" stroke="#4898a8" stroke-width="8"/>
+<path d="M 500 576 L 534 617 L 500 677 L 466 617 Z" fill="#04bfff" stroke="#ffffe6" stroke-width="5"/>
+<text x="500" y="714" font-size="21" font-family="Arial" text-anchor="middle" font-weight="bold" fill="#1c5566">CRISTAL</text>
+<!-- start point -->
+<rect x="424" y="1042" width="152" height="50" rx="17" fill="#ffd16c" stroke="#85551f" stroke-width="5"/>
+<text x="500" y="1075" font-size="25" font-family="Arial" text-anchor="middle" font-weight="bold" fill="#422a15">START (0)</text>
+<path d="M 629 878 L 647 850 L 671 872" stroke="#247b62" stroke-width="8" fill="none" stroke-linecap="round"/>
+<text x="500" y="1150" font-size="22" font-family="Arial" text-anchor="middle" fill="#34533a">36 căsuțe plasate pe această curbă în Godot • 35 → 0</text>
+<text x="500" y="1183" font-size="19" font-family="Arial" text-anchor="middle" fill="#34533a">Schema este ilustrativă, NU generează automat poziții 3D</text>
+</svg>

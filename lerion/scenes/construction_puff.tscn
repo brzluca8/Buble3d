@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3]
+
+[sub_resource type="StandardMaterial3D" id="dust"]
+vertex_color_use_as_albedo = true
+roughness = 1.0
+
+[sub_resource type="SphereMesh" id="puff"]
+material = SubResource("dust")
+radius = 0.13
+height = 0.21
+radial_segments = 6
+rings = 2
+
+[sub_resource type="Gradient" id="colors"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(1, 0.74, 0.36, 1, 1, 0.85, 0.57, 1, 1, 0.95, 0.82, 1)
+
+[sub_resource type="Curve" id="scale"]
+_data = [Vector2(0, 0.5), 0.0, 0.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[node name="PrafDeConstructie" type="CPUParticles3D"]
+emitting = false
+one_shot = true
+amount = 12
+lifetime = 0.62
+explosiveness = 0.88
+cast_shadow = 0
+mesh = SubResource("puff")
+emission_shape = 2
+emission_sphere_radius = 0.85
+direction = Vector3(0,1,0)
+spread = 49.0
+gravity = Vector3(0,-2.7,0)
+initial_velocity_min = 1.4
+initial_velocity_max = 2.5
+scale_amount_min = 0.78
+scale_amount_max = 1.4
+scale_amount_curve = SubResource("scale")
+color_ramp = SubResource("colors")

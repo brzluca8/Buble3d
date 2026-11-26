@@ -1,0 +1,6 @@
+{
+  "first_rolls": 50,
+  "later_rolls": 100,
+  "prizes": ["energy", "wood", "silver", "gold"],
+  "implemented": false
+}

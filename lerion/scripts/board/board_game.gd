@@ -1,0 +1,312 @@
+extends "res://scripts/main.gd"
+
+const CONSTRUCTION_PUFF := preload("res://scenes/construction_puff.tscn")
+const BoardSave := preload("res://scripts/board/board_save.gd")
+const RULES := preload("res://assets/board/rules.tres")
+const LoopPath := preload("res://scripts/board/loop_path.gd")
+@onready var sounds := $Sunete
+@onready var dice := $Zaruri
+@onready var path: LoopPath = $LoopPath
+@onready var pawn: Node3D = $Lerik
+@onready var body := $Lerik/Corp
+@onready var shade: MeshInstance3D = $Lerik/Umbra
+@onready var rest_scale: Vector3 = body.scale
+var camera_tween: Tween
+var construction_tweens := {}
+var reveals := {}
+var joy: Tween
+var launch_yaw := 0.2
+var launch_step := 0
+var marked_levels: Array = []
+var travel: Tween
+var idle_turn: Tween
+var visual_tile := 0
+var walked_steps := 0
+var idle_age := 0.0
+var rare_joy := false
+
+
+func _open_game() -> RefCounted:
+	if OS.is_debug_build() and save_prefix == "user://lerion_developer/profile":
+		return load("res://scripts/developer/dev_profile.gd").new()
+	return BoardSave.new(save_prefix)
+
+
+func _connect_mode() -> void:
+	# The painted buildings share one satin finish at every level.
+	var enamel := StandardMaterial3D.new()
+	enamel.vertex_color_use_as_albedo = true
+	enamel.roughness = 0.72
+	enamel.metallic_specular = 0.27
+	for group in [village,$Castel]:
+		for part in group.find_children("*","MeshInstance3D",true,false):
+			part.material_override = enamel
+	hud.preferences_changed.connect(apply_preferences)
+	hud.control_touched.connect(sounds.click)
+	dice.ground_hit.connect(sounds.impact)
+	apply_preferences()
+	hud.roll_requested.connect(_roll)
+	hud.indices_requested.connect(path.toggle_indices)
+	_pose(float(game.state.board_position_index))
+	pawn.rotation.y = 0.20
+	if OS.is_debug_build() and ProjectSettings.get_setting("lerion/developer_panel",true):
+		var panel = load("res://scenes/DeveloperPanel.tscn").instantiate()
+		panel.map = self
+		add_child(panel)
+
+
+func _last_message() -> String:
+	var lap := int(game.state.laps) + 1
+	var tile := int(game.state.board_position_index)
+	return "START  ·  Turul %d" % lap if tile == 0 else "Căsuța %d  ·  Turul %d" % [tile,lap]
+
+
+func _roll() -> void:
+	if selected_plot >= 0 or hud.overlay.visible:
+		return
+	var roll: Dictionary = game.roll()
+	if roll.is_empty():
+		_refresh()
+		return
+	if idle_turn:
+		idle_turn.kill()
+	hud.throwing = true
+	hud.lap_revealed = false
+	path.clear_flash()
+	walked_steps = 0
+	var origin := int(roll.from)
+	var steps := int(roll.a) + int(roll.b)
+	_refresh()
+	sounds.toss()
+	dice.play(Vector2i(roll.a,roll.b),camera,hud.map_window())
+	camera.frame_throw(dice.global_position)
+	if joy:
+		joy.kill()
+	launch_yaw = pawn.rotation.y
+	launch_step = origin
+	travel = create_tween()
+	travel.tween_method(_anticipate,0.0,1.0,dice.ROLL_TIME)
+	travel.tween_callback(_start_walk)
+	for step in range(steps):
+		var start := float(origin+step)
+		travel.tween_method(_pose,start,start+1.0,RULES.duration(steps)/steps)
+		travel.tween_callback(_arrived.bind((origin+step+1)%RULES.tile_count))
+	travel.tween_callback(_finish)
+
+
+func _start_walk() -> void:
+	hud.throwing = false
+	_refresh()
+
+
+func _anticipate(t: float) -> void:
+	var ready_to_jump := smoothstep(0.55,0.88,t)*(1.0-smoothstep(0.88,1.0,t))
+	body.pose(0.0,ready_to_jump,0.0)
+	body.position.y = 0.02
+	body.scale = rest_scale*Vector3(1.0+0.08*ready_to_jump,1.0-0.13*ready_to_jump,1.0+0.08*ready_to_jump)
+	body.rotation = Vector3(0.12*ready_to_jump,0,0)
+
+
+func _pose(step: float) -> void:
+	var here := path.at_step(step)
+	var direction := path.at_step(step+0.18) - path.at_step(step-0.10)
+	var next_direction := path.at_step(step+0.50) - here
+	var bank := clampf(direction.signed_angle_to(next_direction,Vector3.UP),-0.40,0.40)
+	var phase := fposmod(step,1.0)
+	var hop := 4.0*phase*(1.0-phase)
+	if game.busy and not hud.throwing:
+		camera.track_path(here,path.at_step(step+3.7))
+	var stride := sin(PI*step)
+	body.pose(stride,0.0,0.0,bank)
+	pawn.position = here + Vector3.UP * 0.038
+	pawn.rotation.y = lerp_angle(launch_yaw,atan2(direction.x,direction.z),smoothstep(0.0,0.70,step-launch_step))
+	body.position.y = 0.02 + 0.29 * hop
+	body.rotation = Vector3(0.13 * hop,0.08*stride,0.10*stride - bank*0.27)
+	var stretch := hop * 0.09
+	body.scale = rest_scale * Vector3(1.0-stretch*0.4,1.0+stretch,1.0-stretch*0.4)
+	shade.scale = Vector3.ONE * (1.0 - 0.20 * hop)
+	visual_tile = posmod(roundi(step),RULES.tile_count)
+
+
+func _arrived(index: int) -> void:
+	walked_steps += 1
+	sounds.step(index)
+	if index == 0:
+		_show_lap()
+	message.text = "START" if index == 0 else "Căsuța %d" % index
+
+
+func _finish() -> void:
+	if not game.busy:
+		return
+	if travel:
+		travel.kill()
+	dice.cancel()
+	hud.throwing = false
+	sounds.land()
+	_pose(float(game.state.board_position_index))
+	# Even a skipped wrap ends facing along the curve at the destination.
+	var tangent := path.at_step(visual_tile+0.025) - path.at_step(visual_tile)
+	pawn.rotation.y = atan2(tangent.x,tangent.z)
+	idle_turn = create_tween()
+	var forward := pawn.rotation.y + angle_difference(pawn.rotation.y,0.20)
+	idle_turn.tween_property(pawn,"rotation:y",forward,0.24)
+	camera.frame_landing(pawn.position,walked_steps > 0)
+	game.busy = false
+	message.text = _last_message()
+	_refresh()
+
+	if not hud.lap_revealed and game.state.last_roll.start_coins > 0:
+		_show_lap()
+	var landing: Dictionary = game.state.last_roll.landing
+	var key := str(landing.get("resource","coins"))
+	rare_joy = game.ECONOMY.kind(visual_tile,RULES.tile_count) == "magic" or (key == "coins" and int(landing.get("amount",0)) >= 125)
+	path.flash(visual_tile,hud.prize_color(key))
+	_celebrate()
+	if not landing.is_empty():
+		sounds.reward(landing.resource)
+		if game.ECONOMY.kind(visual_tile,RULES.tile_count) == "magic":
+			sounds.magic()
+		var text: String = game.ECONOMY.describe(landing)
+		var slot: int = game.building_at(visual_tile)
+		if slot >= 0 and game.state.levels[slot] > 0:
+			text += "\n%s · niv. %d" % [game.cfg.buildings.positions[slot].building,game.state.levels[slot]]
+		if rare_joy:
+			_camera_lift(0.085)
+		var balance := int(game.state.wallet.get(landing.resource,game.state.energy))
+		hud.fly_prize(landing.resource,pawn.global_position + Vector3.UP*0.8,camera,balance,rare_joy,int(landing.amount))
+		hud.show_landing(text,camera,pawn.global_position + Vector3.UP * 2.13)
+
+
+func _show_lap() -> void:
+	hud.lap_revealed = true
+	if game.busy:
+		_refresh()
+	_camera_lift(0.085)
+	var coins := int(game.state.last_roll.start_coins)
+	sounds.reward("coins")
+	hud.fly_prize("coins",path.centers[0]+Vector3.UP*0.75,camera,int(game.state.wallet.coins))
+	if game.state.board_position_index == 0:
+		hud.show_landing("Tur nou · +%d monede" % coins,camera,path.centers[0] + Vector3.UP * 1.0)
+	else:
+		hud.show_lap(coins)
+
+
+func _refresh() -> void:
+	super()
+	if marked_levels != game.state.levels:
+		marked_levels = game.state.levels.duplicate()
+		path.mark_levels(marked_levels, game.cfg.buildings.positions)
+	var tiles := PackedInt32Array()
+	if selected_plot >= 0:
+		if path.flashing >= 0:
+			path.clear_flash()
+		var building: String = game.cfg.buildings.positions[selected_plot].id
+		tiles = game.ECONOMY.tiles_for(building, RULES.tile_count)
+	path.show_zone(tiles)
+
+
+func _upgrade(slot: int, level: int) -> void:
+	if slot != selected_plot or not game.upgrade(slot, level):
+		_refresh()
+		return
+	sounds.upgrade()
+	village.set_level(slot, level + 1)
+	_refresh()
+	path.pulse_zone()
+	var model: Node3D = village.models[slot]
+	var previous: Tween = construction_tweens.get(slot)
+	if previous:
+		previous.kill()
+	# Models are instantiated at unit scale; animate about their ground-level root.
+	_camera_lift(0.09)
+	model.scale = Vector3(1.04,0.85,1.04)
+	var pop := model.create_tween()
+	construction_tweens[slot] = pop
+	pop.tween_property(model,"scale",Vector3(0.98,1.06,0.98),0.16).set_trans(Tween.TRANS_SINE)
+	pop.tween_property(model,"scale",Vector3.ONE,0.20).set_trans(Tween.TRANS_SINE)
+	if reveals.has(slot):
+		reveals[slot].material_overlay = null
+	var part: MeshInstance3D = model.find_child(["Base","Upgrade2","Upgrade3"][level],true,false)
+	var gild := ShaderMaterial.new()
+	gild.shader = preload("res://assets/board/reveal.gdshader")
+	part.material_overlay = gild
+	reveals[slot] = part
+	pop.parallel().tween_method(func(t: float) -> void: gild.set_shader_parameter("sweep",t),0.0,1.0,0.42)
+	pop.tween_callback(func() -> void:
+		part.material_overlay = null
+		reveals.erase(slot)
+		construction_tweens.erase(slot))
+	hud.spark_at(camera,model.global_position+Vector3.UP*1.45,Color("#ffe992"))
+	if not hud.prefs.reduced:
+		var puff := CONSTRUCTION_PUFF.instantiate() as CPUParticles3D
+		puff.amount = [5,8,12][hud.prefs.quality]
+		add_child(puff)
+		puff.position = model.position + Vector3.UP * 0.67
+		puff.finished.connect(puff.queue_free)
+		puff.emitting = true
+	var building: String = game.cfg.buildings.positions[slot].id
+	# Preview the transition just purchased; the panel already shows the next one.
+	message.text = game.ECONOMY.preview(building, level)
+
+
+func _select_at(screen_point: Vector2) -> void:
+	super(screen_point)
+	if selected_plot >= 0 and game.error.is_empty():
+		var indices := PackedStringArray()
+		for tile in path.selected_tiles:
+			indices.append(str(tile))
+		message.text = "Bonus global · căsuțele %s" % ", ".join(indices)
+
+
+func _celebrate() -> void:
+	if joy:
+		joy.kill()
+	joy = create_tween()
+	joy.tween_method(_joy_pose,0.0,1.0,0.54)
+
+
+func _joy_pose(t: float) -> void:
+	var lift := clampf((t-0.19)/0.68,0.0,1.0)
+	var jump := sin(PI*lift)
+	var flourish := sin(TAU*lift)*jump if rare_joy else 0.0
+	var squash := 0.17*sin(PI*clampf(t/0.19,0.0,1.0)) + 0.08*sin(PI*clampf((t-0.87)/0.13,0.0,1.0))
+	body.pose(flourish*0.65,squash/0.17,jump,flourish*0.33)
+	body.position.y = 0.02 + (0.53 if rare_joy else 0.30) * jump
+	body.scale = rest_scale * Vector3(1.0+squash,1.0-squash,1.0+squash)
+	body.rotation = Vector3(-0.12*jump,flourish*0.55,0.15*sin(TAU*t))
+	shade.scale = Vector3.ONE * (1.0-0.18*jump)
+
+
+func _camera_lift(height: float) -> void:
+	if hud.prefs.reduced:
+		return
+	if camera_tween:
+		camera_tween.kill()
+	camera_tween = create_tween()
+	camera_tween.tween_property(camera,"v_offset",height,0.13).set_trans(Tween.TRANS_SINE)
+	camera_tween.tween_property(camera,"v_offset",0.0,0.24).set_trans(Tween.TRANS_SINE)
+
+func _process(delta: float) -> void:
+	super(delta)
+	if game.busy or (joy and joy.is_running()):
+		return
+	idle_age += delta
+	body.idle(idle_age)
+
+func apply_preferences() -> void:
+	var tier: int = hud.prefs.quality
+	var viewport := get_viewport()
+	Engine.max_fps = 30 if tier == 0 else 60
+	viewport.scaling_3d_scale = [0.70,0.86,1.0][tier]
+	viewport.msaa_3d = Viewport.MSAA_2X if tier == 2 else Viewport.MSAA_DISABLED
+	var sun: DirectionalLight3D = $Soare
+	sun.shadow_enabled = tier > 0
+	sun.directional_shadow_max_distance = 44.0 if tier == 2 else 31.0
+	$Ambient.configure(tier,hud.prefs.reduced)
+	sounds.configure(hud.prefs.music,hud.prefs.sfx)
+	camera.reduced = hud.prefs.reduced
+	dice.reduced = hud.prefs.reduced
+	dice.impacts.multimesh.visible_instance_count = 8 if tier == 0 else 16
+	if camera.reduced and camera.shot != camera.Shot.OVERVIEW:
+		camera.return_home()

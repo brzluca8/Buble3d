@@ -1,0 +1,21 @@
+Continuăm jocul Android LERION în repo-ul Godot 4 EXISTENT. Nu porni un alt joc și nu reseta proiectul.
+
+Te rog să începi prin a citi `README_INCEPE_AICI.md`, `AGENTS.md`, `LERION_DECIZII_V2.md`, `CRISTAL_HAOTIC_SPEC_V1.md`, `CLADIRI_SATUL_TRASNITILOR.md` și `PLAN_IMPLEMENTARE_SI_TESTE.md`. Sunt documentele oficiale pentru stadiul curent și au prioritate față de specificațiile vechi. Examinează `REFERINTE/02_JOC_ACTUAL.jpg` (captura REALĂ) și `REFERINTE/01_MAPA_APROBATA_CONTINENTAL.png` (referința de aspect).
+
+DECIZII FINALE: Harta continentală pe care o avem deja în Godot rămâne, fără margini de insulă, apă sau cascade. Castelul albastru și cristalul central există deja. Sunt EXACT 6 locuri de construcție, trei pe stânga și trei pe dreapta. Personajele se numesc LERIK, PONGO (nu Bubu) și PUFI. Stilul este cartoon 3D low-poly vesel, coerent, cu propriile elemente, nu copiat din Dice Dreams.
+
+DIRECȚIA DE GAMEPLAY ALEASĂ ACUM: CRISTALUL HAOTIC — buton ACTIVEAZĂ -> 3 simboluri -> recompense rapide -> construiești și îmbunătățești cele 6 clădiri. Programează regulile și probabilitățile configurabile din `CRISTAL_HAOTIC_SPEC_V1.md` și `CONFIG_PROTOTIP.json`, incluzând energia, bara Super Cristal, combinațiile speciale și salvarea progresului.
+
+Cele șase clădiri sunt: Mina de Cristale, Moara Trăsnită, Atelierul lui Pongo, Laboratorul lui Pufi, Piața Poznașă, Hanul Aventurierilor. Fiecare are nivelurile 0 (goală), 1, 2, 3 și costurile inițiale din document. Atelierul lui Pongo este primul demonstrat. Clădirile trebuie să fie modele separate/reutilizabile, nu parte din teren. Dacă lipsesc modele 3D finale, folosește placeholder-uri bine realizate, NU pretinde că asset-urile finale există.
+
+IMPORTANT: Ideea alternativă cu Lerik pe traseu serpuit, buclă tip board-game, este AMÂNATĂ. Nu o implementa. Nu adăuga monetizare, reclame, multiplayer, alianțe, alt regat sau orice mecanică bazată pe zaruri/ruletă/catapulte în acest task.
+
+ORDINE DE LUCRU:
+1) Inspectează efectiv sursa curentă, confirmă scena principală și inventariază ce merge deja; dacă nu ai fișierele Godot actuale, cere-le — nu lua versiunea veche cu insula din istoricul chatului.
+2) Creează un checkpoint Git/ramură și repară eventualele erori existente FĂRĂ să distrugi harta.
+3) Implementează întâi motorul de recompense și testele automate (fără UI complex).
+4) Integrează o activare vizuală scurtă a cristalului (1–1,5 secunde), trei simboluri și butonul ACTIVEAZĂ, cu feedback și anti-double-tap.
+5) Integrează cele șase clădiri cu trei îmbunătățiri, costuri, salvare, și o demonstrație cu Pongo.
+6) Rulează Godot dacă este disponibil, verifică parser/import, apoi explică testarea pe Android. Prezintă fișierele editate, testele reale, ce e placeholder și limitările.
+
+Nu încerca să reproduci pixel cu pixel randarea AI. Lucrează etapizat, cu grafică realizabilă și performanță bună pe Android. Începe cu auditul, apoi livrează prima etapă funcțională, nu o rescriere totală a jocului.

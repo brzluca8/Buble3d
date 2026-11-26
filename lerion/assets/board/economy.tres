@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/board/board_economy.gd" id="economy"]
+[resource]
+script = ExtResource("economy")
+tile_types = PackedStringArray("start", "coin", "energy", "quest", "crystal", "construction", "magic", "coin", "crystal", "construction", "magic", "energy", "quest", "coin", "crystal", "energy", "construction", "quest", "magic", "coin", "crystal", "construction", "energy", "magic", "construction", "quest", "coin", "energy", "magic", "crystal", "quest", "energy", "coin", "crystal", "construction", "magic")
+building_categories = {
+  "left_top": "crystal",
+  "right_top": "energy",
+  "left_mid": "construction",
+  "right_mid": "magic",
+  "right_bottom": "quest",
+  "left_bottom": "coin"
+}
+payouts = {
+"coin":{"coins":[100,110,125,150]},
+"crystal":{"fragments":[5,6,7,8]},
+"construction":{"build_points":[2,3,4,5]},
+"energy":{"energy":[2,3,4,5]},
+"magic":{"coins":[75,83,94,113],"fragments":[2,3,4,5]},
+"quest":{"quest_tokens":[1,2,3,4]}
+}
+start_coins = 100

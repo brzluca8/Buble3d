@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "title": "Lerion Board V3",
+    "status": "prototype defaults, not final economy",
+    "version": 3,
+    "note": "Etapa 2.8. Configurația executată este assets/board/economy.tres. Asocieri globale pe categorie."
+  },
+  "board": {
+    "tile_count": 36,
+    "start_index": 0,
+    "closed_loop": true,
+    "no_branches": true,
+    "tile_reward_on_landing_only": true,
+    "dice": {
+      "count": 2,
+      "faces_per_die": 6,
+      "energy_cost": 1
+    },
+    "preferred_steps_duration_sec": {
+      "min": 1.5,
+      "max": 2.5
+    },
+    "start_pass_reward_coins": 100,
+    "tile_types": [
+      "start",
+      "coin",
+      "energy",
+      "quest",
+      "crystal",
+      "construction",
+      "magic",
+      "coin",
+      "crystal",
+      "construction",
+      "magic",
+      "energy",
+      "quest",
+      "coin",
+      "crystal",
+      "energy",
+      "construction",
+      "quest",
+      "magic",
+      "coin",
+      "crystal",
+      "construction",
+      "energy",
+      "magic",
+      "construction",
+      "quest",
+      "coin",
+      "energy",
+      "magic",
+      "crystal",
+      "quest",
+      "energy",
+      "coin",
+      "crystal",
+      "construction",
+      "magic"
+    ]
+  },
+  "economy": {
+    "energy_max": 100,
+    "energy_regeneration_seconds": 300,
+    "landing_rewards": {
+      "coin": {
+        "coins": 100
+      },
+      "crystal": {
+        "crystals": 5
+      },
+      "construction": {
+        "building_points": 2
+      },
+      "energy": {
+        "energy": 2
+      },
+      "magic": {
+        "random_choice": [
+          {
+            "coins": 75
+          },
+          {
+            "crystals": 2
+          }
+        ]
+      },
+      "quest": {
+        "quest_tokens": 1
+      }
+    },
+    "payouts_by_level": {
+      "coin": {
+        "coins": [
+          100,
+          110,
+          125,
+          150
+        ]
+      },
+      "crystal": {
+        "fragments": [
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "construction": {
+        "build_points": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "energy": {
+        "energy": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "magic": {
+        "coins": [
+          75,
+          83,
+          94,
+          113
+        ],
+        "fragments": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "quest": {
+        "quest_tokens": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    }
+  },
+  "buildings": [
+    {
+      "id": "han",
+      "name": "Hanul Aventurierilor",
+      "side": "right",
+      "row": "bottom",
+      "tile_reward_type": "quest",
+      "influence_scope": "all_tiles_of_category"
+    },
+    {
+      "id": "laborator",
+      "name": "Laboratorul lui Pufi",
+      "side": "right",
+      "row": "middle",
+      "tile_reward_type": "magic",
+      "influence_scope": "all_tiles_of_category"
+    },
+    {
+      "id": "moara",
+      "name": "Moara Trăsnită",
+      "side": "right",
+      "row": "top",
+      "tile_reward_type": "energy",
+      "influence_scope": "all_tiles_of_category"
+    },
+    {
+      "id": "mina",
+      "name": "Mina de Cristale",
+      "side": "left",
+      "row": "top",
+      "tile_reward_type": "crystal",
+      "influence_scope": "all_tiles_of_category"
+    },
+    {
+      "id": "atelier",
+      "name": "Atelierul lui Pongo",
+      "side": "left",
+      "row": "middle",
+      "tile_reward_type": "construction",
+      "influence_scope": "all_tiles_of_category"
+    },
+    {
+      "id": "piata",
+      "name": "Piața Poznașă",
+      "side": "left",
+      "row": "bottom",
+      "tile_reward_type": "coin",
+      "influence_scope": "all_tiles_of_category"
+    }
+  ],
+  "upgrade_costs": {
+    "0_to_1": {
+      "coins": 1000,
+      "building_points": 10
+    },
+    "1_to_2": {
+      "coins": 3000,
+      "building_points": 25
+    },
+    "2_to_3": {
+      "coins": 8000,
+      "building_points": 45
+    }
+  },
+  "super_crystal": {
+    "charge_target": 30,
+    "gain_per_valid_roll": 1,
+    "reward_multiplier": 2,
+    "remaining_landings_on_activation": 3,
+    "start_bonus_multiplied": false,
+    "stacking": false,
+    "charge_while_active": false
+  },
+  "safety": {
+    "save_migration_required": true,
+    "debug_cheats_only": true,
+    "no_ads_or_purchases": true,
+    "no_external_assets_without_approval": true
+  }
+}

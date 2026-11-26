@@ -1,0 +1,6 @@
+LERION V3 · ETAPA 2.6 · ZARURI PE TEREN
+Deschide project.godot cu Godot 4.7.2 și pornește scena principală cu F5.
+Apasă ARUNCĂ pentru rostogolire, mers și premiu. Grăbește încheie mersul.
+Selectează Piața Poznașă din stânga jos. Dalele evidențiate și comparația din
+panou arată efectul următoarei îmbunătățiri.
+README_RO.txt conține valorile prototipului, regulile de salvare și pașii pentru Android.

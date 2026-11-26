@@ -1,0 +1,114 @@
+[gd_scene load_steps=16 format=3]
+[ext_resource type="PackedScene" path="res://scenes/main.tscn" id="world"]
+[ext_resource type="Script" path="res://scripts/board/kingdom_camera.gd" id="cinema"]
+[ext_resource type="Script" path="res://scripts/board/board_game.gd" id="game"]
+[ext_resource type="Script" path="res://scripts/board/board_hud.gd" id="hud"]
+[ext_resource type="Script" path="res://scripts/board/loop_path.gd" id="path"]
+[ext_resource type="PackedScene" path="res://assets/board/lerik.glb" id="pawn"]
+[ext_resource type="PackedScene" path="res://assets/board/court_garden.glb" id="borders"]
+[ext_resource type="PackedScene" path="res://assets/board/trail_garden.glb" id="garden"]
+
+[ext_resource type="Shader" path="res://assets/board/contact_shadow.gdshader" id="shade"]
+
+[ext_resource type="Script" path="res://scripts/board/board_ambient.gd" id="ambient"]
+
+[ext_resource type="Script" path="res://scripts/board/ground_dice.gd" id="dice"]
+
+[ext_resource type="Script" path="res://scripts/board/lerik_pose.gd" id="animal"]
+
+[ext_resource type="Script" path="res://scripts/board/board_audio.gd" id="sound"]
+
+[sub_resource type="ShaderMaterial" id="shadow_material"]
+shader = ExtResource("shade")
+
+[sub_resource type="PlaneMesh" id="shadow_plane"]
+material = SubResource("shadow_material")
+size = Vector2(0.94, 0.72)
+
+[node name="Lerion" instance=ExtResource("world")]
+script = ExtResource("game")
+
+[node name="Soare" parent="."]
+light_color = Color(1,0.956,0.89,1)
+light_energy = 0.68
+shadow_opacity = 0.39
+shadow_blur = 1.25
+
+[node name="Alei" parent="Pajiste"]
+visible = false
+
+[node name="Poiana_9_19_19" parent="Vegetatie"]
+visible = false
+[node name="Poiana_9_19_20" parent="Vegetatie"]
+visible = false
+[node name="Poiana_9_19_21" parent="Vegetatie"]
+visible = false
+[node name="Poiana_9_20_19" parent="Vegetatie"]
+visible = false
+[node name="Poiana_9_20_20" parent="Vegetatie"]
+visible = false
+[node name="Poiana_9_20_21" parent="Vegetatie"]
+visible = false
+
+[node name="NordVest" parent="Parcele"]
+position = Vector3(-6.05,0,-6.45)
+[node name="NordEst" parent="Parcele"]
+position = Vector3(6.05,0,-6.45)
+[node name="Vest" parent="Parcele"]
+position = Vector3(-6.30,0,0.2)
+[node name="Est" parent="Parcele"]
+position = Vector3(6.30,0,0.2)
+[node name="SudVest" parent="Parcele"]
+position = Vector3(-5.28,0,9.37)
+[node name="SudEst" parent="Parcele"]
+position = Vector3(5.28,0,9.37)
+
+[node name="Camera" parent="."]
+script = ExtResource("cinema")
+pitch_degrees = 32.0
+distance = 30.8
+max_distance = 34.0
+focus = Vector3(0,0,1.1)
+position = Vector3(0,16.32,27.22)
+rotation_degrees = Vector3(-32,0,0)
+
+[node name="Sat" parent="."]
+mill_moves_from_level = 1
+
+[node name="Interfata" parent="."]
+script = ExtResource("hud")
+
+[node name="LoopPath" type="Path3D" parent="."]
+script = ExtResource("path")
+[node name="Lerik" type="Node3D" parent="."]
+position = Vector3(0,0.24,12.21)
+rotation = Vector3(0,0.2,0)
+[node name="Corp" parent="Lerik" instance=ExtResource("pawn")]
+scale = Vector3(1.2,1.2,1.2)
+script = ExtResource("animal")
+[node name="Umbra" type="MeshInstance3D" parent="Lerik"]
+mesh = SubResource("shadow_plane")
+cast_shadow = 0
+[node name="Sunete" type="Node" parent="."]
+script = ExtResource("sound")
+
+[node name="Zaruri" type="Node3D" parent="."]
+script = ExtResource("dice")
+
+[node name="Ambient" type="Node3D" parent="."]
+script = ExtResource("ambient")
+
+[node name="BorduriDeSat" parent="." instance=ExtResource("borders")]
+
+[node name="Gradina" parent="." instance=ExtResource("garden")]
+
+[node name="IndicatorStart" type="Label3D" parent="."]
+position = Vector3(1.12,0.66,13.04)
+text = "START"
+font_size = 44
+pixel_size = 0.0068
+outline_size = 3
+modulate = Color(1, 0.94, 0.76, 1)
+
+[editable path="Pajiste"]
+[editable path="Vegetatie"]

@@ -1,0 +1,187 @@
+{
+  "status": "prototype_proposal_not_final_balanced_economy",
+  "symbols": [
+    {
+      "key": "coin",
+      "weight_percent": 36,
+      "base_reward": {
+        "coins": 50
+      }
+    },
+    {
+      "key": "hammer",
+      "weight_percent": 24,
+      "base_reward": {
+        "build_points": 1
+      }
+    },
+    {
+      "key": "crystal",
+      "weight_percent": 16,
+      "base_reward": {
+        "fragments": 2
+      }
+    },
+    {
+      "key": "chest",
+      "weight_percent": 12,
+      "base_reward_range": {
+        "coins": [
+          100,
+          200
+        ]
+      }
+    },
+    {
+      "key": "challenge",
+      "weight_percent": 8,
+      "base_reward": {
+        "tickets": 1
+      }
+    },
+    {
+      "key": "chaos",
+      "weight_percent": 4,
+      "base_reward_choice_proposal": [
+        {
+          "coins": 75
+        },
+        {
+          "fragments": 2
+        }
+      ]
+    }
+  ],
+  "activation": {
+    "symbols_per_activation": 3,
+    "energy_cost": 1,
+    "normal_animation_target_seconds": [
+      1.0,
+      1.5
+    ],
+    "rng_independent": true
+  },
+  "energy": {
+    "max": 100,
+    "regenerate_one_per_minutes": 5
+  },
+  "super_crystal": {
+    "charge_max": 30,
+    "charge_per_normal_activation": 1,
+    "armed_next_activation_doubles": [
+      "coins",
+      "build_points"
+    ],
+    "extra_chest_coins_range": [
+      100,
+      200
+    ],
+    "charge_after_special_activation": 0
+  },
+  "combos": {
+    "priority": [
+      "triple",
+      "mixed",
+      "pair"
+    ],
+    "max_combo_bonus_per_activation": 1,
+    "triples": {
+      "coin": {
+        "coins": 500
+      },
+      "hammer": {
+        "build_points": 5
+      },
+      "crystal": {
+        "fragments": 12
+      },
+      "chest": {
+        "bonus_chest_coins_range": [
+          250,
+          600
+        ]
+      },
+      "challenge": {
+        "tickets": 5
+      },
+      "chaos": {
+        "reward_choices": [
+          {
+            "coins": 400,
+            "fragments": 4
+          },
+          {
+            "build_points": 5,
+            "fragments": 8
+          }
+        ]
+      }
+    },
+    "mixed": {
+      "coin+hammer+chest": {
+        "coins": 150,
+        "build_points": 2
+      }
+    },
+    "pair": "one_additional_base_reward_of_paired_symbol"
+  },
+  "buildings": {
+    "castle_exists_by_default": true,
+    "central_crystal_exists_by_default": true,
+    "max_level": 3,
+    "slots": 6,
+    "positions": [
+      {
+        "id": "left_top",
+        "building": "Mina de Cristale"
+      },
+      {
+        "id": "right_top",
+        "building": "Moara Trăsnită"
+      },
+      {
+        "id": "left_mid",
+        "building": "Atelierul lui Pongo"
+      },
+      {
+        "id": "right_mid",
+        "building": "Laboratorul lui Pufi"
+      },
+      {
+        "id": "left_bottom",
+        "building": "Piața Poznașă"
+      },
+      {
+        "id": "right_bottom",
+        "building": "Hanul Aventurierilor"
+      }
+    ],
+    "costs_to_reach_level": {
+      "1": {
+        "coins": 1000,
+        "build_points": 10
+      },
+      "2": {
+        "coins": 3000,
+        "build_points": 25
+      },
+      "3": {
+        "coins": 8000,
+        "build_points": 45
+      }
+    }
+  },
+  "excluded_from_current_mvp": [
+    "Monopoly path loop",
+    "online multiplayer",
+    "ads",
+    "in-app purchases",
+    "new kingdoms"
+  ],
+  "starting_resources": {
+    "coins": 1000,
+    "build_points": 10,
+    "fragments": 0,
+    "tickets": 0
+  }
+}
