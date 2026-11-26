@@ -1,6 +1,6 @@
 extends "res://scripts/map_camera.gd"
 ## User pan/zoom stays in the overview pose. Cinematic targets are transient.
-enum Shot { OVERVIEW, DICE, TRACK, LAND, RETURN }
+enum Shot { OVERVIEW, DICE, TRACK, LAND, RETURN, CRYSTAL }
 var shot := Shot.OVERVIEW
 var target_eye := Vector3.ZERO
 var target_pitch := 0.0
@@ -45,6 +45,15 @@ func frame_landing(point: Vector3, walked: bool) -> void:
 	target_eye = _eye(point + Vector3.UP*0.8, 14.8, target_pitch)
 	landing_hold = 0.42
 
+## Holds a close view of the Super Crystal until return_home(). Skipped with reduced motion.
+func frame_crystal(point: Vector3) -> void:
+	if reduced:
+		return
+	shot = Shot.CRYSTAL
+	target_pitch = deg_to_rad(36.0)
+	target_eye = _eye(point + Vector3.UP*0.9, 9.5, target_pitch)
+	set_process(true)
+
 func return_home() -> void:
 	shot = Shot.RETURN
 	target_pitch = deg_to_rad(pitch_degrees)
@@ -52,7 +61,7 @@ func return_home() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	var rate := 5.0 if shot == Shot.DICE else 8.0
+	var rate := 5.0 if shot == Shot.DICE else (3.2 if shot == Shot.CRYSTAL else 8.0)
 	var weight := 1.0-exp(-rate*delta)
 	position = position.lerp(target_eye,weight)
 	rotation.x = lerpf(rotation.x,-target_pitch,weight)

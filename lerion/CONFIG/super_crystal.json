@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "first_target": 50,
+  "later_target": 100,
+  "charge_per_roll": 1,
+  "energy_limit": 9999,
+  "prizes": [
+    {"id": "energy_10", "kind": "energy", "amount": 10, "weight": 28, "label": "+10 energie"},
+    {"id": "chest_wood", "kind": "chest", "chest": "wood", "amount": 1, "weight": 24, "label": "Cufăr de lemn"},
+    {"id": "energy_20", "kind": "energy", "amount": 20, "weight": 18, "label": "+20 energie"},
+    {"id": "chest_silver", "kind": "chest", "chest": "silver", "amount": 1, "weight": 15, "label": "Cufăr de argint"},
+    {"id": "energy_30", "kind": "energy", "amount": 30, "weight": 10, "label": "+30 energie"},
+    {"id": "chest_gold", "kind": "chest", "chest": "gold", "amount": 1, "weight": 5, "label": "Cufăr de aur"}
+  ],
+  "chests": {
+    "wood": {"name": "Cufăr de lemn", "cards": 3, "rarity_weights": {"common": 80, "uncommon": 17, "rare": 3}, "hint": "Predominant cărți comune"},
+    "silver": {"name": "Cufăr de argint", "cards": 4, "rarity_weights": {"common": 45, "uncommon": 42, "rare": 13}, "hint": "Mai multe cărți de raritate intermediară"},
+    "gold": {"name": "Cufăr de aur", "cards": 5, "rarity_weights": {"common": 20, "uncommon": 45, "rare": 35}, "hint": "Șanse superioare pentru cărți rare"}
+  },
+  "_note": "rarity_weights și cards sunt rezervate pentru albumul viitor; deschiderea cuferelor nu este implementată în această etapă."
+}

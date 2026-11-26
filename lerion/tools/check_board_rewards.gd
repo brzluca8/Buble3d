@@ -237,7 +237,7 @@ func migrate_stage_one() -> void:
 	check(FileAccess.get_sha256(backup) == hash_before,"Backup identic cu ultima salvare a etapei 1")
 	var expected := old.duplicate(true)
 	expected.seq += 1
-	expected.version = 4
+	expected.version = 5
 	expected.wallet.quest_tokens = 0
 	check(migrated.state == expected and Save.new(old_prefix).state == expected,"Migrare integrală și idempotentă, fără bonus retroactiv")
 	for slot in range(2):

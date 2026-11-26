@@ -5,6 +5,7 @@ const ROOT := "user://lerion_developer/"
 const FUTURE := preload("res://scripts/developer/future_features.json")
 var memory_only := false
 var forced_pair := Vector2i.ZERO
+var forced_prize := ""
 var recording := false
 
 func _init(in_memory := false) -> void:
@@ -39,6 +40,78 @@ func _draw_faces() -> Vector2i:
 	if allowed() and forced_pair != Vector2i.ZERO:
 		return forced_pair
 	return super()
+
+func _draw_prize() -> String:
+	if allowed() and not forced_prize.is_empty():
+		return Crystal.draw(rng,forced_prize)
+	return super()
+
+func spin_wheel(now := int(Time.get_unix_time_from_system())) -> Dictionary:
+	if not allowed():
+		return {}
+	var receipt := super(now)
+	if not receipt.is_empty():
+		forced_prize = ""
+	return receipt
+
+## Next spin only; cleared after a saved spin, on profile reset and on restart.
+func force_prize(id: String) -> bool:
+	if not allowed() or busy or (not id.is_empty() and Crystal.prize_index(id) < 0):
+		return false
+	forced_prize = id
+	return true
+
+## Sets the crystal progress directly. `activations` 0 means the first (50-roll) cycle.
+func set_crystal(charge: int, activations: int) -> bool:
+	if not allowed() or busy or charge < 0 or activations < 0:
+		return false
+	var next := state.duplicate(true)
+	next.crystal_activations = activations
+	next.crystal_charge = mini(charge,Crystal.target(next))
+	return _commit(next)
+
+func charge_crystal() -> bool:
+	return set_crystal(Crystal.target(state),int(state.crystal_activations))
+
+func set_chests(wood: int, silver: int, gold: int) -> bool:
+	if not allowed() or busy or mini(wood,mini(silver,gold)) < 0:
+		return false
+	var next := state.duplicate(true)
+	next.chests = {"wood":wood,"silver":silver,"gold":gold}
+	return _commit(next)
+
+## Many spins on an in-memory copy, through the same transaction. The profile is untouched.
+func simulate_spins(count: int, seed_value := 3001) -> Dictionary:
+	if not allowed() or count < 1 or count > 100000:
+		return {}
+	var trial = get_script().new(true)
+	trial.state = state.duplicate(true)
+	trial.state.last_spin = {}
+	trial.rng.seed = seed_value
+	var report := {"spins":0,"seed":seed_value,"prizes":{},"expected_percent":{},"observed_percent":{},
+		"energy_added":0,"chests":Crystal.empty_chests(),"double_grants":0}
+	for item: Dictionary in Crystal.prizes():
+		report.prizes[item.id] = 0
+		report.expected_percent[item.id] = snappedf(Crystal.probability(item.id)*100.0,0.01)
+	for i in range(count):
+		trial.state.crystal_charge = Crystal.target(trial.state)
+		trial.state.energy = 0
+		var receipt: Dictionary = trial.spin_wheel()
+		if receipt.is_empty():
+			return {"error":trial.error}
+		# A second request for the same charge must be refused.
+		if not trial.spin_wheel().is_empty():
+			report.double_grants += 1
+		trial.acknowledge_spin(int(receipt.id))
+		report.prizes[receipt.prize] += 1
+		report.spins += 1
+		if receipt.kind == "energy":
+			report.energy_added += int(receipt.amount)
+		else:
+			report.chests[receipt.chest] += int(receipt.amount)
+	for id: String in report.prizes:
+		report.observed_percent[id] = snappedf(100.0*report.prizes[id]/maxf(1.0,report.spins),0.01)
+	return report
 
 func force_pair(pair: Vector2i) -> bool:
 	if not allowed() or busy or mini(pair.x,pair.y)<1 or maxi(pair.x,pair.y)>6:
@@ -120,6 +193,7 @@ func reset_profile(confirmed: bool) -> bool:
 	var next: Dictionary = fresh.state.duplicate(true)
 	next.debug_history = []
 	forced_pair = Vector2i.ZERO
+	forced_prize = ""
 	return _commit(next)
 
 func set_future(charge: int, later: bool, prize: String) -> bool:

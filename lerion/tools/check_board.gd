@@ -191,7 +191,7 @@ func _run() -> void:
 	map = _start()
 	await process_frame
 	check(map.game.state.energy == committed.energy and map.game.state.seq == committed.seq and map.visual_tile == committed.board_position_index, "Restart în mers")
-	check(map.game.state.wallet == committed.wallet and map.game.state.levels == snapshot.levels and map.game.state.crystal_charge == 0,"Restart păstrează premiul confirmat și nivelurile")
+	check(map.game.state.wallet == committed.wallet and map.game.state.levels == snapshot.levels and map.game.state.crystal_charge == committed.crystal_charge,"Restart păstrează premiul confirmat, nivelurile și încărcarea cristalului")
 	map._select_at(map.camera.unproject_position(map.plots.get_child(2).position+Vector3.UP*0.4))
 	var initial_level := int(map.game.state.levels[2])
 	var initial_coins := int(map.game.state.wallet.coins)

@@ -4,6 +4,11 @@ const CONSTRUCTION_PUFF := preload("res://scenes/construction_puff.tscn")
 const BoardSave := preload("res://scripts/board/board_save.gd")
 const RULES := preload("res://assets/board/rules.tres")
 const LoopPath := preload("res://scripts/board/loop_path.gd")
+const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
+const CrystalGlow := preload("res://scripts/board/crystal_glow.gd")
+const WheelScreen := preload("res://scripts/crystal/wheel_screen.gd")
+var crystal_glow: CrystalGlow
+var wheel: WheelScreen
 @onready var sounds := $Sunete
 @onready var dice := $Zaruri
 @onready var path: LoopPath = $LoopPath
@@ -47,6 +52,21 @@ func _connect_mode() -> void:
 	apply_preferences()
 	hud.roll_requested.connect(_roll)
 	hud.indices_requested.connect(path.toggle_indices)
+	crystal_glow = CrystalGlow.new()
+	crystal_glow.name = "SuperCristal"
+	add_child(crystal_glow)
+	crystal_glow.setup($Ambient.gem,glow)
+	wheel = WheelScreen.new()
+	wheel.name = "RuletaMagica"
+	add_child(wheel)
+	wheel.setup(hud,sounds)
+	wheel.spin_requested.connect(_spin_wheel)
+	wheel.closed.connect(_wheel_closed)
+	wheel.later_requested.connect(_wheel_later)
+	hud.crystal_requested.connect(open_crystal)
+	_sync_crystal()
+	if not game.pending_spin().is_empty():
+		_recover_spin.call_deferred()
 	_pose(float(game.state.board_position_index))
 	pawn.rotation.y = 0.20
 	if OS.is_debug_build() and ProjectSettings.get_setting("lerion/developer_panel",true):
@@ -62,7 +82,7 @@ func _last_message() -> String:
 
 
 func _roll() -> void:
-	if selected_plot >= 0 or hud.overlay.visible:
+	if selected_plot >= 0 or hud.overlay.visible or wheel_open():
 		return
 	var roll: Dictionary = game.roll()
 	if roll.is_empty():
@@ -194,6 +214,7 @@ func _show_lap() -> void:
 
 func _refresh() -> void:
 	super()
+	_sync_crystal()
 	if marked_levels != game.state.levels:
 		marked_levels = game.state.levels.duplicate()
 		path.mark_levels(marked_levels, game.cfg.buildings.positions)
@@ -251,6 +272,9 @@ func _upgrade(slot: int, level: int) -> void:
 
 
 func _select_at(screen_point: Vector2) -> void:
+	if not game.busy and not wheel_open() and _crystal_hit(screen_point):
+		open_crystal()
+		return
 	super(screen_point)
 	if selected_plot >= 0 and game.error.is_empty():
 		var indices := PackedStringArray()
@@ -306,7 +330,90 @@ func apply_preferences() -> void:
 	$Ambient.configure(tier,hud.prefs.reduced)
 	sounds.configure(hud.prefs.music,hud.prefs.sfx)
 	camera.reduced = hud.prefs.reduced
+	if crystal_glow:
+		crystal_glow.configure(tier,hud.prefs.reduced)
+	if wheel:
+		wheel.reduced = hud.prefs.reduced
 	dice.reduced = hud.prefs.reduced
 	dice.impacts.multimesh.visible_instance_count = 8 if tier == 0 else 16
 	if camera.reduced and camera.shot != camera.Shot.OVERVIEW:
 		camera.return_home()
+
+
+# Super Crystal and Magic Wheel. The save owns every decision; the wheel only presents receipts.
+
+func wheel_open() -> bool:
+	return wheel != null and wheel.is_open()
+
+
+func _sync_crystal() -> void:
+	if crystal_glow == null or game.state.is_empty():
+		return
+	var s: Dictionary = game.state
+	crystal_glow.set_progress(float(Crystal.charge(s))/Crystal.target(s),Crystal.is_ready(s))
+
+
+func _crystal_hit(screen_point: Vector2) -> bool:
+	if crystal_glow == null or camera.is_position_behind(crystal_glow.crystal_center()):
+		return false
+	var point := crystal_glow.crystal_center()
+	var middle := camera.unproject_position(point)
+	var reach := middle.distance_to(camera.unproject_position(point + camera.global_basis.x*1.15))
+	# The fountain basin below the gem counts too, with a finger-sized minimum.
+	var base := camera.unproject_position(point - Vector3.UP*1.0)
+	return screen_point.distance_to(middle) <= maxf(reach,46.0) or screen_point.distance_to(base) <= maxf(reach,46.0)
+
+
+func open_crystal() -> void:
+	if game.busy or wheel_open() or hud.overlay.visible or game.state.is_empty():
+		return
+	if selected_plot >= 0:
+		_deselect()
+	var s: Dictionary = game.state
+	if not Crystal.is_ready(s):
+		message.text = "Super Cristal · %d/%d aruncări" % [Crystal.charge(s),Crystal.target(s)]
+		crystal_glow.burst()
+		return
+	camera.manual_override = false
+	camera.frame_crystal(crystal_glow.crystal_center())
+	crystal_glow.burst()
+	sounds.magic()
+	message.text = "Ruleta Magică"
+	wheel.open()
+
+
+func _spin_wheel() -> void:
+	var receipt: Dictionary = game.spin_wheel()
+	if receipt.is_empty():
+		wheel.refuse(game.error if not game.error.is_empty() else "Cristalul nu este încărcat.")
+		return
+	_sync_crystal()
+	wheel.play(receipt)
+
+
+func _wheel_later() -> void:
+	camera.return_home()
+	message.text = "Super Cristalul rămâne încărcat"
+	_refresh()
+
+
+func _wheel_closed(receipt: Dictionary) -> void:
+	camera.return_home()
+	if not game.acknowledge_spin(int(receipt.get("id",0))) and not game.pending_spin().is_empty():
+		message.text = game.error
+	else:
+		message.text = "Ruleta Magică · " + Crystal.describe(receipt)
+	_refresh()
+	if receipt.get("kind") == "energy":
+		hud.fly_prize("energy",crystal_glow.crystal_center(),camera,int(game.state.energy),true,int(receipt.amount))
+	else:
+		hud.spark_at(camera,crystal_glow.crystal_center(),Color("#ffd04a"),"",true)
+	crystal_glow.burst()
+
+
+func _recover_spin() -> void:
+	var receipt: Dictionary = game.pending_spin()
+	if receipt.is_empty() or wheel_open():
+		return
+	message.text = "Premiu confirmat · " + Crystal.describe(receipt)
+	wheel.show_recovered(receipt)

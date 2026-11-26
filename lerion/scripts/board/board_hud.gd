@@ -13,6 +13,10 @@ var reduced_toggle: CheckButton
 var quality_menu: OptionButton
 signal roll_requested
 signal indices_requested
+signal crystal_requested
+const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
+var crystal_chip: Button
+var chip_tween: Tween
 const RULES := preload("res://assets/board/rules.tres")
 var total: Label
 var roll_button: Button
@@ -50,6 +54,15 @@ func _make_controls() -> void:
 
 
 func _make_projection() -> void:
+	crystal_chip = _button("",func() -> void: crystal_requested.emit())
+	crystal_chip.icon = ICONS["crystal"]
+	crystal_chip.expand_icon = true
+	crystal_chip.add_theme_constant_override("icon_max_width",30)
+	crystal_chip.custom_minimum_size = Vector2(0,52)
+	crystal_chip.add_theme_font_size_override("font_size",19)
+	crystal_chip.accessibility_name = "Super Cristal"
+	crystal_chip.tooltip_text = "Super Cristal · se încarcă la fiecare aruncare"
+	add_child(crystal_chip)
 	flights.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(flights)
 	flights.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -115,6 +128,7 @@ func _refresh_controls(game: RefCounted, s: Dictionary) -> void:
 			if key == "energy":
 				energy.text = "%d/%d" % [int(s.energy)-amount,RULES.energy_max]
 
+	_refresh_crystal(s)
 	var available := int(energy.text.get_slice("/",0))/maxi(1,RULES.energy_cost)
 	rolls_left.text = "1 aruncare" if available == 1 else "%d aruncări" % available
 
@@ -132,6 +146,8 @@ func refresh(game: RefCounted, slot: int) -> void:
 		ranks.get_child(i).color = GOLD if i < preview_level else Color("#4e7779")
 	inventory.text = inventory.text.replace("Ciocane","Puncte de construcție")
 	inventory.text += "\nJetoane locale   %d" % game.state.wallet.quest_tokens
+	var chests: Dictionary = game.state.get("chests",{})
+	inventory.text += "\nCufere   lemn %d · argint %d · aur %d" % [int(chests.get("wood",0)),int(chests.get("silver",0)),int(chests.get("gold",0))]
 	if slot < 0:
 		return
 	var building: String = game.cfg.buildings.positions[slot].id
@@ -336,6 +352,9 @@ func _button(caption: String, action: Callable, primary := false) -> Button:
 
 func _layout() -> void:
 	super()
+	if crystal_chip:
+		crystal_chip.reset_size()
+		crystal_chip.position = Vector2(top.position.x,top.position.y+top.size.y+10)
 	if overlay.get_child_count() == 0:
 		return
 	# Anchor the inventory and its close control inside the same safe margins as the HUD.
@@ -345,3 +364,31 @@ func _layout() -> void:
 	center.offset_right = top.position.x+top.size.x-viewport_size.x
 	center.offset_top = top.position.y
 	center.offset_bottom = dock.position.y+dock.size.y-viewport_size.y
+
+
+func _refresh_crystal(s: Dictionary) -> void:
+	var ready := Crystal.is_ready(s)
+	var text := "Super Cristal gata!" if ready else "Super Cristal  %d/%d" % [Crystal.charge(s),Crystal.target(s)]
+	if crystal_chip.text == text:
+		return
+	crystal_chip.text = text
+	crystal_chip.reset_size()
+	var fill := Color("#ffcf5a") if ready else Color("#1e424d")
+	var style := _style(fill,Color("#fff1b0") if ready else Color("#7fd8e6"),20)
+	for mode in ["normal","hover","pressed"]:
+		crystal_chip.add_theme_stylebox_override(mode,style)
+	for mode in ["font_color","font_hover_color","font_pressed_color"]:
+		crystal_chip.add_theme_color_override(mode,Color("#3b2d34") if ready else CREAM)
+	if chip_tween:
+		chip_tween.kill()
+	crystal_chip.scale = Vector2.ONE
+	if ready and not prefs.reduced:
+		crystal_chip.pivot_offset = crystal_chip.size*0.5
+		chip_tween = crystal_chip.create_tween().set_loops()
+		chip_tween.tween_property(crystal_chip,"scale",Vector2.ONE*1.06,0.45).set_trans(Tween.TRANS_SINE)
+		chip_tween.tween_property(crystal_chip,"scale",Vector2.ONE,0.45).set_trans(Tween.TRANS_SINE)
+	_layout.call_deferred()
+
+
+func blocks_map(point: Vector2) -> bool:
+	return super(point) or (crystal_chip.visible and crystal_chip.get_global_rect().has_point(point))

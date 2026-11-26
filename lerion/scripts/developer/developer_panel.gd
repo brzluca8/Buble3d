@@ -1,6 +1,11 @@
 extends CanvasLayer
 const Profile := preload("res://scripts/developer/dev_profile.gd")
 const Simulation := preload("res://scripts/developer/economy_simulation.gd")
+const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
+var crystal_status: Label
+var chest_status: Label
+var sim_wheel: TextEdit
+var recovery_probe := {}
 var map: Node
 var launcher: Button
 var cover: ColorRect
@@ -19,8 +24,6 @@ var active := false
 var spin_a: SpinBox
 var spin_b: SpinBox
 var tile_input: SpinBox
-var charge_input: SpinBox
-var later: CheckButton
 var future_prize: OptionButton
 
 func _ready() -> void:
@@ -58,7 +61,7 @@ func _ready() -> void:
 		section.custom_minimum_size.y = 58
 		section.add_theme_font_size_override("font_size",23)
 		layout.add_child(section)
-		var names := ["Resurse","Zaruri și traseu","Clădiri","Sisteme viitoare","Salvări și diagnostic","Simularea economiei"]
+		var names := ["Resurse","Zaruri și traseu","Clădiri","Super Cristal și cufere","Salvări și diagnostic","Simularea economiei"]
 		for title in names:
 			section.add_item(title)
 			var scroll := ScrollContainer.new()
@@ -154,7 +157,7 @@ func show_page(index: int) -> void:
 	layout_panel.call_deferred()
 
 func open_panel() -> void:
-	if map.game.busy:
+	if map.game.busy or map.wheel_open():
 		return
 	cover.show()
 	map.camera._reset_gesture()
@@ -170,7 +173,7 @@ func switch_profile(development: bool) -> void:
 		return
 	_switch.call_deferred(development)
 
-func _switch(development: bool) -> void:
+func _switch(development: bool, open_after := true) -> void:
 	var next = load("res://scenes/board.tscn").instantiate()
 	next.save_prefix = Profile.PREFIX if development else old_normal_prefix
 	var tree := get_tree()
@@ -181,8 +184,12 @@ func _switch(development: bool) -> void:
 	tree.current_scene = next
 	if development:
 		var panel = next.get_node("DeveloperPanel")
-		panel.old_normal_prefix = previous.save_prefix
-		panel.open_panel()
+		panel.old_normal_prefix = old_normal_prefix if active else previous.save_prefix
+		if not recovery_probe.is_empty():
+			panel.recovery_probe = recovery_probe
+			panel.status.text = "Repornit. Premiul confirmat #%d trebuie să apară o singură dată." % int(recovery_probe.receipt.id)
+		if open_after:
+			panel.open_panel()
 	previous.queue_free()
 
 func result(ok: bool) -> void:
@@ -300,32 +307,77 @@ func _buildings(col: Node) -> void:
 			map._upgrade(slot,current))
 
 func _future(col: Node) -> void:
-	label(col,"Super Cristal · parametri pregătiți pentru integrare")
-	label(col,"Prima activare la 50 de aruncări, următoarele la 100. Ruleta este încă neimplementată.")
-	charge_input = number(col,100,0)
-	later = CheckButton.new()
-	later.text = "Activare ulterioară (100)"
-	later.custom_minimum_size.y = 58
-	col.add_child(later)
+	var rules: Dictionary = Crystal.config()
+	label(col,"Super Cristal · prima rotire la %d aruncări, următoarele la %d. Valorile afectează numai profilul DEBUG." % [int(rules.first_target),int(rules.later_target)])
+	crystal_status = label(col,"")
+	button(col,"Încarcă instantaneu cristalul",func() -> void: result(map.game.charge_crystal()))
+	var presets := row(col)
+	button(presets,"49/50",func() -> void: result(map.game.set_crystal(49,0)))
+	button(presets,"99/100",func() -> void: result(map.game.set_crystal(99,maxi(1,int(map.game.state.crystal_activations)))))
+	button(presets,"0 progres",func() -> void: result(map.game.set_crystal(0,int(map.game.state.crystal_activations))))
+	button(col,"Deschide Ruleta Magică",func() -> void:
+		if map.game.busy:
+			return
+		close_panel()
+		map.open_crystal())
+	label(col,"Forțează premiul următoarei rotiri")
 	future_prize = OptionButton.new()
-	for title in ["Energie","Cufăr de lemn","Cufăr de argint","Cufăr de aur"]:
-		future_prize.add_item(title)
+	future_prize.add_item("Aleatoriu (probabilități configurate)")
+	for item: Dictionary in Crystal.prizes():
+		future_prize.add_item("%s · %s%%" % [item.label,str(snappedf(Crystal.probability(item.id)*100.0,0.1))])
 	future_prize.custom_minimum_size.y = 58
+	future_prize.add_theme_font_size_override("font_size",21)
 	col.add_child(future_prize)
-	button(col,"Salvează parametrii de integrare",save_future)
-	button(col,"Pregătește starea «Pregătit»",func() -> void:
-		charge_input.value = Profile.FUTURE.data.later_rolls if later.button_pressed else Profile.FUTURE.data.first_rolls
-		save_future())
-	for title in ["Deschide ruleta","Acordă premiul de energie","Adaugă cufăr de lemn","Adaugă cufăr de argint","Adaugă cufăr de aur","Deschide cufăr","Generează cărți","Adaugă duplicate","Completează colecția","Testează recompensa albumului"]:
+	button(col,"Aplică premiul forțat",func() -> void:
+		var id: String = "" if future_prize.selected <= 0 else str(Crystal.prizes()[future_prize.selected-1].id)
+		var ok: bool = map.game.force_prize(id)
+		if not ok:
+			status.text = "Așteaptă oprirea."
+		elif id.is_empty():
+			status.text = "Rotiri aleatorii."
+		else:
+			status.text = "Premiu forțat: %s, pentru o singură rotire." % Crystal.describe({"prize":id}))
+	label(col,"Simulează rotiri pe o copie în memorie (aceeași tranzacție)")
+	var sims := row(col)
+	for count in [100,1000,10000]:
+		button(sims,str(count),func() -> void:
+			var report: Dictionary = map.game.simulate_spins(count)
+			last_simulation = {"wheel":report}
+			sim_wheel.text = JSON.stringify(report,"  "))
+	sim_wheel = text_area(col,300)
+	label(col,"Inventar cufere")
+	chest_status = label(col,"")
+	var chest_row := row(col)
+	button(chest_row,"+1 lemn",func() -> void: result(_add_chest("wood")))
+	button(chest_row,"+1 argint",func() -> void: result(_add_chest("silver")))
+	button(chest_row,"+1 aur",func() -> void: result(_add_chest("gold")))
+	button(col,"Golește cuferele",func() -> void: result(map.game.set_chests(0,0,0)))
+	label(col,"Recuperare după restart: salvează o rotire fără animație, apoi repornește scena. Premiul trebuie afișat o singură dată, fără a fi acordat din nou.")
+	button(col,"Testează recuperarea după restart",test_recovery)
+	for title in ["Deschide cufăr","Generează cărți","Adaugă duplicate","Completează colecția","Testează recompensa albumului"]:
 		var control := button(col,title+" · indisponibil",func() -> void: pass)
 		control.disabled = true
-		control.tooltip_text = "Mecanica necesită implementare înainte de conectarea acestui control."
+		control.tooltip_text = "Albumul și deschiderea cuferelor vor fi implementate într-o etapă viitoare."
 
-func save_future() -> void:
-	var ok: bool = map.game.set_future(int(charge_input.value),later.button_pressed,Profile.FUTURE.data.prizes[future_prize.selected])
-	result(ok)
-	if ok:
-		status.text = "Parametri DEBUG salvați. Acordarea premiilor așteaptă mecanica reală."
+func _add_chest(kind: String) -> bool:
+	var next: Dictionary = map.game.state.chests.duplicate()
+	next[kind] = int(next[kind]) + 1
+	return map.game.set_chests(int(next.wood),int(next.silver),int(next.gold))
+
+func test_recovery() -> void:
+	if map.game.busy or map.wheel_open() or simulation != null:
+		status.text = "Așteaptă finalul operației."
+		return
+	if not Crystal.is_ready(map.game.state) and not map.game.charge_crystal():
+		status.text = "Cristalul nu a putut fi încărcat."
+		return
+	var before: Dictionary = map.game.state.duplicate(true)
+	var receipt: Dictionary = map.game.spin_wheel()
+	if receipt.is_empty():
+		status.text = map.game.error if not map.game.error.is_empty() else "Rotire refuzată."
+		return
+	recovery_probe = {"receipt":receipt,"energy_before":int(before.energy),"chests_before":before.chests}
+	_switch.call_deferred(true,false)
 
 func text_area(parent: Node, height: float) -> TextEdit:
 	var item := TextEdit.new()
@@ -351,7 +403,7 @@ func _diagnostics(col: Node) -> void:
 	button(col,"Restaurează checkpointul de test",func() -> void: result(map.game.restore_checkpoint()))
 	button(col,"Exportă diagnostic JSON",func() -> void:
 		var ok: bool = map.game.write_json("diagnostic.json",{"state":map.game.state,"simulation":last_simulation,
-			"future_implemented":false,"engine":Engine.get_version_info(),"profile":"local_debug"})
+			"super_crystal_implemented":true,"engine":Engine.get_version_info(),"profile":"local_debug"})
 		status.text = "Exportat în "+ProjectSettings.globalize_path(Profile.ROOT+"diagnostic.json") if ok else "Exportul a eșuat.")
 	button(col,"Resetează profilul DEBUG…",func() -> void: confirmation.popup_centered())
 	diagnostic = text_area(col,460)
@@ -377,12 +429,15 @@ func start_simulation(count: int) -> void:
 	status.text = "Simulare încheiată. Rezultatul poate fi exportat din Diagnostic."
 
 func refresh_data() -> void:
-	if active and is_instance_valid(charge_input):
-		var prepared: Dictionary = map.game.state.get("debug_future",{})
-		charge_input.value = int(prepared.get("charge",0))
-		later.button_pressed = bool(prepared.get("later",false))
-		var prize_index: int = Profile.FUTURE.data.prizes.find(prepared.get("next_prize","energy"))
-		future_prize.select(maxi(0,prize_index))
+	if active and is_instance_valid(crystal_status):
+		var s: Dictionary = map.game.state
+		crystal_status.text = "Încărcare %d/%d · rotiri %d · %s" % [Crystal.charge(s),Crystal.target(s),int(s.crystal_activations),"GATA" if Crystal.is_ready(s) else "în încărcare"]
+		if not s.last_spin.is_empty():
+			crystal_status.text += "\nUltima rotire #%d · %s · %s" % [int(s.last_spin.id),Crystal.describe(s.last_spin),"afișată" if s.last_spin.presented else "neafișată"]
+		chest_status.text = "Lemn %d · Argint %d · Aur %d" % [int(s.chests.wood),int(s.chests.silver),int(s.chests.gold)]
+		if not recovery_probe.is_empty():
+			var probe: Dictionary = recovery_probe
+			chest_status.text += "\nTest recuperare #%d · energie înainte %d, acum %d · cufere înainte %s" % [int(probe.receipt.id),int(probe.energy_before),int(s.energy),str(probe.chests_before)]
 	if active and is_instance_valid(diagnostic):
 		diagnostic.text = JSON.stringify(map.game.state,"  ")
 	if active:
