@@ -2,10 +2,10 @@
 [ext_resource type="Script" path="res://scripts/board/board_economy.gd" id="economy"]
 [resource]
 script = ExtResource("economy")
-tile_types = PackedStringArray("start", "coin", "energy", "quest", "crystal", "construction", "magic", "coin", "crystal", "construction", "magic", "energy", "quest", "coin", "crystal", "energy", "construction", "quest", "magic", "coin", "crystal", "construction", "energy", "magic", "construction", "quest", "coin", "energy", "magic", "crystal", "quest", "energy", "coin", "crystal", "construction", "magic")
+tile_types = PackedStringArray("start", "coin", "crystal", "quest", "crystal", "construction", "magic", "coin", "crystal", "construction", "magic", "coin", "quest", "coin", "crystal", "quest", "construction", "quest", "magic", "coin", "crystal", "construction", "quest", "magic", "construction", "quest", "coin", "construction", "magic", "crystal", "quest", "magic", "coin", "crystal", "construction", "magic")
 building_categories = {
   "left_top": "crystal",
-  "right_top": "energy",
+  "right_top": "event_energy",
   "left_mid": "construction",
   "right_mid": "magic",
   "right_bottom": "quest",
@@ -15,7 +15,6 @@ payouts = {
 "coin":{"coins":[100,110,125,150]},
 "crystal":{"fragments":[5,6,7,8]},
 "construction":{"build_points":[2,3,4,5]},
-"energy":{"energy":[2,3,4,5]},
 "magic":{"coins":[75,83,94,113],"fragments":[2,3,4,5]},
 "quest":{"quest_tokens":[1,2,3,4]}
 }

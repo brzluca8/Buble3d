@@ -6,10 +6,10 @@ const Save := preload("res://scripts/board/board_save.gd")
 const Dice := preload("res://scripts/board/dice_roll.gd")
 const ECONOMY := preload("res://assets/board/economy.tres")
 const EXPECTED := {
-	"coin":{"coins":[100,110,125,150]}, "energy":{"energy":[2,3,4,5]},
+	"coin":{"coins":[100,110,125,150]},
 	"crystal":{"fragments":[5,6,7,8]}, "construction":{"build_points":[2,3,4,5]},
 	"quest":{"quest_tokens":[1,2,3,4]}, "magic":{"coins":[75,83,94,113],"fragments":[2,3,4,5]}}
-const TYPES := ["crystal","energy","construction","magic","coin","quest"]
+const TYPES := ["crystal","event_energy","construction","magic","coin","quest"]
 var prefix := "user://rewards_%d_%d" % [OS.get_process_id(),Time.get_ticks_usec()]
 var failures := 0
 var checks := 0
@@ -57,13 +57,13 @@ func prepare(game: RefCounted, origin: int, sum: int, energy := 40) -> void:
 func market_flow(map: Node) -> void:
 	map._select_at(map.camera.unproject_position(map.plots.get_child(4).position + Vector3.UP*0.3))
 	check(map.selected_plot == 4 and map.hud.price.text.contains("Nivel 1 → 2\nToate căsuțele cu monede · 110 → 125 monede"),"Previzualizarea Pieței")
-	check(map.path.studs.multimesh.instance_count == 6,"Marcaj de nivel pe fiecare dală a Pieței")
-	check(map.path.selected_tiles == PackedInt32Array([1,7,13,19,26,32]),"Toate cele șase dale cu monede")
+	check(map.path.studs.multimesh.instance_count == 7,"Marcaj de nivel pe fiecare dală a Pieței")
+	check(map.path.selected_tiles == PackedInt32Array([1,7,11,13,19,26,32]),"Toate cele șapte dale cu monede")
 	check(map.hud.price.text.contains("3000 monede + 25 puncte"),"Costul înaintea cumpărării")
 	var coins := int(map.game.state.wallet.coins)
 	var points := int(map.game.state.wallet.build_points)
 	map.hud.confirm.pressed.emit()
-	check(map.path.studs.multimesh.instance_count == 12,"Marcajele de nivel după îmbunătățire")
+	check(map.path.studs.multimesh.instance_count == 14,"Marcajele de nivel după îmbunătățire")
 	check(map.village.levels[4] == 2 and map.game.state.levels[4] == 2 and map.hud.price.text.contains("125 → 150"),"Model și previzualizare după confirmare")
 	check(map.game.state.wallet.coins == coins-3000 and map.game.state.wallet.build_points == points-25,"Costul cumpărării")
 	map._deselect()
@@ -87,8 +87,7 @@ func check_balance(before: Dictionary, after: Dictionary, award: Dictionary, bon
 		if resource == "coins":
 			delta += bonus
 		check(after.wallet[resource] == before.wallet[resource] + delta,"Sold exact pentru " + resource)
-	var energy_bonus := amount if key == "energy" else 0
-	check(after.energy == before.energy - 1 + energy_bonus,"Energie după debit și premiu")
+	check(key != "energy" and after.energy == before.energy - 1,"Energie: doar debitul aruncării, fără premiu de pe traseu")
 	check(after.laps == before.laps + int(bonus > 0),"Numărul de tururi")
 
 
@@ -98,8 +97,14 @@ func zones_and_rewards(map: Node) -> void:
 		var building: String = game.cfg.buildings.positions[slot].id
 		for count in range(30,37):
 			var zone := ECONOMY.tiles_for(building,count)
+			if building == "right_top":
+				check(zone.is_empty(),"Moara fără dale la %d dale" % count)
+				continue
 			check(zone.size() >= 3 and not zone.has(0),"Zona pentru %d dale" % count)
 		var tiles := ECONOMY.tiles_for(building,36)
+		if TYPES[slot] == "event_energy":
+			check(tiles.is_empty(),"Moara nu deține nicio căsuță: energia nu vine de pe traseu")
+			continue
 		map._select_at(map.camera.unproject_position(map.plots.get_child(slot).position+Vector3.UP*0.3))
 		for i in range(36):
 			check(map.path.markers[i].visible == tiles.has(i),"Evidențiere exclusivă pentru " + building)
@@ -136,7 +141,7 @@ func zones_and_rewards(map: Node) -> void:
 
 func landing_labels(map: Node) -> void:
 	var rewards_seen := {}
-	for dest in [3,10,2,20,24,32]:
+	for dest in [3,10,15,20,24,32]:
 		for seed_value in range(36):
 			var rng := RandomNumberGenerator.new()
 			rng.seed = seed_value
@@ -148,13 +153,9 @@ func landing_labels(map: Node) -> void:
 			map._finish()
 			var receipt: Dictionary = map.game.state.last_roll
 			var award: Dictionary = receipt.landing
-			var gain: int
-			if award.resource == "energy":
-				gain = int(map.game.state.energy - before.energy) + 1
-			else:
-				gain = int(map.game.state.wallet[award.resource] - before.wallet[award.resource])
-				if award.resource == "coins":
-					gain -= int(receipt.start_coins)
+			var gain: int = int(map.game.state.wallet[award.resource] - before.wallet[award.resource])
+			if award.resource == "coins":
+				gain -= int(receipt.start_coins)
 			var label: Label = map.hud.get_child(-1)
 			var units: String = ECONOMY.unit(award.resource,gain)
 			check(label.text.get_slice("\n",0) == "+%d %s" % [gain,units],"Mesajul de aterizare corespunde soldului")
@@ -191,10 +192,8 @@ func start_cases(map: Node) -> void:
 func interruptions(map: Node) -> void:
 	prepare(map.game,0,2,100)
 	map._roll()
-	check(map.game.state.energy == 100 and map.game.state.last_roll.landing.amount == 1,"Plafonul limitează creditarea la +1 energie")
+	check(map.game.state.energy == 99 and map.game.state.last_roll.landing.resource == "fragments","Căsuța 2 nu mai plătește energie")
 	map._finish()
-	var popup := map.hud.get_child(map.hud.get_child_count()-1) as Label
-	check(popup.text.get_slice("\n",0) == "+1 energie","Câștigul efectiv afișat la plafon")
 	prepare(map.game,5,5)
 	map._roll()
 	var confirmed: Dictionary = map.game.state.duplicate(true)
@@ -237,7 +236,7 @@ func migrate_stage_one() -> void:
 	check(FileAccess.get_sha256(backup) == hash_before,"Backup identic cu ultima salvare a etapei 1")
 	var expected := old.duplicate(true)
 	expected.seq += 1
-	expected.version = 5
+	expected.version = 6
 	expected.wallet.quest_tokens = 0
 	check(migrated.state == expected and Save.new(old_prefix).state == expected,"Migrare integrală și idempotentă, fără bonus retroactiv")
 	for slot in range(2):
@@ -254,7 +253,10 @@ func global_categories(map: Node) -> void:
 		var type := ECONOMY.kind(tile,36)
 		counts[type] = int(counts.get(type,0))+1
 		check(not (type == ECONOMY.kind((tile+1)%36,36) and type == ECONOMY.kind((tile+2)%36,36)),"Fără triple, inclusiv închiderea buclei")
-	check(counts == {"start":1,"coin":6,"crystal":6,"construction":6,"energy":6,"magic":6,"quest":5},"Distribuție echilibrată")
+	check(counts == {"start":1,"coin":7,"crystal":7,"construction":7,"magic":7,"quest":7},"Distribuție echilibrată, fără energie")
+	check(not ECONOMY.tile_types.has("energy") and not ECONOMY.payouts.has("energy"),"Nicio căsuță și niciun tabel de energie")
+	for tile in range(36):
+		check(ECONOMY.kind(tile,36) != ECONOMY.kind((tile+1)%36,36),"Căsuțe vecine diferite, inclusiv 35→0")
 	for slot in range(6):
 		for level in range(4):
 			game.state.levels.fill(3)

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "claim_grace_hours": 12,
+  "mill_event_energy_bonus_percent": [0, 10, 20, 30],
+  "events": [
+    {
+      "id": "pufi_festival",
+      "name": "Festivalul lui Pufi",
+      "tagline": "Pufi strănută magie pe drum! Adună puncte și câștigă energie.",
+      "duration_hours": 48,
+      "autostart": false,
+      "points": {"crystal": 2, "construction": 3, "magic": 5},
+      "milestones": [
+        {"id": "p50",   "points": 50,   "kind": "energy", "amount": 20},
+        {"id": "p150",  "points": 150,  "kind": "energy", "amount": 50},
+        {"id": "p350",  "points": 350,  "kind": "chest",  "chest": "wood", "amount": 1},
+        {"id": "p700",  "points": 700,  "kind": "energy", "amount": 100},
+        {"id": "p1200", "points": 1200, "kind": "chest",  "chest": "silver", "amount": 1}
+      ]
+    }
+  ],
+  "_note": "Valori provizorii. Punctele se acordă numai la aterizare, în plus față de premiul căsuței. Bonusul Morii se aplică la revendicare, numai energiei din evenimente."
+}

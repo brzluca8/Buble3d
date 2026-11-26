@@ -9,6 +9,10 @@ const CrystalGlow := preload("res://scripts/board/crystal_glow.gd")
 const WheelScreen := preload("res://scripts/crystal/wheel_screen.gd")
 var crystal_glow: CrystalGlow
 var wheel: WheelScreen
+const EventScreen := preload("res://scripts/crystal/event_screen.gd")
+const Events := preload("res://scripts/economy/event_service.gd")
+var event_screen: EventScreen
+var event_clock := 0.0
 @onready var sounds := $Sunete
 @onready var dice := $Zaruri
 @onready var path: LoopPath = $LoopPath
@@ -64,6 +68,14 @@ func _connect_mode() -> void:
 	wheel.closed.connect(_wheel_closed)
 	wheel.later_requested.connect(_wheel_later)
 	hud.crystal_requested.connect(open_crystal)
+	event_screen = EventScreen.new()
+	event_screen.name = "Eveniment"
+	add_child(event_screen)
+	event_screen.setup(hud)
+	event_screen.claim_requested.connect(_claim_event)
+	hud.event_requested.connect(open_event)
+	game.start_scheduled_events()
+	game.close_expired_events()
 	_sync_crystal()
 	if not game.pending_spin().is_empty():
 		_recover_spin.call_deferred()
@@ -82,7 +94,7 @@ func _last_message() -> String:
 
 
 func _roll() -> void:
-	if selected_plot >= 0 or hud.overlay.visible or wheel_open():
+	if selected_plot >= 0 or hud.overlay.visible or wheel_open() or event_screen.is_open():
 		return
 	var roll: Dictionary = game.roll()
 	if roll.is_empty():
@@ -182,6 +194,9 @@ func _finish() -> void:
 	var key := str(landing.get("resource","coins"))
 	rare_joy = game.ECONOMY.kind(visual_tile,RULES.tile_count) == "magic" or (key == "coins" and int(landing.get("amount",0)) >= 125)
 	path.flash(visual_tile,hud.prize_color(key))
+	var event_points := int(game.state.last_roll.get("event_points",0))
+	if event_points > 0:
+		hud.show_event_points(event_points,str(Events.definition(str(game.state.event.id)).name))
 	_celebrate()
 	if not landing.is_empty():
 		sounds.reward(landing.resource)
@@ -272,6 +287,8 @@ func _upgrade(slot: int, level: int) -> void:
 
 
 func _select_at(screen_point: Vector2) -> void:
+	if event_screen.is_open():
+		return
 	if not game.busy and not wheel_open() and _crystal_hit(screen_point):
 		open_crystal()
 		return
@@ -280,7 +297,7 @@ func _select_at(screen_point: Vector2) -> void:
 		var indices := PackedStringArray()
 		for tile in path.selected_tiles:
 			indices.append(str(tile))
-		message.text = "Bonus global · căsuțele %s" % ", ".join(indices)
+		message.text = "Bonus global · căsuțele %s" % ", ".join(indices) if not indices.is_empty() else "Moara Trăsnită · energie mai multă din evenimente"
 
 
 func _celebrate() -> void:
@@ -313,6 +330,10 @@ func _camera_lift(height: float) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	event_clock += delta
+	if event_clock >= 1.0:
+		event_clock = 0.0
+		_tick_events()
 	if game.busy or (joy and joy.is_running()):
 		return
 	idle_age += delta
@@ -417,3 +438,35 @@ func _recover_spin() -> void:
 		return
 	message.text = "Premiu confirmat · " + Crystal.describe(receipt)
 	wheel.show_recovered(receipt)
+
+
+# Events. The screen shows the saved state; claims go through the save transaction.
+
+func open_event() -> void:
+	if game.busy or wheel_open() or hud.overlay.visible or game.state.event.is_empty():
+		return
+	if selected_plot >= 0:
+		_deselect()
+	event_screen.open(game)
+
+
+func _claim_event(milestone_id: String) -> void:
+	var receipt: Dictionary = game.claim_event_reward(milestone_id)
+	if receipt.is_empty():
+		event_screen.refresh()
+		return
+	sounds.reward("energy" if receipt.kind == "energy" else "coins")
+	message.text = "Eveniment · " + Events.describe(receipt)
+	_refresh()
+	event_screen.refresh()
+	hud.spark_at(camera,pawn.global_position + Vector3.UP*1.2,Color("#9ef0e1"),"",true)
+
+
+func _tick_events() -> void:
+	if game.state.is_empty() or game.busy:
+		return
+	var before: String = Events.status(game.state.event,game.clock())
+	if before == "closed":
+		game.close_expired_events()
+		event_screen.refresh()
+	hud.refresh_event(game,game.state)

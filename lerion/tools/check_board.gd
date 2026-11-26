@@ -206,8 +206,11 @@ func _run() -> void:
 	game.state.energy = 0
 	game.state.tick = now
 	var stamp := int(game.state.seq)
-	check(game.roll(now+299).is_empty() and game.state.seq == stamp,"Energie zero")
-	check(not game.roll(now+300).is_empty() and game.state.energy == (game.state.last_roll.landing.amount if game.state.last_roll.landing.get("resource") == "energy" else 0),"Regenerare și aruncare")
+	var interval: int = RULES.regeneration_seconds
+	check(interval == 600,"Regenerare +1 la 10 minute")
+	game.state.clock_mark = 0
+	check(game.roll(now+interval-1).is_empty() and game.state.seq == stamp,"Energie zero")
+	check(not game.roll(now+interval).is_empty() and game.state.energy == 0,"Regenerare și aruncare (căsuțele nu mai dau energie)")
 	map.free()
 	for i in range(2):
 		DirAccess.remove_absolute(game._path(i))

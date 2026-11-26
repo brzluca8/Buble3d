@@ -14,6 +14,12 @@ var quality_menu: OptionButton
 signal roll_requested
 signal indices_requested
 signal crystal_requested
+signal event_requested
+const Events := preload("res://scripts/economy/event_service.gd")
+const Energy := preload("res://scripts/economy/energy_service.gd")
+const EventScreen := preload("res://scripts/crystal/event_screen.gd")
+var event_chip: Button
+var event_tween: Tween
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 var crystal_chip: Button
 var chip_tween: Tween
@@ -63,6 +69,15 @@ func _make_projection() -> void:
 	crystal_chip.accessibility_name = "Super Cristal"
 	crystal_chip.tooltip_text = "Super Cristal · se încarcă la fiecare aruncare"
 	add_child(crystal_chip)
+	event_chip = _button("",func() -> void: event_requested.emit())
+	event_chip.icon = ICONS["chaos"]
+	event_chip.expand_icon = true
+	event_chip.add_theme_constant_override("icon_max_width",30)
+	event_chip.custom_minimum_size = Vector2(0,52)
+	event_chip.add_theme_font_size_override("font_size",19)
+	event_chip.accessibility_name = "Eveniment"
+	event_chip.hide()
+	add_child(event_chip)
 	flights.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(flights)
 	flights.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -108,7 +123,7 @@ func _refresh_controls(game: RefCounted, s: Dictionary) -> void:
 	if playing:
 		roll_button.text = "Aruncare…" if throwing else "În mers…"
 	elif roll_button.disabled:
-		var seconds := maxi(0,int(s.tick)+RULES.regeneration_seconds-int(Time.get_unix_time_from_system()))
+		var seconds := maxi(0,Energy.seconds_to_next(s,game.clock()))
 		roll_button.text = "Energie în %d:%02d" % [seconds/60,seconds%60]
 	skip.visible = playing
 	var result: Dictionary = s.last_roll
@@ -129,6 +144,7 @@ func _refresh_controls(game: RefCounted, s: Dictionary) -> void:
 				energy.text = "%d/%d" % [int(s.energy)-amount,RULES.energy_max]
 
 	_refresh_crystal(s)
+	refresh_event(game,s)
 	var available := int(energy.text.get_slice("/",0))/maxi(1,RULES.energy_cost)
 	rolls_left.text = "1 aruncare" if available == 1 else "%d aruncări" % available
 
@@ -355,6 +371,8 @@ func _layout() -> void:
 	if crystal_chip:
 		crystal_chip.reset_size()
 		crystal_chip.position = Vector2(top.position.x,top.position.y+top.size.y+10)
+		event_chip.reset_size()
+		event_chip.position = Vector2(top.position.x+crystal_chip.size.x+8,top.position.y+top.size.y+10)
 	if overlay.get_child_count() == 0:
 		return
 	# Anchor the inventory and its close control inside the same safe margins as the HUD.
@@ -390,5 +408,47 @@ func _refresh_crystal(s: Dictionary) -> void:
 	_layout.call_deferred()
 
 
+## Event button next to the crystal button: name and time left, pulsing when a reward can be claimed.
+func refresh_event(game: RefCounted, s: Dictionary) -> void:
+	var ev: Dictionary = s.get("event",{})
+	var now: int = game.clock()
+	var phase := Events.status(ev,now)
+	var show_chip := phase == "active" or phase == "claiming"
+	event_chip.visible = show_chip
+	if not show_chip:
+		return
+	var def := Events.definition(str(ev.id))
+	var claimable := Events.claimable(ev,now).size() > 0
+	var time_left := EventScreen.time_text(Events.remaining(ev,now)) if phase == "active" else "revendică"
+	var text := "Recompensă gata!" if claimable else "%s · %s" % [str(def.name).replace("Festivalul lui ","Festival "),time_left]
+	if event_chip.text != text:
+		event_chip.text = text
+		event_chip.reset_size()
+		var style := _style(Color("#5a35a8") if not claimable else Color("#ffcf5a"),Color("#9ef0e1") if not claimable else Color("#fff1b0"),20)
+		for mode in ["normal","hover","pressed"]:
+			event_chip.add_theme_stylebox_override(mode,style)
+		for mode in ["font_color","font_hover_color","font_pressed_color"]:
+			event_chip.add_theme_color_override(mode,Color("#3b2d34") if claimable else CREAM)
+		if event_tween:
+			event_tween.kill()
+		event_chip.scale = Vector2.ONE
+		if claimable and not prefs.reduced:
+			event_chip.pivot_offset = event_chip.size*0.5
+			event_tween = event_chip.create_tween().set_loops()
+			event_tween.tween_property(event_chip,"scale",Vector2.ONE*1.06,0.45).set_trans(Tween.TRANS_SINE)
+			event_tween.tween_property(event_chip,"scale",Vector2.ONE,0.45).set_trans(Tween.TRANS_SINE)
+		_layout.call_deferred()
+
+
+func show_event_points(points: int, event_name: String) -> void:
+	var label := _toast("+%d puncte · %s" % [points,event_name])
+	label.add_theme_color_override("font_color",Color("#9ef0e1"))
+	label.position = Vector2(top.position.x + (top.size.x-label.size.x)*0.5,top.position.y+top.size.y+72)
+	var fade := label.create_tween()
+	fade.tween_interval(1.1)
+	fade.tween_property(label,"modulate:a",0,0.25)
+	fade.tween_callback(label.queue_free)
+
+
 func blocks_map(point: Vector2) -> bool:
-	return super(point) or (crystal_chip.visible and crystal_chip.get_global_rect().has_point(point))
+	return super(point) or (crystal_chip.visible and crystal_chip.get_global_rect().has_point(point)) or (event_chip.visible and event_chip.get_global_rect().has_point(point))

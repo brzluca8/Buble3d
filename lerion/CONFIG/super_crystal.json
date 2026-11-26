@@ -3,7 +3,6 @@
   "first_target": 50,
   "later_target": 100,
   "charge_per_roll": 1,
-  "energy_limit": 9999,
   "prizes": [
     {"id": "energy_10", "kind": "energy", "amount": 10, "weight": 28, "label": "+10 energie"},
     {"id": "chest_wood", "kind": "chest", "chest": "wood", "amount": 1, "weight": 24, "label": "Cufăr de lemn"},

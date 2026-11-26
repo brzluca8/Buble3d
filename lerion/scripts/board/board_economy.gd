@@ -5,6 +5,8 @@ extends Resource
 @export var building_categories: Dictionary
 @export var payouts: Dictionary
 @export var start_coins := 100
+const EVENTS := preload("res://scripts/economy/event_service.gd")
+## Tiles never pay energy. "energy" stays a known unit only so that old receipts keep loading.
 const UNITS := {"coins":["monedă","monede"], "fragments":["fragment","fragmente"],
 	"build_points":["punct de construcție","puncte de construcție"],
 	"energy":["energie","energie"], "quest_tokens":["jeton local","jetoane locale"]}
@@ -38,16 +40,13 @@ func amount(type: String, resource: String, level: int) -> int:
 	return int(payouts[type][resource][level])
 
 
-func award(index: int, count: int, level: int, energy_room: int, rng: RandomNumberGenerator) -> Dictionary:
+func award(index: int, count: int, level: int, rng: RandomNumberGenerator) -> Dictionary:
 	if index == 0:
 		return {}
 	var type := kind(index, count)
 	var options: Array = payouts[type].keys()
 	var key: String = options[0] if options.size() == 1 else options[rng.randi_range(0, options.size() - 1)]
-	var value := amount(type, key, level)
-	if key == "energy":
-		value = mini(value, energy_room)
-	return {"resource":key, "amount":value}
+	return {"resource":key, "amount":amount(type, key, level)}
 
 
 func unit(key: String, value: int) -> String:
@@ -60,6 +59,11 @@ func describe(receipt: Dictionary) -> String:
 
 func preview(building: String, level: int) -> String:
 	var type: String = building_categories[building]
+	if type == "event_energy":
+		var heading_event := "Nivel maxim" if level == 3 else "Nivel %d → %d" % [level, level + 1]
+		var now_percent := EVENTS.mill_percent(level)
+		var change := "+%d%%" % now_percent if level == 3 else "+%d%% → +%d%%" % [now_percent, EVENTS.mill_percent(level + 1)]
+		return "%s\nEnergia din evenimente · %s" % [heading_event, change]
 	var options := PackedStringArray()
 	for key: String in payouts[type]:
 		var current := amount(type, key, level)

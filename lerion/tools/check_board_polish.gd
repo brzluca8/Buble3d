@@ -115,7 +115,7 @@ func _run() -> void:
 	check(Save.new(prefix).state == roll,"Efectele de aterizare nu modifică salvarea")
 	map._select_at(map.camera.unproject_position(map.plots.get_child(4).position+Vector3.UP*0.3))
 	map._upgrade(4,0)
-	check(map.path.lit_tiles == PackedInt32Array([1,7,13,19,26,32]),"Construcție pe toate dalele cu monede")
+	check(map.path.lit_tiles == PackedInt32Array([1,7,11,13,19,26,32]),"Construcție pe toate dalele cu monede")
 	var purchase: Dictionary = map.game.state.duplicate(true)
 	map._upgrade(4,0)
 	check(map.game.state == purchase and map.find_children("*","CPUParticles3D",true,false).size() == 1,"Un singur șantier la confirmare")

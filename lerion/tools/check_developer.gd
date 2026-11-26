@@ -87,7 +87,7 @@ func run() -> void:
 	check(Profile.new().state == profile.state,"Rechargement identique")
 	var untouched: Dictionary = profile.state.duplicate(true)
 	var overflow := profile.energy_overflow_test(150)
-	check(overflow.before == 150 and overflow.after == 149 and overflow.receipt.landing.amount == 0,"Énergie hors plafond isolée")
+	check(overflow.before == 150 and overflow.after == 149 and overflow.receipt.landing.resource != "energy","Énergie hors plafond isolée, sans énergie de case")
 	check(profile.state == untouched,"Hors plafond sans mutation")
 	check(profile.set_future(50,false,"wood") and profile.state.debug_future.threshold == 50,"Seuil initial préparé")
 	check(profile.set_future(100,true,"gold") and profile.state.debug_future.threshold == 100,"Seuil ultérieur préparé")
@@ -112,7 +112,7 @@ func run() -> void:
 		await process_frame
 		panel.open_panel()
 		await process_frame
-		for page in range(6):
+		for page in range(panel.pages.size()):
 			panel.show_page(page)
 			await process_frame
 			check(panel.frame.get_rect().end.x <= root.get_visible_rect().size.x and panel.frame.get_rect().end.y <= root.get_visible_rect().size.y,"Meniu încadrat "+str(pixels))

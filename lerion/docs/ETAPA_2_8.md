@@ -1,3 +1,5 @@
+> Etapa 3.5 a eliminat căsuțele de energie și a redistribuit tipurile; vezi [ETAPA_3_5_ENERGIE_EVENIMENTE.md](ETAPA_3_5_ENERGIE_EVENIMENTE.md). Tabelele de mai jos rămân valabile pentru celelalte categorii.
+
 # Etapa 2.8 — Categorii distribuite și bonusuri globale
 
 Această etapă înlocuiește asocierile locale din documentația V3 anterioară. Configurația executată este în `assets/board/economy.tres`. Fișierul JSON din CONFIG oferă exemplul corespunzător.

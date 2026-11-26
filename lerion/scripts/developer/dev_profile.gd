@@ -7,6 +7,8 @@ var memory_only := false
 var forced_pair := Vector2i.ZERO
 var forced_prize := ""
 var recording := false
+var op := ""
+const LOG_LIMIT := 40
 
 func _init(in_memory := false) -> void:
 	memory_only = in_memory
@@ -29,12 +31,36 @@ func _commit(next: Dictionary) -> bool:
 		if history.size() > 30:
 			history.pop_front()
 		next.debug_history = history
+	if not op.is_empty():
+		var log: Array = next.get("debug_log",[]).duplicate(true)
+		var ev: Dictionary = next.get("event",{})
+		log.append({"op":op,"seq":int(state.get("seq",0))+1,"tile":next.board_position_index,"energy":next.energy,
+			"coins":next.wallet.coins,"charge":next.crystal_charge,"chests":next.chests.duplicate(),
+			"event_points":int(ev.get("points",0)),"skew":int(next.get("debug_skew",0)),
+			"prize":str(next.last_spin.get("prize","")),"spin_id":int(next.last_spin.get("id",0))})
+		while log.size() > LOG_LIMIT:
+			log.pop_front()
+		next.debug_log = log
+	op = ""
 	if memory_only:
 		next.seq = int(state.get("seq",0))+1
 		state = next
 		error = ""
 		return true
 	return super(next)
+
+## Simulated clock: the real time plus the offset stored in the DEBUG profile.
+func clock(now := -1) -> int:
+	return super(now) + (int(state.get("debug_skew",0)) if now < 0 else 0)
+
+## Regeneration can be paused for tests. While paused the timer does not accumulate.
+func _regen(next: Dictionary, now: int) -> void:
+	if bool(next.get("debug_regen_off",false)):
+		next.clock_mark = Energy.effective_now(next,now)
+		if int(next.energy) < Energy.capacity():
+			next.tick = int(next.clock_mark)
+		return
+	super(next,now)
 
 func _draw_faces() -> Vector2i:
 	if allowed() and forced_pair != Vector2i.ZERO:
@@ -46,10 +72,12 @@ func _draw_prize() -> String:
 		return Crystal.draw(rng,forced_prize)
 	return super()
 
-func spin_wheel(now := int(Time.get_unix_time_from_system())) -> Dictionary:
+func spin_wheel(now := -1) -> Dictionary:
 	if not allowed():
 		return {}
+	op = "spin"
 	var receipt := super(now)
+	op = ""
 	if not receipt.is_empty():
 		forced_prize = ""
 	return receipt
@@ -68,6 +96,7 @@ func set_crystal(charge: int, activations: int) -> bool:
 	var next := state.duplicate(true)
 	next.crystal_activations = activations
 	next.crystal_charge = mini(charge,Crystal.target(next))
+	op = "set_crystal"
 	return _commit(next)
 
 func charge_crystal() -> bool:
@@ -78,6 +107,7 @@ func set_chests(wood: int, silver: int, gold: int) -> bool:
 		return false
 	var next := state.duplicate(true)
 	next.chests = {"wood":wood,"silver":silver,"gold":gold}
+	op = "set_chests"
 	return _commit(next)
 
 ## Many spins on an in-memory copy, through the same transaction. The profile is untouched.
@@ -119,12 +149,14 @@ func force_pair(pair: Vector2i) -> bool:
 	forced_pair = pair
 	return true
 
-func roll(now := int(Time.get_unix_time_from_system())) -> Dictionary:
+func roll(now := -1) -> Dictionary:
 	if not allowed():
 		return {}
+	op = "roll"
 	recording = true
 	var receipt := super(now)
 	recording = false
+	op = ""
 	if not receipt.is_empty():
 		forced_pair = Vector2i.ZERO
 	return receipt
@@ -192,6 +224,9 @@ func reset_profile(confirmed: bool) -> bool:
 	var fresh = get_script().new(true)
 	var next: Dictionary = fresh.state.duplicate(true)
 	next.debug_history = []
+	next.debug_log = []
+	next.debug_skew = 0
+	next.debug_regen_off = false
 	forced_pair = Vector2i.ZERO
 	forced_prize = ""
 	return _commit(next)
@@ -212,11 +247,231 @@ func energy_overflow_test(value: int) -> Dictionary:
 	trial.state.energy = clampi(value,101,10000)
 	trial.state.board_position_index = 0
 	trial.state.last_roll = {}
+	trial.state.debug_regen_off = false
 	trial.force_pair(Vector2i(1,1))
 	var before: int = trial.state.energy
 	var receipt: Dictionary = trial.roll()
 	return {"before":before,"after":trial.state.energy,"receipt":receipt,
-		"note":"Test izolat în memorie, plafonul recompensei 100."}
+		"note":"Test izolat în memorie: de peste 100 se scade numai costul aruncării; căsuța nu mai acordă energie."}
+
+# ---- Energy and clock -------------------------------------------------------------------------
+
+func set_energy(value: int) -> bool:
+	if not allowed() or busy or value < 0 or value > RULES.energy_hard_cap:
+		return false
+	var next := state.duplicate(true)
+	next.energy = value
+	next.tick = clock()
+	op = "set_energy"
+	return _commit(next)
+
+func set_regen(enabled: bool) -> bool:
+	if not allowed() or busy:
+		return false
+	var next := state.duplicate(true)
+	next.debug_regen_off = not enabled
+	next.tick = clock()
+	op = "regen_on" if enabled else "regen_off"
+	return _commit(next)
+
+func regen_enabled() -> bool:
+	return not bool(state.get("debug_regen_off",false))
+
+## Moves the simulated clock forward, then credits regeneration through the normal rules.
+func advance_time(seconds: int) -> bool:
+	if not allowed() or busy or seconds <= 0:
+		return false
+	var next := state.duplicate(true)
+	next.debug_skew = int(next.get("debug_skew",0)) + seconds
+	op = "time+%ds" % seconds
+	if not _commit(next):
+		return false
+	regenerate()
+	return true
+
+func regen_info() -> Dictionary:
+	var now := clock()
+	return {"energy":int(state.energy),"enabled":regen_enabled(),"to_next":Energy.seconds_to_next(state,now),
+		"to_full":Energy.seconds_to_full(state,now),"interval":Energy.interval(),"skew":int(state.get("debug_skew",0))}
+
+# ---- Dice and path ----------------------------------------------------------------------------
+
+## Prepares one roll that stops exactly on `tile`. Moves Lerik closer without a reward when the
+## tile is not 2..12 steps ahead. The roll itself uses the normal transaction.
+func force_landing(tile: int) -> bool:
+	if not allowed() or busy or tile < 0 or tile >= RULES.tile_count:
+		return false
+	var need := posmod(tile - int(state.board_position_index),RULES.tile_count)
+	if need < 2 or need > 12:
+		if not teleport(posmod(tile - 7,RULES.tile_count)):
+			return false
+		need = 7
+	var first := maxi(1,need - 6)
+	return force_pair(Vector2i(first,need - first))
+
+# ---- Chests -----------------------------------------------------------------------------------
+
+func add_chests(kind: String, count: int) -> bool:
+	if not allowed() or busy or kind not in Crystal.CHEST_KINDS or count < 1:
+		return false
+	var next := state.duplicate(true)
+	next.chests[kind] = mini(1000000,int(next.chests[kind]) + count)
+	op = "chest+%d %s" % [count,kind]
+	return _commit(next)
+
+## Compares the memory state with what a fresh load from disk returns.
+func verify_saved() -> Dictionary:
+	if not allowed() or memory_only:
+		return {}
+	var disk = get_script().new()
+	var same: bool = disk.state == state
+	var diff := PackedStringArray()
+	for key in state:
+		if not disk.state.has(key) or disk.state[key] != state[key]:
+			diff.append(str(key))
+	return {"identical":same,"different_fields":diff,"disk_seq":int(disk.state.get("seq",-1)),"seq":int(state.seq),
+		"chests_disk":disk.state.get("chests",{}),"chests":state.chests}
+
+# ---- Events -----------------------------------------------------------------------------------
+
+func start_event(id: String, now := -1) -> bool:
+	op = "event_start"
+	var ok := super(id,now) if allowed() else false
+	op = ""
+	return ok
+
+func claim_event_reward(milestone_id: String, now := -1) -> Dictionary:
+	if not allowed():
+		return {}
+	op = "claim " + milestone_id
+	var receipt := super(milestone_id,now)
+	op = ""
+	return receipt
+
+## Removes the running event without archiving. `history` also clears the archive.
+func stop_event(history := false) -> bool:
+	if not allowed() or busy:
+		return false
+	var next := state.duplicate(true)
+	next.event = {}
+	if history:
+		next.event_history = []
+	op = "event_stop"
+	return _commit(next)
+
+func set_event_points(points: int) -> bool:
+	if not allowed() or busy or points < 0 or points > 1000000 or state.event.is_empty():
+		return false
+	var next := state.duplicate(true)
+	next.event.points = points
+	op = "event_points=%d" % points
+	return _commit(next)
+
+## Same points rule as a real landing, without moving Lerik and without the tile reward.
+func simulate_event_landing(kind: String) -> int:
+	if not allowed() or busy:
+		return -1
+	var next := state.duplicate(true)
+	var gained := Events.award_landing(next,kind,clock())
+	op = "event_landing " + kind
+	return gained if _commit(next) else -1
+
+func force_milestone(milestone_id: String) -> bool:
+	if not allowed() or busy or state.event.is_empty():
+		return false
+	var item := Events.milestone(Events.definition(str(state.event.id)),milestone_id)
+	return not item.is_empty() and set_event_points(maxi(int(state.event.points),int(item.points)))
+
+## stage "claiming": just past the end of the event. stage "closed": past the claim window.
+func expire_event(stage: String) -> bool:
+	if not allowed() or busy or state.event.is_empty():
+		return false
+	var target := int(state.event.end) + 1
+	if stage == "closed":
+		target += Events.grace_seconds()
+	var delta := target - clock()
+	if delta <= 0:
+		return false
+	return advance_time(delta)
+
+## Two claims of the same reward on an isolated copy. The profile is not modified.
+func duplicate_claim_test(milestone_id: String) -> Dictionary:
+	if not allowed() or state.event.is_empty():
+		return {}
+	var trial = get_script().new(true)
+	trial.state = state.duplicate(true)
+	var now: int = clock()
+	var def := Events.definition(str(trial.state.event.id))
+	var item := Events.milestone(def,milestone_id)
+	if item.is_empty():
+		return {}
+	trial.state.event.points = maxi(int(trial.state.event.points),int(item.points))
+	trial.state.event.claimed.erase(milestone_id)
+	var before_energy: int = trial.state.energy
+	var first: Dictionary = trial.claim_event_reward(milestone_id,now)
+	var after_first: Dictionary = trial.state.duplicate(true)
+	var second: Dictionary = trial.claim_event_reward(milestone_id,now)
+	return {"first_granted":not first.is_empty(),"second_refused":second.is_empty(),
+		"state_unchanged_by_second":trial.state == after_first,"first_receipt":first,
+		"energy_gain":int(after_first.energy) - before_energy}
+
+# ---- Selective reset, history -----------------------------------------------------------------
+
+const RESET_PARTS := {"energy":"Energie","chests":"Cufere","crystal":"Super Cristal","event":"Evenimente",
+	"position":"Poziție și ture","levels":"Niveluri clădiri","wallet":"Solduri","clock":"Ceas simulat"}
+
+func reset_part(part: String, confirmed: bool) -> bool:
+	if not allowed() or busy or not confirmed or not RESET_PARTS.has(part):
+		return false
+	var fresh = get_script().new(true)
+	var base: Dictionary = fresh.state
+	var next := state.duplicate(true)
+	match part:
+		"energy":
+			next.energy = base.energy
+			next.tick = clock()
+			next.debug_regen_off = false
+		"chests":
+			next.chests = Crystal.empty_chests()
+		"crystal":
+			next.crystal_charge = 0
+			next.crystal_activations = 0
+			next.last_spin = {}
+			forced_prize = ""
+		"event":
+			next.event = {}
+			next.event_history = []
+		"position":
+			next.board_position_index = 0
+			next.laps = 0
+			next.last_roll = {}
+			forced_pair = Vector2i.ZERO
+		"levels":
+			next.levels = base.levels.duplicate()
+		"wallet":
+			next.wallet = base.wallet.duplicate()
+		"clock":
+			next.debug_skew = 0
+	op = "reset_" + part
+	return _commit(next)
+
+func spin_history_text() -> String:
+	var lines := PackedStringArray()
+	var log: Array = state.get("debug_log",[])
+	for i in range(log.size() - 1,-1,-1):
+		var e: Dictionary = log[i]
+		if e.op == "spin":
+			lines.append("Rotire #%d · %s · energie %d · cufere %s" % [int(e.spin_id),Crystal.describe({"prize":e.prize}),int(e.energy),str(e.chests)])
+	return "\n".join(lines) if not lines.is_empty() else "Nicio rotire în istoricul acestui profil."
+
+func history_text() -> String:
+	var lines := PackedStringArray()
+	var log: Array = state.get("debug_log",[])
+	for i in range(log.size() - 1,-1,-1):
+		var e: Dictionary = log[i]
+		lines.append("#%d %s · căsuța %d · energie %d · monede %d · cristal %d · cufere %s · puncte eveniment %d" % [int(e.seq),e.op,int(e.tile),
+			int(e.energy),int(e.coins),int(e.charge),str(e.chests),int(e.event_points)])
+	return "\n".join(lines) if not lines.is_empty() else "Nicio tranzacție înregistrată în acest profil."
 
 func typed(value: Variant) -> Variant:
 	if value is Dictionary:
@@ -238,4 +493,5 @@ func _valid_board(value: Variant) -> bool:
 		return false
 	var history: Variant = value.get("debug_history",[])
 	var future: Variant = value.get("debug_future",{})
-	return history is Array and history.size() <= 30 and future is Dictionary
+	var log: Variant = value.get("debug_log",[])
+	return history is Array and history.size() <= 30 and future is Dictionary and log is Array and log.size() <= LOG_LIMIT

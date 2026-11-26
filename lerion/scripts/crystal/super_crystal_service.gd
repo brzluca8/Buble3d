@@ -4,6 +4,7 @@ extends RefCounted
 ## rules and return the identical receipt {id, prize, kind, amount, chest, presented}.
 
 const CONFIG := preload("res://CONFIG/super_crystal.json")
+const RULES := preload("res://assets/board/rules.tres")
 const CHEST_KINDS := ["wood","silver","gold"]
 
 
@@ -47,7 +48,7 @@ static func max_target() -> int:
 
 
 static func energy_limit() -> int:
-	return int(CONFIG.data.energy_limit)
+	return RULES.energy_hard_cap
 
 
 static func target(state: Dictionary) -> int:

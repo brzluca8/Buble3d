@@ -92,7 +92,7 @@ func wheel_geometry() -> void:
 func charging_and_spins() -> void:
 	var p := prefix + "_tx"
 	var game := ForcedSave.new(p)
-	check(game.state.version == 5 and game.state.crystal_charge == 0 and game.state.chests == Crystal.empty_chests(),"Salvare nouă v5")
+	check(game.state.version == 6 and game.state.crystal_charge == 0 and game.state.chests == Crystal.empty_chests(),"Salvare nouă v6")
 	check(Crystal.target(game.state) == 50 and not Crystal.is_ready(game.state),"Prima țintă 50")
 	check(game.spin_wheel().is_empty(),"Rotire refuzată fără încărcare")
 	for i in range(49):
@@ -129,18 +129,13 @@ func charging_and_spins() -> void:
 	check(game.acknowledge_spin(int(receipt.id)) and not game.acknowledge_spin(int(receipt.id)),"Confirmare unică")
 	check(Save.new(p).pending_spin().is_empty() and Save.new(p).state.energy == 120,"Reluarea nu acordă din nou premiul")
 	# Normal tile rewards keep the 100 cap: from 120, an energy tile pays nothing extra.
-	var energy_tile := -1
-	for tile in range(1,36):
-		if game.ECONOMY.kind(tile,36) == "energy":
-			energy_tile = tile
-			break
-	var near := posmod(energy_tile - 2,36)
+	var near := 0
 	game.state.board_position_index = near
 	game.state.last_roll = {}
 	var roll_game := ForcedSave.new(p + "_roll")
 	roll_game.state = game.state.duplicate(true)
 	var landing := _roll_pair(roll_game,Vector2i(1,1))
-	check(landing.resource == "energy" and int(landing.amount) == 0 and roll_game.state.energy == 119,"Recompensa de pe traseu păstrează plafonul 100")
+	check(landing.resource != "energy" and roll_game.state.energy == 119,"Căsuțele nu mai acordă energie; de la 120 rămâne doar debitul")
 	# Chest prizes and persistence across restarts, through all 100-roll cycles.
 	for kind: String in ["wood","silver","gold"]:
 		game.state.crystal_charge = Crystal.target(game.state)
@@ -187,12 +182,12 @@ func version_four_compatibility() -> void:
 	game._commit(old)
 	var hashes := _files(p)
 	var loaded := Save.new(p)
-	check(loaded.error.is_empty() and loaded.state.version == 5,"Salvarea v4 se încarcă")
+	check(loaded.error.is_empty() and loaded.state.version == 6,"Salvarea v4 se încarcă")
 	check(loaded.state.wallet == old.wallet and loaded.state.levels == old.levels and loaded.state.board_position_index == 17 and loaded.state.laps == 12 and loaded.state.energy == 44,"Progresul v4 rămâne intact")
 	check(loaded.state.crystal_charge == 0 and loaded.state.chests == Crystal.empty_chests() and loaded.state.last_spin.is_empty(),"Câmpuri noi neutre")
 	check(hashes == _files(p),"Încărcarea nu rescrie salvarea v4")
 	loaded.roll()
-	check(Save.new(p).state.version == 5 and Save.new(p).state.crystal_charge == 1,"Prima tranzacție scrie v5")
+	check(Save.new(p).state.version == 6 and Save.new(p).state.crystal_charge == 1,"Prima tranzacție scrie v6")
 	var corrupt := Save.new(p)
 	var bad: Dictionary = corrupt.state.duplicate(true)
 	bad.chests.gold = -1

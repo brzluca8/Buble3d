@@ -15,7 +15,7 @@ Panoul se deschide după terminarea aruncării. Editările resurselor și nivelu
 
 - Monede — setează, adaugă, zero.
 - Fragmente, energie, puncte de construcție și jetoane de aventură — setează și zero. Energia profilului este limitată la 100.
-- Energie peste plafon — test separat pe o copie în memorie. Pornește cu 101–10000 energie și simulează perechea 1 + 1 de pe START, cu aterizare pe energie. Raportează energia inițială, finală și chitanța. O valoare de 150 devine 149, cu premiu efectiv zero. Profilul persistent rămâne intact.
+- Energie peste plafon — test separat pe o copie în memorie. Pornește cu 101–10000 energie și simulează perechea 1 + 1 de pe START. Raportează energia inițială, finală și chitanța. O valoare de 150 devine 149: căsuțele nu mai acordă energie. Profilul persistent rămâne intact.
 - Zaruri — pregătește fiecare valoare 1–6 pentru o singură aruncare sau revine la aleatoriu. Perechea se consumă numai după salvarea reușită. La restart se revine la aleatoriu.
 - Traseu — mutare la orice indice 0–35 fără premiu și fără tură nouă. Teste dedicate pentru 34 + 5 și 34 + 2 folosesc butonul normal de aruncare și aceeași tranzacție.
 - Viteză — 1×, 3× sau instantaneu pentru anticiparea zarurilor și mers. Modul instantaneu folosește finalizarea existentă, comună cu Grăbește. Setarea este locală sesiunii.
@@ -77,3 +77,16 @@ XDG_DATA_HOME=/tmp/lerion-dev-tests godot --headless --fixed-fps 60 --script too
 ```
 
 Testarea pe telefon fizic, tastatura Android, zonele sigure reale și extragerea diagnosticului de pe telefon rămân de verificat pe dispozitiv. APK-ul RELEASE de control a fost exportat fără semnare într-o copie temporară, exclusiv pentru verificarea conținutului.
+
+## Extensii Etapa 3.5
+
+Pagini: Resurse, **Energie**, Zaruri și traseu, Clădiri, Super Cristal, **Cufere**, **Evenimente**, Salvări și diagnostic, Simularea economiei. Toate scrierile trec prin profilul DEBUG separat.
+
+- **Energie:** 0/1/50/99/100/500 sau valoare liberă (până la 9999); regenerare activă/oprită; salt de timp 10 min / 1 oră / 24 ore (ceasul profilului, câmp `debug_skew`); timp rămas până la +1 și până la plin, actualizat de două ori pe secundă; testul de energie peste plafon.
+- **Zaruri și traseu:** pereche fixată, «Aterizează pe căsuța X» (mută Lerik fără premiu dacă ținta nu e la 2–12 pași, apoi folosește aruncarea normală), mutare directă, simulare 100/1000/10000 pe copie izolată cu statistici (premii, energie consumată, puncte de eveniment).
+- **Super Cristal:** încărcare setată, 49/50, 99/100, activare instantanee (încarcă și deschide ruleta), premiu forțat, simulare rotiri, test de restart în timpul rotirii, istoric premii.
+- **Cufere:** +1 / +10 / +100 pentru lemn, argint, aur; golire; verificarea salvării (memorie vs disc).
+- **Evenimente:** pornire, oprire, resetare, puncte manuale, simulare aterizare pe categorie, forțare prag, expirare (început revendicare / închis), verificare revendicări duplicate pe copie izolată.
+- **Salvări și diagnostic:** export JSON, snapshot și restaurare, istoricul ultimelor 40 de tranzacții (`debug_log`), resetare selectivă cu confirmare (energie, cufere, cristal, evenimente, poziție, niveluri, solduri, ceas simulat), resetare completă.
+
+Câmpuri locale de profil: `debug_log`, `debug_skew`, `debug_regen_off`. Funcțiile nu există în salvarea normală.

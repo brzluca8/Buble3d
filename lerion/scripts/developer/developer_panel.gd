@@ -2,6 +2,23 @@ extends CanvasLayer
 const Profile := preload("res://scripts/developer/dev_profile.gd")
 const Simulation := preload("res://scripts/developer/economy_simulation.gd")
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
+const Energy := preload("res://scripts/economy/energy_service.gd")
+const Events := preload("res://scripts/economy/event_service.gd")
+const RULES := preload("res://assets/board/rules.tres")
+var energy_report: TextEdit
+var charge_value: SpinBox
+var energy_status: Label
+var event_status: Label
+var event_report: TextEdit
+var history_view: TextEdit
+var spin_history_view: TextEdit
+var travel_sim: TextEdit
+var chest_report: Label
+var pending_part := ""
+var reset_part_menu: OptionButton
+var event_menu: OptionButton
+var landing_input: SpinBox
+var live_age := 0.0
 var crystal_status: Label
 var chest_status: Label
 var sim_wheel: TextEdit
@@ -61,7 +78,7 @@ func _ready() -> void:
 		section.custom_minimum_size.y = 58
 		section.add_theme_font_size_override("font_size",23)
 		layout.add_child(section)
-		var names := ["Resurse","Zaruri și traseu","Clădiri","Super Cristal și cufere","Salvări și diagnostic","Simularea economiei"]
+		var names := ["Resurse","Energie","Zaruri și traseu","Clădiri","Super Cristal","Cufere","Evenimente","Salvări și diagnostic","Simularea economiei"]
 		for title in names:
 			section.add_item(title)
 			var scroll := ScrollContainer.new()
@@ -74,11 +91,14 @@ func _ready() -> void:
 			scroll.add_child(col)
 			pages.append(scroll)
 		_resources(pages[0].get_child(0))
-		_travel(pages[1].get_child(0))
-		_buildings(pages[2].get_child(0))
-		_future(pages[3].get_child(0))
-		_diagnostics(pages[4].get_child(0))
-		_simulations(pages[5].get_child(0))
+		_energy(pages[1].get_child(0))
+		_travel(pages[2].get_child(0))
+		_buildings(pages[3].get_child(0))
+		_future(pages[4].get_child(0))
+		_chests(pages[5].get_child(0))
+		_events(pages[6].get_child(0))
+		_diagnostics(pages[7].get_child(0))
+		_simulations(pages[8].get_child(0))
 		section.item_selected.connect(show_page)
 		show_page(0)
 		map.hud.roll_requested.connect(apply_speed)
@@ -87,7 +107,7 @@ func _ready() -> void:
 	confirmation.dialog_text = "Resetezi resursele, nivelurile și poziția profilului local de dezvoltare?"
 	confirmation.ok_button_text = "Resetează DEBUG"
 	confirmation.cancel_button_text = "Anulează"
-	confirmation.confirmed.connect(func() -> void: result(map.game.reset_profile(true)))
+	confirmation.confirmed.connect(_confirmed_reset)
 	add_child(confirmation)
 	cover.hide()
 	get_viewport().size_changed.connect(layout_panel)
@@ -220,20 +240,15 @@ func sync_map() -> void:
 
 func _resources(col: Node) -> void:
 	label(col,"Valorile se aplică numai profilului DEBUG.")
-	for key: String in ["coins","fragments","energy","build_points","quest_tokens"]:
-		label(col,{"coins":"Monede","fragments":"Fragmente","energy":"Energie (0–100)","build_points":"Puncte de construcție","quest_tokens":"Jetoane de aventură"}[key])
+	label(col,"Energia se editează în pagina «Energie».")
+	for key: String in ["coins","fragments","build_points","quest_tokens"]:
+		label(col,{"coins":"Monede","fragments":"Fragmente","build_points":"Puncte de construcție","quest_tokens":"Jetoane de aventură"}[key])
 		var controls := row(col)
-		var initial: int = map.game.state.energy if key == "energy" else map.game.state.wallet[key]
-		var value := number(controls,100 if key == "energy" else 1000000000,initial)
+		var value := number(controls,1000000000,map.game.state.wallet[key])
 		button(controls,"Setează",func() -> void: result(map.game.set_resource(key,int(value.value))))
 		if key == "coins":
 			button(controls,"Adaugă",func() -> void: result(map.game.set_resource(key,int(value.value),true)))
 		button(controls,"Zero",func() -> void: result(map.game.set_resource(key,0)))
-	label(col,"Test separat cu energie peste plafon, pe o copie în memorie.")
-	var extra := number(col,10000,150)
-	extra.min_value = 101
-	button(col,"Testează energia peste plafon",func() -> void:
-		status.text = JSON.stringify(map.game.energy_overflow_test(int(extra.value))))
 
 func _travel(col: Node) -> void:
 	label(col,"Următoarea aruncare · două zaruri 1–6")
@@ -248,6 +263,15 @@ func _travel(col: Node) -> void:
 	button(col,"Revino la zaruri aleatorii",func() -> void:
 		map.game.forced_pair = Vector2i.ZERO
 		status.text = "Zaruri aleatorii.")
+	label(col,"Alege căsuța de aterizare (aruncare normală, cu premiu)")
+	landing_input = number(col,35,7)
+	button(col,"Aterizează pe căsuță",func() -> void:
+		if map.game.force_landing(int(landing_input.value)):
+			sync_map()
+			play_roll()
+		else:
+			status.text = "Așteaptă oprirea.")
+	_travel_sims(col)
 	label(col,"Mutare directă, fără premiu")
 	tile_input = number(col,35,0)
 	button(col,"Mută pe căsuță",func() -> void: result(map.game.teleport(int(tile_input.value))))
@@ -267,6 +291,13 @@ func _travel(col: Node) -> void:
 		if map.game.teleport(34) and map.game.force_pair(Vector2i(1,1)):
 			sync_map()
 			play_roll())
+
+func _travel_sims(col: Node) -> void:
+	label(col,"Simulare pe o copie izolată a stării (profilul nu se modifică). Statistici: premii, consum de energie, puncte de eveniment.")
+	var sims := row(col)
+	for count in [100,1000,10000]:
+		button(sims,str(count),start_simulation.bind(count))
+	travel_sim = text_area(col,320)
 
 func play_roll() -> void:
 	if not active or map.game.busy:
@@ -306,15 +337,59 @@ func _buildings(col: Node) -> void:
 			map._refresh()
 			map._upgrade(slot,current))
 
+func _energy(col: Node) -> void:
+	label(col,"Energie · valorile se aplică numai profilului DEBUG. Costul aruncării și regenerarea sunt în assets/board/rules.tres.")
+	energy_status = label(col,"")
+	label(col,"Setează energia")
+	var presets := row(col)
+	for value in [0,1,50]:
+		button(presets,str(value),func() -> void: result(map.game.set_energy(value)))
+	var presets_high := row(col)
+	for value in [99,100,500]:
+		button(presets_high,str(value),func() -> void: result(map.game.set_energy(value)))
+	var custom := row(col)
+	var amount := number(custom,RULES.energy_hard_cap,100)
+	button(custom,"Setează",func() -> void: result(map.game.set_energy(int(amount.value))))
+	var regen := CheckButton.new()
+	regen.text = "Regenerare automată activă"
+	regen.custom_minimum_size.y = 58
+	regen.add_theme_font_size_override("font_size",22)
+	regen.button_pressed = map.game.regen_enabled()
+	regen.toggled.connect(func(on: bool) -> void: result(map.game.set_regen(on)))
+	col.add_child(regen)
+	label(col,"Simulează trecerea timpului (ceasul profilului DEBUG)")
+	var jumps := row(col)
+	for entry in [["10 min",600],["1 oră",3600],["24 ore",86400]]:
+		button(jumps,entry[0],func() -> void: result(map.game.advance_time(int(entry[1]))))
+	label(col,"Test separat cu energie peste plafon, pe o copie în memorie.")
+	var extra := number(col,10000,150)
+	extra.min_value = 101
+	button(col,"Testează energia peste plafon",func() -> void:
+		energy_report.text = JSON.stringify(map.game.energy_overflow_test(int(extra.value)),"  "))
+	energy_report = text_area(col,220)
+
 func _future(col: Node) -> void:
 	var rules: Dictionary = Crystal.config()
 	label(col,"Super Cristal · prima rotire la %d aruncări, următoarele la %d. Valorile afectează numai profilul DEBUG." % [int(rules.first_target),int(rules.later_target)])
 	crystal_status = label(col,"")
+	label(col,"Setează încărcarea (maximum: pragul curent)")
+	var set_row := row(col)
+	charge_value = number(set_row,int(rules.later_target),0)
+	button(set_row,"Setează",func() -> void: result(map.game.set_crystal(int(charge_value.value),int(map.game.state.crystal_activations))))
 	button(col,"Încarcă instantaneu cristalul",func() -> void: result(map.game.charge_crystal()))
 	var presets := row(col)
 	button(presets,"49/50",func() -> void: result(map.game.set_crystal(49,0)))
 	button(presets,"99/100",func() -> void: result(map.game.set_crystal(99,maxi(1,int(map.game.state.crystal_activations)))))
 	button(presets,"0 progres",func() -> void: result(map.game.set_crystal(0,int(map.game.state.crystal_activations))))
+	button(col,"Activare instantanee · încarcă și deschide ruleta",func() -> void:
+		if map.game.busy or not map.game.pending_spin().is_empty():
+			return
+		if not map.game.charge_crystal():
+			result(false)
+			return
+		sync_map()
+		close_panel()
+		map.open_crystal())
 	button(col,"Deschide Ruleta Magică",func() -> void:
 		if map.game.busy:
 			return
@@ -344,25 +419,32 @@ func _future(col: Node) -> void:
 			var report: Dictionary = map.game.simulate_spins(count)
 			last_simulation = {"wheel":report}
 			sim_wheel.text = JSON.stringify(report,"  "))
-	sim_wheel = text_area(col,300)
-	label(col,"Inventar cufere")
-	chest_status = label(col,"")
-	var chest_row := row(col)
-	button(chest_row,"+1 lemn",func() -> void: result(_add_chest("wood")))
-	button(chest_row,"+1 argint",func() -> void: result(_add_chest("silver")))
-	button(chest_row,"+1 aur",func() -> void: result(_add_chest("gold")))
-	button(col,"Golește cuferele",func() -> void: result(map.game.set_chests(0,0,0)))
+	sim_wheel = text_area(col,260)
 	label(col,"Recuperare după restart: salvează o rotire fără animație, apoi repornește scena. Premiul trebuie afișat o singură dată, fără a fi acordat din nou.")
 	button(col,"Testează recuperarea după restart",test_recovery)
+	label(col,"Istoric premii (ultimele rotiri din acest profil)")
+	spin_history_view = text_area(col,220)
+
+func _chests(col: Node) -> void:
+	label(col,"Inventar cufere · salvat în profilul DEBUG. Deschiderea cuferelor și albumul nu sunt implementate încă.")
+	chest_status = label(col,"")
+	for kind in ["wood","silver","gold"]:
+		var title: String = Crystal.chest_name(kind)
+		var line := row(col)
+		for count in [1,10,100]:
+			button(line,"+%d %s" % [count,title.replace("Cufăr de ","")],func() -> void: result(map.game.add_chests(kind,count)))
+	button(col,"Golește cuferele",func() -> void: result(map.game.set_chests(0,0,0)))
+	button(col,"Verifică salvarea (memorie vs disc)",func() -> void:
+		var report: Dictionary = map.game.verify_saved()
+		chest_report.text = ("Identic cu discul · seq %d" % int(report.seq)) if report.get("identical",false) else "DIFERIT: %s" % str(report))
+	chest_report = label(col,"")
 	for title in ["Deschide cufăr","Generează cărți","Adaugă duplicate","Completează colecția","Testează recompensa albumului"]:
 		var control := button(col,title+" · indisponibil",func() -> void: pass)
 		control.disabled = true
 		control.tooltip_text = "Albumul și deschiderea cuferelor vor fi implementate într-o etapă viitoare."
 
 func _add_chest(kind: String) -> bool:
-	var next: Dictionary = map.game.state.chests.duplicate()
-	next[kind] = int(next[kind]) + 1
-	return map.game.set_chests(int(next.wood),int(next.silver),int(next.gold))
+	return map.game.add_chests(kind,1)
 
 func test_recovery() -> void:
 	if map.game.busy or map.wheel_open() or simulation != null:
@@ -378,6 +460,65 @@ func test_recovery() -> void:
 		return
 	recovery_probe = {"receipt":receipt,"energy_before":int(before.energy),"chests_before":before.chests}
 	_switch.call_deferred(true,false)
+
+func _events(col: Node) -> void:
+	label(col,"Evenimente · profilul DEBUG. Punctele se acordă numai la aterizare; trecerea peste o căsuță nu dă nimic.")
+	event_status = label(col,"")
+	event_menu = OptionButton.new()
+	for def: Dictionary in Events.definitions():
+		event_menu.add_item(str(def.name))
+	event_menu.custom_minimum_size.y = 58
+	event_menu.add_theme_font_size_override("font_size",21)
+	col.add_child(event_menu)
+	button(col,"Pornește evenimentul de test",func() -> void:
+		var id: String = str(Events.definitions()[event_menu.selected].id)
+		result(map.game.start_event(id)))
+	var stops := row(col)
+	button(stops,"Oprește",func() -> void: result(map.game.stop_event(false)))
+	button(stops,"Resetează tot",func() -> void: result(map.game.stop_event(true)))
+	label(col,"Setează manual punctele")
+	var points_row := row(col)
+	var points := number(points_row,1000000,0)
+	button(points_row,"Setează",func() -> void: result(map.game.set_event_points(int(points.value))))
+	label(col,"Simulează aterizarea pe categorie (fără mutare, fără premiul căsuței)")
+	var kinds := row(col)
+	for kind in ["crystal","construction","magic","coin","quest"]:
+		button(kinds,{"crystal":"Cristal","construction":"Constr.","magic":"Magie","coin":"Monede","quest":"Jetoane"}[kind],func() -> void:
+			var gained: int = map.game.simulate_event_landing(kind)
+			result(gained >= 0)
+			event_report.text = "Aterizare simulată pe «%s»: +%d puncte" % [kind,gained])
+	label(col,"Forțează pragul de recompensă (setează punctele la prag)")
+	var thresholds := row(col)
+	for def: Dictionary in Events.definitions():
+		for item: Dictionary in def.milestones:
+			button(thresholds,str(int(item.points)),func() -> void: result(map.game.force_milestone(str(item.id))))
+		break
+	label(col,"Simulează expirarea")
+	var expire := row(col)
+	button(expire,"Început revendicare",func() -> void: result(map.game.expire_event("claiming")))
+	button(expire,"Închis complet",func() -> void:
+		result(map.game.expire_event("closed"))
+		map.game.close_expired_events()
+		sync_map())
+	label(col,"Verifică revendicările duplicate (copie izolată, pentru fiecare prag)")
+	button(col,"Rulează testul",func() -> void:
+		var lines := PackedStringArray()
+		if map.game.state.event.is_empty():
+			event_report.text = "Pornește mai întâi un eveniment."
+			return
+		for item: Dictionary in Events.definition(str(map.game.state.event.id)).milestones:
+			var report: Dictionary = map.game.duplicate_claim_test(str(item.id))
+			lines.append("%s: prima=%s · a doua refuzată=%s · stare neschimbată=%s · energie +%d" % [item.id,report.first_granted,report.second_refused,report.state_unchanged_by_second,int(report.energy_gain)])
+		event_report.text = "\n".join(lines))
+	event_report = text_area(col,260)
+
+func _confirmed_reset() -> void:
+	if pending_part.is_empty():
+		result(map.game.reset_profile(true))
+	else:
+		var part := pending_part
+		pending_part = ""
+		result(map.game.reset_part(part,true))
 
 func text_area(parent: Node, height: float) -> TextEdit:
 	var item := TextEdit.new()
@@ -399,13 +540,32 @@ func _diagnostics(col: Node) -> void:
 			return
 		map.game = loaded
 		result(true))
-	button(col,"Păstrează checkpoint de test",func() -> void: result(map.game.checkpoint()))
-	button(col,"Restaurează checkpointul de test",func() -> void: result(map.game.restore_checkpoint()))
+	button(col,"Snapshot DEBUG · salvează starea",func() -> void: result(map.game.checkpoint()))
+	button(col,"Snapshot DEBUG · restaurează",func() -> void: result(map.game.restore_checkpoint()))
 	button(col,"Exportă diagnostic JSON",func() -> void:
 		var ok: bool = map.game.write_json("diagnostic.json",{"state":map.game.state,"simulation":last_simulation,
 			"super_crystal_implemented":true,"engine":Engine.get_version_info(),"profile":"local_debug"})
 		status.text = "Exportat în "+ProjectSettings.globalize_path(Profile.ROOT+"diagnostic.json") if ok else "Exportul a eșuat.")
-	button(col,"Resetează profilul DEBUG…",func() -> void: confirmation.popup_centered())
+	button(col,"Resetează tot profilul DEBUG…",func() -> void:
+		pending_part = ""
+		confirmation.title = "Resetare profil DEBUG"
+		confirmation.dialog_text = "Resetezi resursele, nivelurile și poziția profilului local de dezvoltare?"
+		confirmation.popup_centered())
+	label(col,"Resetare selectivă (cu confirmare, numai profilul DEBUG)")
+	reset_part_menu = OptionButton.new()
+	for key: String in Profile.RESET_PARTS:
+		reset_part_menu.add_item(Profile.RESET_PARTS[key])
+	reset_part_menu.custom_minimum_size.y = 58
+	reset_part_menu.add_theme_font_size_override("font_size",21)
+	col.add_child(reset_part_menu)
+	button(col,"Resetează partea aleasă…",func() -> void:
+		pending_part = Profile.RESET_PARTS.keys()[reset_part_menu.selected]
+		confirmation.title = "Resetare selectivă"
+		confirmation.dialog_text = "Resetezi «%s» în profilul DEBUG? Restul rămâne neschimbat." % Profile.RESET_PARTS[pending_part]
+		confirmation.popup_centered())
+	label(col,"Istoricul ultimelor tranzacții")
+	history_view = text_area(col,300)
+	label(col,"Starea completă (JSON)")
 	diagnostic = text_area(col,460)
 
 func _simulations(col: Node) -> void:
@@ -426,6 +586,8 @@ func start_simulation(count: int) -> void:
 	last_simulation = await simulation.run(map.game.state.duplicate(true),count,get_tree())
 	simulation = null
 	sim_result.text = JSON.stringify(last_simulation,"  ")
+	if is_instance_valid(travel_sim):
+		travel_sim.text = sim_result.text
 	status.text = "Simulare încheiată. Rezultatul poate fi exportat din Diagnostic."
 
 func refresh_data() -> void:
@@ -438,10 +600,40 @@ func refresh_data() -> void:
 		if not recovery_probe.is_empty():
 			var probe: Dictionary = recovery_probe
 			chest_status.text += "\nTest recuperare #%d · energie înainte %d, acum %d · cufere înainte %s" % [int(probe.receipt.id),int(probe.energy_before),int(s.energy),str(probe.chests_before)]
+	if active and is_instance_valid(energy_status):
+		_refresh_live()
+		charge_value.value = Crystal.charge(map.game.state)
+		spin_history_view.text = map.game.spin_history_text()
+		history_view.text = map.game.history_text()
 	if active and is_instance_valid(diagnostic):
 		diagnostic.text = JSON.stringify(map.game.state,"  ")
 	if active:
 		status.text = "DEBUG · căsuța %d · energie %d · niveluri %s" % [map.game.state.board_position_index,map.game.state.energy,str(map.game.state.levels)]
+
+## Energy and event read-outs, refreshed twice a second while the panel is open.
+func _refresh_live() -> void:
+	var info: Dictionary = map.game.regen_info()
+	var next_text := "suspendată (energie ≥ %d)" % Energy.capacity() if int(info.to_next) < 0 else "+1 în %s" % map.event_screen.time_text(int(info.to_next))
+	energy_status.text = "Energie %d/%d · regenerare %s · %s · plin în %s · ceas simulat %+d s" % [info.energy,Energy.capacity(),
+		"ACTIVĂ" if info.enabled else "OPRITĂ",next_text,map.event_screen.time_text(int(info.to_full)),int(info.skew)]
+	var ev: Dictionary = map.game.state.event
+	var now: int = map.game.clock()
+	if ev.is_empty():
+		event_status.text = "Niciun eveniment activ. Arhivă: %d." % map.game.state.event_history.size()
+	else:
+		var def := Events.definition(str(ev.id))
+		var upcoming := Events.next_milestone(ev)
+		event_status.text = "%s · %s · puncte %d · timp rămas %s · revendicate %s · următorul prag %s · Moara +%d%%" % [def.name,Events.status(ev,now),
+			int(ev.points),map.event_screen.time_text(Events.remaining(ev,now)),str(ev.claimed),
+			"—" if upcoming.is_empty() else str(int(upcoming.points)),Events.mill_percent(map.game.mill_level())]
+
+func _process(delta: float) -> void:
+	if not active or not cover.visible or not is_instance_valid(energy_status):
+		return
+	live_age += delta
+	if live_age >= 0.5:
+		live_age = 0.0
+		_refresh_live()
 
 func _exit_tree() -> void:
 	if simulation != null:
