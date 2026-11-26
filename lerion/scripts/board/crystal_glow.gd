@@ -121,7 +121,7 @@ func _apply(_step: float) -> void:
 	if jewel:
 		jewel.emission = Color("#19566d").lerp(Color("#7fe8ff"),fraction*0.6 + (0.4*beat if charged else 0.0))
 		jewel.emission_energy_multiplier = 0.28 + 0.75*fraction + (0.9 + 0.7*beat if charged else 0.12*beat*fraction)
-	var glow := fraction*0.32 + (0.38 + 0.22*beat if charged else 0.0)
+	var glow := fraction*0.26 + (0.26 + 0.16*beat if charged else 0.0)
 	halo.visible = glow > 0.03
 	halo_material.albedo_color = Color(0.55,0.88,1.0,glow).lerp(Color(1.0,0.86,0.45,glow),0.35 if charged else 0.0)
 	halo.scale = Vector3.ONE*(0.75 + 0.35*fraction + (0.12*beat if charged else 0.0))

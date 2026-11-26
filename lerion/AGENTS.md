@@ -1,4 +1,5 @@
 # AGENTS.md — LERION V3 (TRASEU + DOUĂ ZARURI)
+> Actualizare Etapa 3.0 — la cererea utilizatorului, Super Cristalul deschide Ruleta Magică (50, apoi 100 de aruncări) cu cufere salvate. Vezi [ETAPA_3_0_SUPER_CRISTAL.md](docs/ETAPA_3_0_SUPER_CRISTAL.md). Regula x2 pentru 3 aterizări și interdicția ruletei de mai jos sunt depășite pentru această mecanică.
 ## Prioritate
 0. Instrucțiunile actuale ale utilizatorului și regulile de siguranță ale mediului.
 1. `LERION_DECIZII_V3.md`, `TRASEU_LOOP_GEOMETRIE.md`, `REGULI_ZARURI_ECONOMIE.md`, `CLADIRI_ZONE_INFLUENTA.md`, `CRISTAL_SUPER_BONUS.md`, `MIGRARE_FARA_PIERDERI.md`.

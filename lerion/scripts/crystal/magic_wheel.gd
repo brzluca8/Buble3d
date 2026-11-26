@@ -134,6 +134,6 @@ func _draw_bulbs() -> void:
 	for i in range(count):
 		var lit := (i + bulb_phase) % 2 == 0 if not spinning else (i + bulb_phase) % 4 == 0
 		var p := c + Vector2.from_angle(TAU*i/count)*(radius-10)
-		draw_circle(p,6.5,Color("#fff7cf") if lit else Color("#a5691e"))
+		bulbs.draw_circle(p,6.5,Color("#fff7cf") if lit else Color("#a5691e"))
 		if lit:
-			draw_circle(p,10.0,Color(1.0,0.95,0.7,0.25))
+			bulbs.draw_circle(p,10.0,Color(1.0,0.95,0.7,0.25))

@@ -63,7 +63,7 @@ func setup(owner_hud: CanvasLayer, audio: Node) -> void:
 	screen.gui_input.connect(_screen_input)
 	screen.add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0.03,0.07,0.17,0.78)
+	backdrop.color = Color(0.03,0.07,0.17,0.86)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rays.draw.connect(_draw_rays)
@@ -444,13 +444,16 @@ func _layout() -> void:
 	var left := (hi.x + lo.x - width)*0.5
 	rays.position = Vector2.ZERO
 	rays.size = view
-	title.position = Vector2(left,lo.y + 10)
-	title.size = Vector2(width,60)
-	subtitle.position = Vector2(left,lo.y + 72)
-	subtitle.size = Vector2(width,34)
 	var available := hi.y - lo.y
-	var diameter := minf(width - 40.0,minf(620.0,available*0.48))
-	var wheel_top := lo.y + 124
+	var diameter := minf(width - 40.0,minf(620.0,available*0.5))
+	# Centre the title, wheel and odds in the space above the buttons.
+	var block := 124.0 + diameter + 18.0 + odds.get_combined_minimum_size().y + 40.0
+	var top_y := lo.y + maxf(0.0,(available - 96.0 - block)*0.45)
+	title.position = Vector2(left,top_y + 10)
+	title.size = Vector2(width,60)
+	subtitle.position = Vector2(left,top_y + 72)
+	subtitle.size = Vector2(width,34)
+	var wheel_top := top_y + 124
 	wheel.size = Vector2.ONE*diameter
 	wheel.position = Vector2(left + (width - diameter)*0.5,wheel_top)
 	pointer.size = Vector2(80,80)

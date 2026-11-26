@@ -39,11 +39,18 @@ Energia se reumple cu 100 doar când ajunge la zero. Raportul numără separat e
 
 Raportul conține numărul efectiv de aruncări, opririle pe categorii, recompensele pe resurse, energia consumată și câștigată, energia introdusă, traversările START și monedele de tură. Valorile `rewards` și `baseline_rewards` compară nivelurile curente cu nivelul 0. Lotul cedează controlul interfeței la fiecare 50 de aruncări și poate fi oprit.
 
-## Funcții rezervate
+## Super Cristal și cufere
 
-Super Cristalul, ruleta, cuferele, cărțile și albumul încă nu au mecanici implementate în proiect.
+Secțiunea „Super Cristal și cufere” lucrează numai pe profilul DEBUG:
 
-În `scripts/developer/future_features.json` sunt pregătite pragurile 50 și 100, împreună cu identificatorii premiilor energie, lemn, argint și aur. Panoul poate salva încărcarea 0–100, tipul activării, premiul propus și starea pregătită în `debug_future`. Acestea sunt parametri de integrare, fără creditare de inventar sau progres al Super Cristalului. Butoanele de ruletă, cufere și album sunt dezactivate și afișează „indisponibil”.
+- încărcare instantanee, progres 49/50 și 99/100, progres zero;
+- deschiderea Ruletei Magice;
+- forțarea premiului următoarei rotiri (o singură rotire, se resetează la repornire);
+- simularea a 100/1000/10000 de rotiri pe o copie în memorie, cu frecvențe observate și așteptate;
+- inventarul de cufere (adăugare, golire);
+- testul de recuperare: salvează o rotire fără animație, repornește scena și verifică afișarea unică a premiului.
+
+Deschiderea cuferelor, cărțile și albumul rămân dezactivate („indisponibil”). Detalii în [ETAPA_3_0_SUPER_CRISTAL.md](ETAPA_3_0_SUPER_CRISTAL.md).
 
 ## Export
 

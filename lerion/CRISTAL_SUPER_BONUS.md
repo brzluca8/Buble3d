@@ -1,3 +1,5 @@
+> Înlocuit în Etapa 3.0 de Ruleta Magică. Vezi [docs/ETAPA_3_0_SUPER_CRISTAL.md](docs/ETAPA_3_0_SUPER_CRISTAL.md).
+
 # Cristalul din centru devine mecanism de bonus secundar
 ## Încărcare
 - +1 progres pentru fiecare aruncare validă cu două zaruri, până la maximum `30/30`; nu contează suma zarurilor sau poziția pe hartă.
