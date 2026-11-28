@@ -19,6 +19,10 @@ var age := 0.0
 var accumulated := 0.0
 var burst_age := -1.0
 var pulse := 0.0
+var invite := Label3D.new()
+var invite_ring := MeshInstance3D.new()
+var invite_material := StandardMaterial3D.new()
+var spin_speed := 0.0
 var center := Vector3(0,1.48,0)
 
 
@@ -79,6 +83,30 @@ func setup(crystal: MeshInstance3D, glow_light: OmniLight3D) -> void:
 	mote_batch.multimesh = motes
 	mote_batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mote_batch)
+	# Fully charged: the crystal turns slowly, rings leave the basin and a short call to tap bobs above.
+	invite_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	invite_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	invite_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	var band := TorusMesh.new()
+	band.inner_radius = 0.95
+	band.outer_radius = 1.0
+	band.rings = 32
+	band.ring_segments = 3
+	band.material = invite_material
+	invite_ring.mesh = band
+	invite_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	invite_ring.position = center - Vector3.UP*0.95
+	add_child(invite_ring)
+	invite.text = "ATINGE!"
+	invite.font_size = 64
+	invite.pixel_size = 0.0055
+	invite.outline_size = 14
+	invite.modulate = Color("#ffe58a")
+	invite.outline_modulate = Color("#1a3a6a")
+	invite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	invite.no_depth_test = true
+	invite.render_priority = 2
+	add_child(invite)
 	_apply(0.0)
 
 
@@ -157,4 +185,17 @@ func _apply(_step: float) -> void:
 		if burst_age >= 1.0:
 			burst_age = -1.0
 			ring.hide()
-	set_process(fraction > 0.0 or charged or burst_age >= 0.0 or pulse > 0.0)
+	var calling := charged and not reduced
+	invite.visible = calling
+	invite_ring.visible = calling
+	if calling:
+		var hop := absf(sin(age*3.2))
+		invite.position = center + Vector3.UP*(1.55 + 0.18*hop)
+		invite.scale = Vector3.ONE*(1.0 + 0.08*(1.0 - hop))
+		var cycle := fposmod(age*0.6,1.0)
+		invite_ring.scale = Vector3.ONE*lerpf(0.9,3.0,cycle)
+		invite_material.albedo_color = Color(0.6,0.95,1.0,0.7*(1.0 - cycle))
+	spin_speed = lerpf(spin_speed,0.9 if charged else 0.0,0.1)
+	if gem and spin_speed > 0.001:
+		gem.rotation.y += spin_speed*maxf(_step,1.0/30.0)
+	set_process(fraction > 0.0 or charged or burst_age >= 0.0 or pulse > 0.0 or spin_speed > 0.001)

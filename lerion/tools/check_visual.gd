@@ -299,8 +299,12 @@ func panel_checks() -> void:
 	# Roulette test with a forced prize goes through the normal DEBUG path.
 	check(profile.force_prize("chest_gold") and profile.charge_crystal(),"Premiu forțat pentru testul ruletei")
 	map.open_crystal()
-	await create_timer(1.2).timeout
-	check(map.wheel.is_open() and map.wheel.phase == map.wheel.Phase.READY,"Ruleta se deschide din test")
+	# Etapa 4.2: the crystal dive (gather, wave, facets) precedes the wheel by about one second.
+	var waited := 0.0
+	while map.wheel.phase != map.wheel.Phase.READY and waited < 4.0:
+		await create_timer(0.1).timeout
+		waited += 0.1
+	check(map.wheel.is_open() and map.wheel.phase == map.wheel.Phase.READY and waited < 2.5,"Ruleta se deschide din test")
 	map.wheel._on_spin()
 	await create_timer(0.8).timeout
 	check(map.wheel.spin_power > 0.3 and map.wheel.ray_power > 0.5,"În timpul rotirii: lumina crește odată cu viteza")

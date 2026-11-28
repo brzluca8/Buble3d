@@ -9,6 +9,7 @@ const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const Wheel := preload("res://scripts/crystal/magic_wheel.gd")
 const Fx := preload("res://scripts/crystal/prize_fx.gd")
 const ResultArt := preload("res://scripts/crystal/result_art.gd")
+const ChestStage := preload("res://scripts/crystal/chest_stage.gd")
 const ENERGY := preload("res://assets/crystal/energy.svg")
 const CHEST := preload("res://assets/crystal/chest.svg")
 const GOLD := Color("#ffd06a")
@@ -35,6 +36,8 @@ var spin_button: Button
 var later_button: Button
 var result_panel := PanelContainer.new()
 var result_icon := ResultArt.new()
+var result_stage: ChestStage = ChestStage.new()
+var icon_box := Control.new()
 var sheen := Control.new()
 var spin_power := 0.0
 var last_rotation := 0.0
@@ -140,9 +143,16 @@ func _make_result() -> void:
 	holder.custom_minimum_size = Vector2(170,170)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(holder)
-	result_icon.custom_minimum_size = Vector2(150,150)
+	icon_box.custom_minimum_size = Vector2(170,160)
+	icon_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(icon_box)
 	result_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(result_icon)
+	icon_box.add_child(result_icon)
+	result_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Won chests are the same 3D chests the player opens next.
+	icon_box.add_child(result_stage)
+	result_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	result_stage.hide()
 	result_detail = hud._label("",24,CREAM)
 	result_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(result_detail)
@@ -352,9 +362,15 @@ func _show_result(recovered: bool) -> void:
 	else:
 		result_detail.text += "\n" + str(Crystal.config().chests.get(chest,{}).get("hint","")) + "\nCuferele se păstrează în Sac."
 	if kind == "energy":
+		result_icon.show()
+		result_stage.hide()
 		result_icon.show_texture(ENERGY,Color("#fff59a"))
 	else:
 		result_icon.show_chest(chest)
+		result_icon.hide()
+		result_stage.reduced = reduced
+		result_stage.show()
+		result_stage.show_kind(chest)
 	result_panel.show()
 	open_now_button.visible = kind == "chest" and not recovered
 	open_now_button.disabled = false
@@ -404,43 +420,44 @@ func _pop_panel(style: String) -> void:
 func _animate_icon(style: String) -> void:
 	if icon_tween:
 		icon_tween.kill()
-	result_icon.pivot_offset = result_icon.custom_minimum_size*0.5
-	result_icon.rotation = 0.0
-	result_icon.position.y = 0.0
+	icon_box.pivot_offset = icon_box.custom_minimum_size*0.5
+	icon_box.modulate = Color.WHITE
+	icon_box.rotation = 0.0
+	icon_box.position.y = 0.0
 	icon_tween = create_tween()
 	if reduced:
-		result_icon.scale = Vector2.ONE
+		icon_box.scale = Vector2.ONE
 		return
 	match style:
 		"energy":
-			result_icon.scale = Vector2.ZERO
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE*1.25,0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE,0.18)
+			icon_box.scale = Vector2.ZERO
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE*1.25,0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE,0.18)
 			icon_tween.tween_property(result_icon,"modulate",Color("#ffffff"),0.12)
 			icon_tween.tween_property(result_icon,"modulate",Color("#fff59a"),0.25)
 			var amount := int(receipt.get("amount",0))
 			icon_tween.parallel().tween_method(func(v: int) -> void: result_detail.text = "+%d energie\nEnergia poate depăși 100. Regenerarea se reia sub 100." % v,0,amount,0.6)
 		"wood":
-			result_icon.scale = Vector2.ONE
-			result_icon.position.y = -160.0
-			icon_tween.tween_property(result_icon,"position:y",0.0,0.55).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			icon_tween.tween_property(result_icon,"scale",Vector2(1.18,0.84),0.08)
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE,0.16).set_trans(Tween.TRANS_BACK)
+			icon_box.scale = Vector2.ONE
+			icon_box.position.y = -160.0
+			icon_tween.tween_property(icon_box,"position:y",0.0,0.55).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			icon_tween.tween_property(icon_box,"scale",Vector2(1.18,0.84),0.08)
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE,0.16).set_trans(Tween.TRANS_BACK)
 		"silver":
-			result_icon.scale = Vector2.ZERO
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE*1.15,0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			icon_box.scale = Vector2.ZERO
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE*1.15,0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			for k in range(3):
-				icon_tween.tween_property(result_icon,"rotation",0.22,0.07)
-				icon_tween.tween_property(result_icon,"rotation",-0.22,0.07)
-			icon_tween.tween_property(result_icon,"rotation",0.0,0.07)
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE,0.15)
+				icon_tween.tween_property(icon_box,"rotation",0.22,0.07)
+				icon_tween.tween_property(icon_box,"rotation",-0.22,0.07)
+			icon_tween.tween_property(icon_box,"rotation",0.0,0.07)
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE,0.15)
 		_:
-			result_icon.scale = Vector2.ZERO
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE*1.5,0.5).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-			icon_tween.tween_property(result_icon,"scale",Vector2.ONE*1.15,0.25)
-			icon_tween.tween_property(result_icon,"rotation",0.08,0.2)
-			icon_tween.tween_property(result_icon,"rotation",-0.08,0.2)
-			icon_tween.tween_property(result_icon,"rotation",0.0,0.2)
+			icon_box.scale = Vector2.ZERO
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE*1.5,0.5).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+			icon_tween.tween_property(icon_box,"scale",Vector2.ONE*1.15,0.25)
+			icon_tween.tween_property(icon_box,"rotation",0.08,0.2)
+			icon_tween.tween_property(icon_box,"rotation",-0.08,0.2)
+			icon_tween.tween_property(icon_box,"rotation",0.0,0.2)
 
 
 func _on_continue() -> void:

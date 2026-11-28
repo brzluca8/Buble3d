@@ -7,8 +7,8 @@ Ramura de lucru: `ccr-b40a0280-sp0hf6` (proiectul Godot este în subfolderul `le
 |---|---|---|
 | A — audit, documentație, checkpoint `checkpoint-before-etapa-4-2` | gata | (acest commit) |
 | B — Lerik (model segmentat, rig, animator), zaruri, cameră | gata | faza B |
-| C — cristal, ruletă, cufere 3D | în lucru | — |
-| D — regatul viu, Pongo și Pufi | de făcut | — |
+| C — cristal (invitație, scufundare în fațete), cufere 3D cu coregrafie pe tip, ceremonia aurului | gata | faza C |
+| D — regatul viu, Pongo și Pufi | în lucru | — |
 | E — UI, cărți, audio | de făcut | — |
 | F — momente WOW, calitate, panou, teste | de făcut | — |
 

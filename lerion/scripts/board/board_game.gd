@@ -18,6 +18,8 @@ var aura_tween: Tween
 var last_charge := -1
 var last_ready := false
 const WheelScreen := preload("res://scripts/crystal/wheel_screen.gd")
+const FacetTransition := preload("res://scripts/crystal/facet_transition.gd")
+var facets: FacetTransition
 var crystal_glow: CrystalGlow
 var wheel: WheelScreen
 const EventScreen := preload("res://scripts/crystal/event_screen.gd")
@@ -94,6 +96,9 @@ func _connect_mode() -> void:
 	animator.setup(pawn,body,shade)
 	camera.occluders = _building_bounds()
 	animator.reduced = hud.prefs.reduced
+	facets = FacetTransition.new()
+	facets.name = "TranzitieFatete"
+	add_child(facets)
 	wheel = WheelScreen.new()
 	wheel.name = "RuletaMagica"
 	add_child(wheel)
@@ -464,11 +469,31 @@ func open_crystal() -> void:
 		return
 	camera.manual_override = false
 	camera.frame_crystal(crystal_glow.crystal_center())
-	crystal_glow.burst()
-	polish.crystal_burst()
-	sounds.magic()
 	message.text = "Ruleta Magică"
-	wheel.open()
+	if hud.prefs.reduced or not polish.special_active():
+		crystal_glow.burst()
+		polish.crystal_burst()
+		sounds.magic()
+		wheel.open()
+		return
+	# Crystal dive: energy is drawn in, a wave leaves the fountain, and crystal facets open onto
+	# the wheel. The wheel screen is already open (transparent) so input and state stay consistent.
+	polish.crystal_gather()
+	crystal_glow.pulse_now(1.0)
+	sounds.play_event("crystal_activate")
+	wheel.open(1.0)
+	var beat := create_tween()
+	beat.tween_interval(0.5)
+	beat.tween_callback(func() -> void:
+		crystal_glow.pulse_now(2.0)
+		crystal_glow.burst()
+		polish.crystal_wave()
+		sounds.magic())
+	beat.tween_interval(0.08)
+	beat.tween_callback(func() -> void:
+		var point := crystal_glow.crystal_center()
+		var origin := camera.unproject_position(point) if not camera.is_position_behind(point) else get_viewport().get_visible_rect().size*0.5
+		facets.play(origin))
 
 
 func _spin_wheel() -> void:

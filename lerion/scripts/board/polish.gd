@@ -435,6 +435,51 @@ func dice_settle(points: Array) -> void:
 		_particles(point + Vector3.UP*0.6,Color("#fff0b0"),5,1.2,0.5,0.24,true,star_texture)
 
 
+## Activation: motes appear around the fountain and are pulled into the crystal.
+func crystal_gather() -> void:
+	if not special_active():
+		return
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.3,0.3)
+	quad.material = glow_material(star_texture)
+	var cloud := CPUParticles3D.new()
+	cloud.mesh = quad
+	cloud.amount = int(budget().burst) + 8
+	cloud.one_shot = true
+	cloud.explosiveness = 0.7
+	cloud.lifetime = 0.62
+	cloud.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE_SURFACE
+	cloud.emission_sphere_radius = 3.0
+	cloud.gravity = Vector3.ZERO
+	cloud.radial_accel_min = -16.0
+	cloud.radial_accel_max = -12.0
+	cloud.damping_min = 2.0
+	cloud.damping_max = 3.0
+	cloud.color = Color("#b6f1ff")
+	cloud.color_ramp = _gather_ramp()
+	cloud.position = crystal_center
+	cloud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fx_root.add_child(cloud)
+	cloud.finished.connect(cloud.queue_free)
+	cloud.emitting = true
+
+
+static var _ramp: Gradient
+static func _gather_ramp() -> Gradient:
+	if _ramp == null:
+		_ramp = Gradient.new()
+		_ramp.set_color(0,Color(0.7,0.95,1.0,0.0))
+		_ramp.add_point(0.3,Color(0.7,0.95,1.0,1.0))
+		_ramp.set_color(1,Color(1.0,0.9,0.5,1.0))
+	return _ramp
+
+
+## The magic wave that leaves the fountain when the wheel opens.
+func crystal_wave() -> void:
+	ring_burst(crystal_center - Vector3.UP*1.2,Color("#8fe9ff"),5.5,0.9)
+	ring_burst(crystal_center - Vector3.UP*1.15,Color("#ffe58a"),3.6,0.7)
+
+
 func crystal_burst() -> void:
 	ring_burst(crystal_center - Vector3.UP*0.9,Color("#8fe9ff"),2.6,0.8)
 	sparkle_burst(crystal_center,Color("#b6f1ff"),1.0)

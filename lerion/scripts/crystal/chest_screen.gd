@@ -10,6 +10,7 @@ const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const CardView := preload("res://scripts/crystal/card_view.gd")
 const Fx := preload("res://scripts/crystal/prize_fx.gd")
 const ChestArt := preload("res://scripts/crystal/chest_art.gd")
+const ChestStage := preload("res://scripts/crystal/chest_stage.gd")
 const RAY_TINT := {"wood": Color(1.0,0.8,0.5), "silver": Color(0.75,0.9,1.0), "gold": Color(1.0,0.86,0.4)}
 const READY_RAYS := {"wood": 0.2, "silver": 0.4, "gold": 0.75}
 const GOLD := Color("#ffd06a")
@@ -35,7 +36,7 @@ var subtitle: Label
 var odds_label: Label
 var summary: Label
 var hint: Label
-var chest := Control.new()
+var chest: ChestStage = ChestStage.new()
 var card_layer := Control.new()
 var open_button: Button
 var later_button: Button
@@ -87,8 +88,8 @@ func setup(owner_hud: CanvasLayer, audio: Node) -> void:
 	chest.custom_minimum_size = Vector2(300,260)
 	chest.size = Vector2(300,260)
 	chest.pivot_offset = Vector2(150,200)
-	chest.draw.connect(_draw_chest)
 	screen.add_child(chest)
+	chest.beat.connect(_on_beat)
 	card_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	screen.add_child(card_layer)
 	odds_label = hud._label("",19,Color("#a9c6e8"))
@@ -138,6 +139,8 @@ func open(chest_kind: String, count: int) -> void:
 	kind = chest_kind
 	owned = count
 	phase = Phase.READY
+	chest.reduced = reduced
+	chest.show_kind(kind)
 	title.text = Crystal.chest_name(kind)
 	subtitle.text = "Ai %d %s. Deschide unul acum." % [count,"cufăr de acest tip" if count == 1 else "cufere de acest tip"]
 	var parts := PackedStringArray()
@@ -157,6 +160,8 @@ func show_recovered(confirmed: Dictionary) -> void:
 	_reset()
 	receipt = confirmed.duplicate(true)
 	kind = str(receipt.chest)
+	chest.reduced = reduced
+	chest.show_kind(kind)
 	title.text = Crystal.chest_name(kind)
 	subtitle.text = "Cărțile au fost confirmate înainte de închidere."
 	_build_cards()
@@ -184,14 +189,16 @@ func play(confirmed: Dictionary) -> void:
 	subtitle.text = ""
 	hint.text = "Se deschide…"
 	var gap := 0.0 if reduced else 1.0
+	# The 3D chest runs its own tier choreography; the sequence waits for the lid, then deals.
+	chest.reduced = reduced
+	var open_time := 0.12 if reduced else chest.anticipation_time() + (0.3 if kind == "silver" else 0.42)
 	seq = create_tween()
 	seq.set_speed_scale(speed)
-	if not reduced:
-		seq.tween_method(_shake,0.0,1.0,0.6)
 	seq.tween_callback(func() -> void:
-		if sounds:
-			sounds.upgrade())
-	seq.tween_method(func(t: float) -> void: lid = t; glow = t; chest.queue_redraw(),0.0,1.0,0.4 if not reduced else 0.01).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		chest.play_open()
+		if chest.tween:
+			chest.tween.set_speed_scale(speed))
+	seq.tween_interval(open_time)
 	seq.tween_callback(_burst)
 	seq.tween_interval(0.25*gap)
 	seq.tween_method(_deal,0.0,1.0,0.5 + 0.13*cards.size())
@@ -315,9 +322,22 @@ func _shake(t: float) -> void:
 	glow = 0.35*t
 
 
+## Anticipation beats of the 3D chest (one for wood and silver, three gems and the lock for gold).
+func _on_beat(index: int) -> void:
+	if sounds:
+		sounds.play_event("chest_beat",1.0 + 0.18*index)
+	if reduced:
+		return
+	ray_power = maxf(ray_power,0.4 + 0.3*index)
+	flash.color.a = 0.12 + 0.06*index
+	var fade := create_tween()
+	fade.tween_property(flash,"color:a",0.0,0.25)
+
+
 func _burst() -> void:
 	chest.rotation = 0.0
 	chest.scale = Vector2.ONE
+	chest.burst()
 	ray_power = {"wood": 0.7, "silver": 1.0, "gold": 1.6}[kind]
 	if sounds:
 		sounds.play_event("chest_open")
@@ -460,6 +480,8 @@ func _on_speed() -> void:
 	speed_button.text = "Viteză normală" if speed > 1.0 else "Accelerează"
 	if seq and seq.is_valid():
 		seq.set_speed_scale(speed)
+	if chest.tween and chest.tween.is_valid():
+		chest.tween.set_speed_scale(speed)
 	for tween in flips:
 		if tween and tween.is_valid():
 			tween.set_speed_scale(speed)
@@ -471,6 +493,8 @@ func _on_skip() -> void:
 		return
 	if seq:
 		seq.kill()
+	if chest.tween:
+		chest.tween.kill()
 	for tween in flips:
 		if tween:
 			tween.kill()
@@ -522,7 +546,7 @@ func _process(delta: float) -> void:
 		# Idle shine, twinkles and a gentle bob while the chest waits.
 		if phase == Phase.READY and not reduced:
 			chest.position.y = chest_rest_y + 5.0*sin(ray_age*2.4)
-		chest.queue_redraw()
+		pass
 
 
 # ---- Drawing ----------------------------------------------------------------------------------
@@ -540,10 +564,6 @@ func _draw_rays() -> void:
 		var warm: Color = RAY_TINT.get(kind,Color(1.0,0.86,0.45))
 		var tint := Color(warm,0.15*power) if i % 2 == 0 else Color(0.5,0.8,1.0,0.1*power)
 		rays.draw_colored_polygon(PackedVector2Array([c,c + Vector2.from_angle(a - w)*reach,c + Vector2.from_angle(a + w)*reach]),tint)
-
-
-func _draw_chest() -> void:
-	ChestArt.draw(chest,kind,lid,glow,ray_age)
 
 
 # ---- Layout -----------------------------------------------------------------------------------
