@@ -1,6 +1,6 @@
 # Etapa 3.0 — Super Cristalul și Ruleta Magică
 
-Această etapă înlocuiește, la cererea explicită a utilizatorului, regula „Super Cristal 30 aruncări → x2 la 3 aterizări” din `CRISTAL_SUPER_BONUS.md`. Câmpul `super_crystal_remaining_landings` rămâne în salvare cu valoarea 0, pentru compatibilitate; efectul x2 nu este implementat.
+Această etapă înlocuiește, la cererea explicită a utilizatorului, regula „Super Cristal 30 aruncări → x2 la 3 aterizări” din `docs/istoric/CRISTAL_SUPER_BONUS.md`. Câmpul `super_crystal_remaining_landings` rămâne în salvare cu valoarea 0, pentru compatibilitate; efectul x2 nu este implementat.
 
 ## Reguli implementate
 

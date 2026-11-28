@@ -1,4 +1,5 @@
 # LERION – PACHET CODEX V3: TRASEU ÎN LOOP + DOUĂ ZARURI
+> **Istoric (pachetul inițial V3).** Regulile active sunt în `AGENTS.md`; documentele depășite au fost mutate în `docs/istoric/`.
 **Data deciziei:** 24.11.2026. **Statut:** specificație pentru noul prototip principal de test, nu joc final sau cod Godot gata de executat.
 
 ## Ce trebuie să știe Codex din primul minut
@@ -15,14 +16,14 @@
 - `LERION_DECIZII_V3.md` — proiectul și distincția V2/V3.
 - `TRASEU_LOOP_GEOMETRIE.md` — circuit, ordine, păstrarea căsuțelor și cameră.
 - `REGULI_ZARURI_ECONOMIE.md` — două zaruri, energie, START, recompense, construcții.
-- `CLADIRI_ZONE_INFLUENTA.md` — 6 clădiri și multiplicatori de test.
-- `CRISTAL_SUPER_BONUS.md` — încărcare și activare specială.
-- `PLAN_CODEX_SI_TESTE.md` — sarcini incrementale și acceptanță.
+- `docs/istoric/CLADIRI_ZONE_INFLUENTA.md` — (istoric) 6 clădiri și multiplicatori de test.
+- `docs/istoric/CRISTAL_SUPER_BONUS.md` — (istoric) încărcare și activare specială.
+- `docs/istoric/PLAN_CODEX_SI_TESTE.md` — (istoric) sarcini incrementale și acceptanță.
 - `MIGRARE_FARA_PIERDERI.md` — păstrare progres / evitarea conflictelor cu V2.
 - `CONFIG/lerion_board_v3.example.json` — exemplu de configurare, **nu se importă automat în Godot**.
 - `REFERINTE/01_HARTA_PREFERATA_TRASEU.png` — imagine furnizată și aleasă de utilizator.
 - `REFERINTE/02_PROTOTIP_GODOT_ACTUAL.jpg` — captură a jocului funcțional cu clădiri.
 - `REFERINTE/03_SCHEMA_CIRCUIT.svg` — schiță tehnică, intenționat mai simplă decât randarea.
-- `PROMPT_CODEX.md` — mesajul gata de copiat.
+- `docs/istoric/PROMPT_CODEX.md` — (istoric) mesajul gata de copiat.
 
 **Acest ZIP NU include cea mai recentă sursă Godot** — ea există în proiectul/repository-ul utilizatorului. Capturile de ecran nu înlocuiesc fișierele `project.godot` și `*.gd`. Dacă nu ai acces la proiectul real, OPREȘTE-TE și solicită-l.

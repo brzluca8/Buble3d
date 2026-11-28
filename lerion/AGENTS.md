@@ -1,33 +1,42 @@
-# AGENTS.md — LERION V3 (TRASEU + DOUĂ ZARURI)
-> Actualizare Etapa 4.0 — polish vizual (ambient, grad de culoare, bloom, HUD, ruletă, cufere); numai prezentare, mecanicile neschimbate. Vezi [ETAPA_4_0_VISUAL_POLISH.md](docs/ETAPA_4_0_VISUAL_POLISH.md).
-> Actualizare Etapa 4.1 — cuferele se pot deschide și dau cărți colecționabile (36 de cărți, 6 colecții), salvare v7. Vezi [ETAPA_4_1_CUFERE_CARTI.md](docs/ETAPA_4_1_CUFERE_CARTI.md). Albumul complet și schimburile nu sunt implementate.
-> Actualizare Etapa 3.5 — căsuțele nu mai acordă energie, regenerarea este +1 la 10 minute, Moara Trăsnită crește energia din evenimente, există evenimente temporare. Vezi [ETAPA_3_5_ENERGIE_EVENIMENTE.md](docs/ETAPA_3_5_ENERGIE_EVENIMENTE.md); suprascrie regulile de energie din documentele anterioare.
-> Actualizare Etapa 3.0 — la cererea utilizatorului, Super Cristalul deschide Ruleta Magică (50, apoi 100 de aruncări) cu cufere salvate. Vezi [ETAPA_3_0_SUPER_CRISTAL.md](docs/ETAPA_3_0_SUPER_CRISTAL.md). Regula x2 pentru 3 aterizări și interdicția ruletei de mai jos sunt depășite pentru această mecanică.
+# AGENTS.md — Lerion: Regatul Trăsniților (reguli active)
+
+Actualizat la Etapa 4.2. Versiunea anterioară, cu reguli V3 depășite, este în [`docs/istoric/AGENTS_V3_ISTORIC.md`](docs/istoric/AGENTS_V3_ISTORIC.md); indexul documentelor istorice este în [`docs/istoric/README.md`](docs/istoric/README.md).
+
 ## Prioritate
 0. Instrucțiunile actuale ale utilizatorului și regulile de siguranță ale mediului.
-1. `LERION_DECIZII_V3.md`, `TRASEU_LOOP_GEOMETRIE.md`, `REGULI_ZARURI_ECONOMIE.md`, `CLADIRI_ZONE_INFLUENTA.md`, `CRISTAL_SUPER_BONUS.md`, `MIGRARE_FARA_PIERDERI.md`.
-2. `PLAN_CODEX_SI_TESTE.md`, configurația exemplu și capturile.
-3. Codul funcțional al proiectului real; reutilizează ce este util, fără să presupui că versiunile vechi sunt adevărul de design.
-4. Orice `AGENTS.md`/V2 mai vechi care spune că Cristalul Haotic cu 3 simboluri este gameplay-ul principal: **DEPĂȘIT pentru modul V3**.
+1. Acest fișier și documentele de etapă din `docs/` (cea mai recentă etapă are prioritate la conflict).
+2. `LERION_DECIZII_V3.md`, `TRASEU_LOOP_GEOMETRIE.md`, `REGULI_ZARURI_ECONOMIE.md` (cu actualizările din etape), `MIGRARE_FARA_PIERDERI.md`.
+3. Codul funcțional și testele din `tools/` sunt adevărul despre comportamentul actual.
+
+## Jocul, așa cum este acum
+- Android portret, Godot 4.7.2, renderer **GL Compatibility**. Scena principală `scenes/board.tscn` (modul V3). Modul V2 (`scenes/main.tscn`, cristal cu 3 simboluri) rămâne în cod doar pentru migrare.
+- Hartă continentală cu castel, fântână cu cristal central și **6 clădiri cu niveluri 0–3**: Mina de Cristale, Moara Trăsnită, Atelierul lui Pongo, Laboratorul lui Pufi, Piața Poznașă, Hanul Aventurierilor. Amplasarea și geometria traseului nu se schimbă fără cerere explicită.
+- **Circuit închis cu 36 de căsuțe**, START la 0. **Două zaruri 1–6**; Lerik avansează cu suma. Premiu numai la aterizare; START +100 monede la traversare.
+- Căsuțe: monede, cristale (fragmente), construcție, magie, jetoane — **nicio căsuță de energie** (Etapa 3.5). Bonusurile clădirilor sunt **globale pe categorie** (Etapa 2.8). Moara crește energia din evenimente (+0/10/20/30%).
+- Energie: cost 1/aruncare, capacitate 100, regenerare +1 la 10 minute, oprită la ≥100; premiile pot depăși 100 (Etapa 3.5).
+- **Super Cristal**: 50 aruncări prima dată, apoi 100; activare manuală → **Ruleta Magică** (energie 10/20/30, cufere lemn/argint/aur; probabilități în `CONFIG/super_crystal.json`) (Etapa 3.0).
+- **Cufere și cărți**: 3/4/5 cărți, 36 de cărți în 6 colecții, inventar cu duplicate, salvare v7 (Etapa 4.1). Albumul complet și schimburile NU sunt implementate.
+- **Evenimente**: „Festivalul lui Pufi” (puncte la aterizare, praguri cu revendicare unică) (Etapa 3.5).
+- **Developer Panel**: numai în build DEBUG, profil separat `user://lerion_developer/`.
+- Prezentare: Etapa 4.0 (polish) și Etapa 4.2 (animație, cameră, VFX, audio) — **numai vizual**, fără efect asupra stării.
 
 ## Principii ferme
-- **Lerion** = joc Android portret, 3D cartoon low-poly propriu, vesel, cu umor scurt și simpatia lui Lerik, Pongo, Pufi. Nu copia elemente distincte, UI, artă sau branding din Monopoly GO/Dice Dreams/Coin Master.
-- Păstrează **terenul continental actual**; fără insule, margini, cascade obligatorii, ocean.
-- Păstrează **castelul** și **fântâna cu cristal**; nu consumă cele 6 sloturi.
-- **Șase clădiri 0–3 niveluri**, poziționate aerisit: Mina de Cristale, Moara Trăsnită, Atelierul lui Pongo, Laboratorul lui Pufi, Piața Poznașă, Hanul Aventurierilor.
-- **Traseu cu 36 de căsuțe (configurabil 30–36)**; o singură buclă netedă, fără auto-intersecții, fără scurtături/ramuri, drumul trece PE LÂNGĂ cele 6 clădiri, nu prin ele; zona cristalului nu e căsuță de traseu.
-- **Două zaruri standard (1–6 fiecare)**, suma 2–12 = numărul de căsuțe parcurse. Număr aruncări consumă 1 energie/roll (configurabil, exemplu V3).
-- **Recompensă doar la oprire**, START bonus la traversare; upgrade-urile clădirilor cresc bonusul căsuțelor asociate; Super Cristal charge 30, activare la alegere, x2 pentru următoarele 3 ATERIZĂRI.
-- **Nu introduce** automat sistemele vechi 3 simboluri/catapulta/ruleta, multiplayer, IAP, Ads, server, turnee online sau trasee multiple în această etapă.
-- Nu șterge progres salvat, niveluri, resurse, poziții curente fără migrare versionată și confirmare.
+- Personaje originale: **Lerik** (râs aventurier cu ochelari, eșarfă, rucsac), **Pongo** (constructor verde, cască galbenă; niciodată „Bubu”), **Pufi** (dragon mic mov/roz). Nu copia artă, UI sau branding din alte jocuri.
+- Nu modifica economia, probabilitățile, rezultatul zarurilor sau recompensele prin prezentare. Animațiile primesc chitanțe deja salvate și nu acordă nimic.
+- O singură tranzacție per acțiune (aruncare, rotire, deschidere, revendicare). Dublu tap, Grăbește, închiderea aplicației și repornirea nu pot dubla sau pierde recompense.
+- Nu șterge progres salvat; schimbările de schemă se fac prin migrare versionată, testată.
+- Nu introduce backend, multiplayer, IAP, reclame sau mecanici noi fără cerere explicită.
+- Nu prezenta placeholder-e drept artă finală; marchează-le (`art.status = "placeholder"`, documentație).
+- Nu genera APK/AAB și nu rula export Android decât la cerere explicită.
 
-## Inginerie + livrare
-- Creează branch/commit înainte de modificări; inspectează `project.godot`, scena curentă și resursele.
-- Transformările/pozițiile pe hartă trebuie adaptate la coordonatele reale din scena existentă; fișierul SVG este o schiță, NU hartă 3D exportabilă.
-- Separă `BoardPath/TileData`, `DiceRollService`, `RewardService`, `BuildingInfluenceService`, `CrystalChargeService`, `SaveGame` și HUD. API-uri testabile, configurabile, GDScript tipizat.
-- Nu face roll suplimentar la reluarea animației, dublu tap sau restart. O singură tranzacție per aruncare.
-- Android: input touch, portrait, layout responsiv/safe area, cameră 3D lizibilă, target 1,5–2,5 secunde pentru mutare normală, skip/fast-forward unde e posibil.
-- Refolosește modele reale existente. Dacă lipsesc Lerik/animările, pune marker placeholder explicat și nu promite grafică neprodusă.
-- Rulează Godot/tests când este disponibil; raportează exact ce a fost verificat versus ce trebuie testat pe telefon.
-- Înainte să schimbi materialele sau harta, verifică capturile de referință: nu degrada stilul deja acceptat.
-- Dacă proiectul Godot actual nu este disponibil, **nu crea alt joc nou din presupuneri**; cere acces la fișierele actuale.
+## Arhitectură (pe scurt)
+- Reguli pure, fără noduri: `scripts/economy/` (energie, evenimente, cărți), `scripts/crystal/super_crystal_service.gd`, `assets/board/economy.tres`, `rules.tres`.
+- Tranzacții și salvare: `scripts/board/board_save.gd` (v7), profil DEBUG `scripts/developer/dev_profile.gd`.
+- Orchestrare scenă: `scripts/board/board_game.gd` — leagă tranzacțiile de prezentare; nu adăuga aici efecte mari, folosește controlerele de prezentare (`polish.gd`, camera, animatorul lui Lerik, controlerul zarurilor, ecranele din `scripts/crystal/`).
+- Prezentarea trebuie să poată fi întreruptă, accelerată sau oprită fără efect asupra stării; nodurile temporare se eliberează singure.
+
+## Inginerie și livrare
+- Lucrează pe ramură dedicată, cu checkpoint (tag) înainte de fiecare etapă și commit pe fază.
+- Rulează suitele din `tools/check_*.gd` cu `XDG_DATA_HOME` separat (vezi `docs/PREDARE.md`); raportează exact ce a fost executat și ce rămâne de verificat pe telefon.
+- Performanță: țintă 60 FPS pe telefoane compatibile, stabil la 30 FPS pe cele slabe; niveluri de calitate Redus/Mediu/Ridicat și „Efecte vizuale reduse”. Nu raporta estimări drept FPS măsurat pe telefon.
+- Asset-urile 3D se generează reproductibil cu scripturile Python din `tools/` (`build_*.py`); nu edita GLB-urile manual.
