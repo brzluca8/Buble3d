@@ -19,6 +19,10 @@ signal stat_popped
 signal event_requested
 signal open_chest_requested(kind: String)
 signal cards_requested
+signal build_points_requested
+var build_stat: Button
+## Balances currently shown on the counters (masked during a walk until each gain is revealed).
+var shown := {}
 const Cards := preload("res://scripts/economy/card_service.gd")
 var chest_buttons := {}
 var stat_values := {}
@@ -217,21 +221,22 @@ func _refresh_controls(game: RefCounted, s: Dictionary) -> void:
 		roll_button.text = "Energie în %d:%02d" % [seconds/60,seconds%60]
 	skip.visible = playing
 	var result: Dictionary = s.last_roll
+	var values := {"coins": int(s.wallet.coins), "fragments": int(s.wallet.fragments),
+		"build_points": int(s.wallet.build_points), "energy": int(s.energy)}
 	if not result.is_empty():
 		total.text = "%d + %d\n%d pași" % [result.a,result.b,int(result.a)+int(result.b)]
 		if throwing:
 			total.text = "Două zaruri"
 		if playing:
 			# The wallet is already committed; reveal each gain at its board event.
-			var landing: Dictionary = result.landing
-			var amount := int(landing.get("amount",0))
+			var landing: Dictionary = result.get("landing",{})
 			var key: String = landing.get("resource","")
-			var lap_due := 0 if lap_revealed else int(result.start_coins)
-			coins.text = str(int(s.wallet.coins)-lap_due-(amount if key == "coins" else 0))
-			if key == "fragments":
-				fragments.text = str(int(s.wallet.fragments)-amount)
-			if key == "energy":
-				energy.text = "%d/%d" % [int(s.energy)-amount,RULES.energy_max]
+			if values.has(key):
+				values[key] -= int(landing.get("amount",0))
+			if not lap_revealed:
+				values.coins -= int(result.get("start_coins",0))
+	for key: String in values:
+		_show_value(key,values[key])
 
 	_refresh_crystal(s)
 	refresh_event(game,s)
@@ -263,19 +268,38 @@ func refresh(game: RefCounted, slot: int) -> void:
 		opener.disabled = have < 1 or game.busy
 	if slot < 0:
 		return
-	var building: String = game.cfg.buildings.positions[slot].id
-	var text: String = game.ECONOMY.preview(building, preview_level)
-	if preview_level < 3:
-		var cost: Dictionary = game.cfg.buildings.costs_to_reach_level[str(preview_level + 1)]
-		price.text = "%s\nCost · %d monede + %d puncte de construcție" % [text,cost.coins,cost.build_points]
-	else:
-		price.text = text
+	_refresh_upgrade(game,slot)
 	price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
-## Coins, crystals and energy pop when their displayed value goes up and dip when energy is spent.
+## Compact balance for the top bar: full digits up to 99 999, then "123,4k" and "1,2M".
+## The exact value stays in the accessibility name and in the Bag.
+static func short_number(value: int) -> String:
+	# Truncated, never rounded up: a balance is not shown larger than it is.
+	if value < 100000:
+		return str(value)
+	for unit: Array in [[1000000000,"mld"],[1000000,"M"],[1000,"k"]]:
+		if value >= int(unit[0]):
+			var tenths := value / (int(unit[0]) / 10)
+			return "%d,%d%s" % [tenths / 10,tenths % 10,unit[1]]
+	return str(value)
+
+
+const STAT_NAMES := {"coins":"Monede","fragments":"Cristale","build_points":"Puncte de construcție","energy":"Energie"}
+
+func _show_value(key: String, value: int) -> void:
+	shown[key] = value
+	var button := stat_button(key)
+	if button == null:
+		return
+	button.text = "%d/%d" % [value,RULES.energy_max] if key == "energy" else short_number(value)
+	button.accessibility_name = "%s: %d" % [STAT_NAMES[key],value]
+	button.tooltip_text = button.accessibility_name
+
+
+## Counters pop when their displayed value goes up and energy dips when it is spent.
 func _react_counters() -> void:
-	var now := {"coins": int(coins.text), "fragments": int(fragments.text), "energy": int(energy.text.get_slice("/",0))}
+	var now := shown.duplicate()
 	if not stat_values.is_empty():
 		for key: String in now:
 			var change: int = now[key] - int(stat_values[key])
@@ -287,7 +311,7 @@ func _react_counters() -> void:
 
 
 func stat_button(key: String) -> Button:
-	return {"coins": coins, "fragments": fragments, "energy": energy}.get(key)
+	return {"coins": coins, "fragments": fragments, "energy": energy, "build_points": build_stat}.get(key)
 
 
 func pop_stat(key: String, gained := 0, strength := 1.0) -> void:
@@ -307,7 +331,7 @@ func pop_stat(key: String, gained := 0, strength := 1.0) -> void:
 	tween.tween_property(button,"scale",Vector2.ONE,0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_balance_glint(button)
 	if gained > 0:
-		_float_text("+%d" % gained,button.get_global_rect().position + Vector2(button.size.x*0.5,button.size.y*0.15),TINTS.get({"coins":"coins","fragments":"fragments","energy":"energy"}[key],GOLD))
+		gain_badge(key,gained,button)
 
 
 func dip_stat(key: String) -> void:
@@ -321,6 +345,61 @@ func dip_stat(key: String) -> void:
 	stat_tweens[key] = tween
 	tween.tween_property(button,"scale",Vector2.ONE*0.965,0.06)
 	tween.tween_property(button,"scale",Vector2.ONE,0.14).set_trans(Tween.TRANS_SINE)
+
+
+## Animated "+X" under a counter, with the resource icon. Build points spell out the unit.
+## Driven by the displayed balance changing, so it always reflects a confirmed transaction.
+func gain_badge(key: String, gained: int, button: Control) -> Control:
+	if prefs.reduced or gained <= 0:
+		return null
+	var text := "+%d" % gained
+	if key == "build_points":
+		text = "+%s" % ("1 punct de construcție" if gained == 1 else "%d %spuncte de construcție" % [gained,"de " if gained % 100 >= 20 or gained % 100 == 0 else ""])
+	var badge := PanelContainer.new()
+	badge.name = "CastigBadge"
+	badge.set_meta("gain",key)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tint: Color = TINTS.get(key,GOLD)
+	var frame := _style(Color("#163440"),tint,16)
+	frame.content_margin_left = 8
+	frame.content_margin_right = 12
+	frame.content_margin_top = 3
+	frame.content_margin_bottom = 3
+	badge.add_theme_stylebox_override("panel",frame)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation",6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(row)
+	var icon := TextureRect.new()
+	icon.texture = ICONS[PRIZE_ICONS.get(key,"coin")]
+	icon.custom_minimum_size = Vector2(28,28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon)
+	var label := _label(text,21,tint.lightened(0.35))
+	label.add_theme_constant_override("outline_size",6)
+	label.add_theme_color_override("font_outline_color",Color("#143040"))
+	row.add_child(label)
+	flights.add_child(badge)
+	badge.reset_size()
+	var anchor := button.get_global_rect()
+	var bounds := get_viewport().get_visible_rect().size
+	var x := clampf(anchor.get_center().x - badge.size.x*0.5,top.position.x,minf(bounds.x,top.position.x + top.size.x) - badge.size.x)
+	var y := anchor.end.y + 6.0
+	badge.position = Vector2(x,y + 10.0)
+	badge.pivot_offset = badge.size*0.5
+	badge.scale = Vector2.ONE*0.6
+	badge.modulate.a = 0.0
+	var motion := badge.create_tween()
+	motion.tween_property(badge,"modulate:a",1.0,0.12)
+	motion.parallel().tween_property(badge,"scale",Vector2.ONE,0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	motion.parallel().tween_property(badge,"position:y",y,0.26).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	motion.tween_interval(0.75 if key == "build_points" else 0.45)
+	motion.tween_property(badge,"modulate:a",0.0,0.25)
+	motion.parallel().tween_property(badge,"position:y",y - 12.0,0.25)
+	motion.tween_callback(badge.queue_free)
+	return badge
 
 
 func _float_text(text: String, at: Vector2, color: Color) -> void:
@@ -422,8 +501,9 @@ func fly_prize(key: String, point: Vector3, camera: Camera3D, balance: int, spec
 		"coins": target = coins
 		"energy": target = energy
 		"fragments": target = fragments
+		"build_points": target = build_stat
 		_:
-			var caption := "Puncte" if key == "build_points" else "Jetoane"
+			var caption := "Jetoane"
 			var chip := _label("%s · %d" % [caption,balance],21)
 			chip.add_theme_stylebox_override("normal",_style(NAVY,GOLD,12))
 			flights.add_child(chip)
@@ -511,21 +591,46 @@ func _save_preferences() -> void:
 func _ready() -> void:
 	prefs.read()
 	super()
-	bag.text = "Sac"
-	bag.accessibility_name = "Inventar și setări"
+	# Etapa 4.3: a permanent build-points counter (hammer) between energy and the Bag.
+	build_stat = _button("",func() -> void: build_points_requested.emit())
+	build_stat.name = "PuncteConstructie"
+	build_stat.icon = ICONS["hammer"]
+	build_stat.expand_icon = true
+	build_stat.accessibility_name = "Puncte de construcție"
+	top.add_child(build_stat)
+	top.move_child(build_stat,bag.get_index())
+	# The Bag becomes a compact icon so five controls fit the portrait bar without clipping.
+	bag.text = ""
+	bag.icon = preload("res://assets/crystal/bag.svg")
+	bag.expand_icon = true
+	bag.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bag.add_theme_constant_override("icon_max_width",40)
+	bag.custom_minimum_size = Vector2(66,64)
+	bag.size_flags_horizontal = Control.SIZE_SHRINK_END
+	bag.accessibility_name = "Sac · inventar și setări"
 	bag.tooltip_text = bag.accessibility_name
+	top.add_theme_constant_override("separation",6)
 	# Counters use a slightly bolder face so numbers read at a glance on small screens.
 	var numerals := FontVariation.new()
 	numerals.base_font = ThemeDB.fallback_font
 	numerals.variation_embolden = 0.28
-	for stat: Button in [coins,fragments,energy]:
+	var ratios := [1.18,1.0,1.18,0.92]
+	var fills := [Color("#ffd277"),Color("#8fddef"),Color("#9bdcc0"),Color("#ffb487")]
+	for i in range(4):
+		var stat: Button = [coins,fragments,energy,build_stat][i]
 		stat.add_theme_font_override("font",numerals)
-		stat.add_theme_font_size_override("font_size",23)
-		stat.add_theme_constant_override("icon_max_width",37)
-	var fills := [Color("#ffd277"),Color("#8fddef"),Color("#9bdcc0")]
-	for i in range(3):
-		var stat: Button = [coins,fragments,energy][i]
-		stat.add_theme_stylebox_override("normal",_style(Color("#1e424d"),fills[i],22))
+		stat.add_theme_font_size_override("font_size",22)
+		stat.add_theme_constant_override("icon_max_width",32)
+		stat.add_theme_constant_override("h_separation",5)
+		stat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		stat.size_flags_stretch_ratio = ratios[i]
+		stat.custom_minimum_size = Vector2(96,64)
+		stat.clip_text = true
+		stat.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		var plate := _style(Color("#1e424d"),fills[i],22)
+		plate.content_margin_left = 9
+		plate.content_margin_right = 9
+		stat.add_theme_stylebox_override("normal",plate)
 	energy_bar.show_percentage = false
 	energy_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	energy_bar.max_value = RULES.energy_max
@@ -556,7 +661,158 @@ func _ready() -> void:
 	dock_frame.content_margin_bottom = 10
 	dock.add_theme_stylebox_override("panel",dock_frame)
 	title.add_theme_color_override("font_color",Color("#ffdf99"))
+	_make_upgrade_panel()
 	_layout.call_deferred()
+
+
+# Upgrade panel (Etapa 4.3): name, levels, current and next bonus, each cost against the balance
+# and the exact shortage. Values come from the save, the building config and the economy resource.
+const OK_TINT := Color("#9be8a8")
+const LOW_TINT := Color("#ff9d8c")
+var level_line: Label
+var bonus_row := HBoxContainer.new()
+var bonus_now: Label
+var bonus_now_caption: Label
+var bonus_next: Label
+var bonus_next_box: PanelContainer
+var cost_box := VBoxContainer.new()
+var cost_values := {}
+var cost_states := {}
+var shortage: Label
+
+
+func _make_upgrade_panel() -> void:
+	build.add_theme_constant_override("separation",7)
+	level_line = _label("",20,Color("#cfe6df"))
+	build.add_child(level_line)
+	build.move_child(level_line,ranks.get_index() + 1)
+	bonus_row.add_theme_constant_override("separation",8)
+	bonus_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	build.add_child(bonus_row)
+	build.move_child(bonus_row,level_line.get_index() + 1)
+	var now_parts := _bonus_card("Bonus actual",Color("#4e7f84"))
+	bonus_now_caption = now_parts[1]
+	bonus_now = now_parts[2]
+	var next_parts := _bonus_card("După upgrade",GOLD)
+	bonus_next_box = next_parts[0]
+	bonus_next = next_parts[2]
+	price.add_theme_font_size_override("font_size",17)
+	price.add_theme_color_override("font_color",Color("#b7f5e8"))
+	build.move_child(price,bonus_row.get_index() + 1)
+	cost_box.add_theme_constant_override("separation",4)
+	cost_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	build.add_child(cost_box)
+	build.move_child(cost_box,price.get_index() + 1)
+	for key: String in ["coins","build_points"]:
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation",8)
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cost_box.add_child(line)
+		var icon := TextureRect.new()
+		icon.texture = ICONS[PRIZE_ICONS[key]]
+		icon.custom_minimum_size = Vector2(30,30)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(icon)
+		var caption := _label("Monede:" if key == "coins" else "Construcție:",20)
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		caption.custom_minimum_size.x = 128
+		line.add_child(caption)
+		var value := _label("",21)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(value)
+		var state := _label("",18)
+		state.custom_minimum_size.x = 132
+		line.add_child(state)
+		cost_values[key] = value
+		cost_states[key] = state
+	shortage = _label("",19,LOW_TINT)
+	shortage.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	build.add_child(shortage)
+	build.move_child(shortage,cost_box.get_index() + 1)
+
+
+func _bonus_card(heading: String, edge: Color) -> Array:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := _style(Color("#143039"),edge,16)
+	fill.content_margin_top = 6
+	fill.content_margin_bottom = 7
+	card.add_theme_stylebox_override("panel",fill)
+	bonus_row.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation",1)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(col)
+	var caption := _label(heading,16,Color("#a9d3cc") if edge != GOLD else GOLD)
+	col.add_child(caption)
+	var value := _label("",20)
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(value)
+	return [card,caption,value]
+
+
+## "Îți lipsesc 892 de monede.", "Îți lipsește 1 punct de construcție.", or both together.
+static func shortage_text(missing_coins: int, missing_points: int) -> String:
+	var parts := PackedStringArray()
+	if missing_coins > 0:
+		parts.append(ECONOMY_TEXT.amount_text("coins",missing_coins))
+	if missing_points > 0:
+		parts.append(ECONOMY_TEXT.amount_text("build_points",missing_points))
+	if parts.is_empty():
+		return ""
+	var verb := "lipsește" if parts.size() == 1 and (missing_coins == 1 or missing_points == 1) else "lipsesc"
+	return "Îți %s %s." % [verb," și ".join(parts)]
+
+const ECONOMY_TEXT := preload("res://assets/board/economy.tres")
+
+
+func _refresh_upgrade(game: RefCounted, slot: int) -> void:
+	var s: Dictionary = game.state
+	var id: String = game.cfg.buildings.positions[slot].id
+	var top_level: int = game.cfg.buildings.max_level
+	var level := preview_level
+	title.text = str(game.cfg.buildings.positions[slot].building)
+	price.text = ECONOMY_TEXT.scope_text(id,RULES.tile_count)
+	var maxed := level >= top_level
+	bonus_next_box.visible = not maxed
+	cost_box.visible = not maxed
+	if maxed:
+		level_line.text = "MAXIM  ·  Nivel %d/%d" % [level,top_level]
+		level_line.add_theme_color_override("font_color",GOLD)
+		bonus_now_caption.text = "Bonus final"
+		bonus_now.text = ECONOMY_TEXT.bonus_text(id,level)
+		shortage.text = ""
+		shortage.hide()
+		confirm.visible = false
+		return
+	level_line.text = "Nivel %d  →  Nivel %d" % [level,level + 1]
+	level_line.add_theme_color_override("font_color",Color("#cfe6df"))
+	bonus_now_caption.text = "Bonus actual" if level > 0 else "Acum · neconstruită"
+	bonus_now.text = ECONOMY_TEXT.bonus_text(id,level)
+	bonus_next.text = ECONOMY_TEXT.bonus_text(id,level + 1)
+	var cost: Dictionary = game.cfg.buildings.costs_to_reach_level[str(level + 1)]
+	var missing := {}
+	for key: String in cost_values:
+		var have := int(s.wallet[key])
+		var need := int(cost[key])
+		missing[key] = maxi(0,need - have)
+		var enough: bool = missing[key] == 0
+		var value: Label = cost_values[key]
+		value.text = "%d / %d" % [have,need]
+		value.add_theme_color_override("font_color",CREAM if enough else LOW_TINT)
+		var state: Label = cost_states[key]
+		state.text = "— suficient" if enough else "— insuficient"
+		state.add_theme_color_override("font_color",OK_TINT if enough else LOW_TINT)
+	shortage.text = shortage_text(int(missing.coins),int(missing.build_points))
+	shortage.visible = not shortage.text.is_empty()
+	var affordable := shortage.text.is_empty()
+	confirm.visible = true
+	confirm.text = "Construiește" if level == 0 else "Îmbunătățește"
+	confirm.disabled = not affordable or game.busy
 
 func _button(caption: String, action: Callable, primary := false) -> Button:
 	var button := super(caption,action,primary)

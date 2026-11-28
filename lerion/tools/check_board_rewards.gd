@@ -56,15 +56,15 @@ func prepare(game: RefCounted, origin: int, sum: int, energy := 40) -> void:
 
 func market_flow(map: Node) -> void:
 	map._select_at(map.camera.unproject_position(map.plots.get_child(4).position + Vector3.UP*0.3))
-	check(map.selected_plot == 4 and map.hud.price.text.contains("Nivel 1 → 2\nToate căsuțele cu monede · 110 → 125 monede"),"Previzualizarea Pieței")
+	check(map.selected_plot == 4 and map.hud.level_line.text == "Nivel 1  →  Nivel 2" and map.hud.bonus_now.text == "+110 monede" and map.hud.bonus_next.text == "+125 de monede" and map.hud.price.text.contains("7 căsuțe cu monede"),"Previzualizarea Pieței")
 	check(map.path.studs.multimesh.instance_count == 7,"Marcaj de nivel pe fiecare dală a Pieței")
 	check(map.path.selected_tiles == PackedInt32Array([1,7,11,13,19,26,32]),"Toate cele șapte dale cu monede")
-	check(map.hud.price.text.contains("3000 monede + 25 puncte"),"Costul înaintea cumpărării")
+	check(map.hud.cost_values.coins.text.ends_with("/ 3000") and map.hud.cost_values.build_points.text.ends_with("/ 25"),"Costul înaintea cumpărării")
 	var coins := int(map.game.state.wallet.coins)
 	var points := int(map.game.state.wallet.build_points)
 	map.hud.confirm.pressed.emit()
 	check(map.path.studs.multimesh.instance_count == 14,"Marcajele de nivel după îmbunătățire")
-	check(map.village.levels[4] == 2 and map.game.state.levels[4] == 2 and map.hud.price.text.contains("125 → 150"),"Model și previzualizare după confirmare")
+	check(map.village.levels[4] == 2 and map.game.state.levels[4] == 2 and map.hud.bonus_now.text == "+125 de monede" and map.hud.bonus_next.text == "+150 de monede","Model și previzualizare după confirmare")
 	check(map.game.state.wallet.coins == coins-3000 and map.game.state.wallet.build_points == points-25,"Costul cumpărării")
 	map._deselect()
 	prepare(map.game,25,7)
@@ -113,7 +113,7 @@ func zones_and_rewards(map: Node) -> void:
 			game.state.levels[slot] = level
 			map._refresh()
 			if level == 3:
-				check(map.hud.price.text.contains("Nivel maxim") and not map.hud.confirm.visible,"Nivel maxim")
+				check(map.hud.level_line.text.begins_with("MAXIM") and not map.hud.confirm.visible and not map.hud.bonus_next_box.visible,"Nivel maxim")
 			var type: String = TYPES[slot]
 			var seen := {}
 			for attempt in range(36):
@@ -130,7 +130,7 @@ func zones_and_rewards(map: Node) -> void:
 				seen[resource] = true
 				check(game.state.board_position_index == tile and EXPECTED[type].has(resource),"Tipul de aterizare")
 				check(reward.amount == EXPECTED[type][resource][level],"Valoare configurată nivel %d" % level)
-				check(map.hud.price.text.contains(str(int(reward.amount))),"Previzualizare și recompensă")
+				check(map.hud.bonus_now.text.contains("+%d " % int(reward.amount)),"Previzualizare și recompensă")
 				check_balance(before,game.state,reward,100 if before.board_position_index > tile else 0)
 				game.busy = false
 				if seen.size() == EXPECTED[type].size():

@@ -49,6 +49,10 @@ var spin_a: SpinBox
 var spin_b: SpinBox
 var tile_input: SpinBox
 var future_prize: OptionButton
+## Persistent confirmation of the last real change (Etapa 4.3). Live read-outs never overwrite it.
+var notice: Label
+var balance_labels := {}
+const RESOURCE_NAMES := {"coins":"Monede","fragments":"Fragmente","build_points":"Puncte de construcție","quest_tokens":"Jetoane de aventură"}
 
 func _ready() -> void:
 	if not OS.is_debug_build() or not ProjectSettings.get_setting("lerion/developer_panel",true):
@@ -76,6 +80,9 @@ func _ready() -> void:
 	button(heading,"Închide",close_panel)
 	status = label(layout,"")
 	status.add_theme_color_override("font_color",Color("#ffe29c"))
+	notice = label(layout,"")
+	notice.add_theme_font_size_override("font_size",20)
+	notice.hide()
 	if not active:
 		label(layout,"Intră în profilul DEBUG separat pentru a testa resurse, zaruri și clădiri.")
 		button(layout,"Intră în profilul de dezvoltare",switch_profile.bind(true))
@@ -224,13 +231,40 @@ func _switch(development: bool, open_after := true) -> void:
 			panel.open_panel()
 	previous.queue_free()
 
-func result(ok: bool) -> void:
+func result(ok: bool, done := "Profil DEBUG actualizat și salvat.") -> void:
 	if not ok:
-		status.text = map.game.error if not map.game.error.is_empty() else "Operație refuzată. Verifică valorile sau așteaptă oprirea."
+		confirm(false,map.game.error if not map.game.error.is_empty() else "Operație refuzată. Verifică valorile sau așteaptă oprirea.")
 		return
 	sync_map()
-	status.text = "Profil DEBUG actualizat."
+	confirm(true,done)
 	refresh_data()
+
+
+## Shows the outcome of the last real change until the next one; it survives refreshes and page changes.
+func confirm(ok: bool, text: String) -> void:
+	if not is_instance_valid(notice):
+		return
+	notice.text = ("✔ " if ok else "✖ ") + text
+	notice.add_theme_color_override("font_color",Color("#9be8a8") if ok else Color("#ff9d8c"))
+	notice.show()
+
+
+## Real resource change in the DEBUG save, confirmed with the balance before and after.
+func change_resource(key: String, field: SpinBox, mode: String) -> void:
+	# Digits typed on the on-screen keyboard are applied even without pressing Enter.
+	if field.has_meta("typed"):
+		field.remove_meta("typed")
+		field.apply()
+	var before := int(map.game.state.wallet[key])
+	var amount := int(field.value)
+	var ok: bool
+	match mode:
+		"add": ok = map.game.set_resource(key,amount,true)
+		"zero": ok = map.game.set_resource(key,0)
+		_: ok = map.game.set_resource(key,amount)
+	var after := int(map.game.state.wallet[key])
+	var verb: String = {"add":"adăugat %d" % amount,"zero":"pus pe zero"}.get(mode,"setat la %d" % amount)
+	result(ok,"%s: %s · sold %d → %d · salvat în profilul DEBUG." % [RESOURCE_NAMES[key],verb,before,after])
 
 func sync_map() -> void:
 	if not active or map.game.busy:
@@ -251,16 +285,18 @@ func sync_map() -> void:
 	map.message.text = "Profil DEBUG · " + map._last_message()
 
 func _resources(col: Node) -> void:
-	label(col,"Valorile se aplică numai profilului DEBUG.")
+	label(col,"MODIFICARE REALĂ · se salvează numai în profilul DEBUG. Efectele demonstrative sunt în «Efecte vizuale».")
 	label(col,"Energia se editează în pagina «Energie».")
 	for key: String in ["coins","fragments","build_points","quest_tokens"]:
-		label(col,{"coins":"Monede","fragments":"Fragmente","build_points":"Puncte de construcție","quest_tokens":"Jetoane de aventură"}[key])
+		label(col,RESOURCE_NAMES[key])
+		balance_labels[key] = label(col,"")
+		balance_labels[key].add_theme_color_override("font_color",Color("#b7f5e8"))
 		var controls := row(col)
 		var value := number(controls,1000000000,map.game.state.wallet[key])
-		button(controls,"Setează",func() -> void: result(map.game.set_resource(key,int(value.value))))
-		if key == "coins":
-			button(controls,"Adaugă",func() -> void: result(map.game.set_resource(key,int(value.value),true)))
-		button(controls,"Zero",func() -> void: result(map.game.set_resource(key,0)))
+		value.get_line_edit().text_changed.connect(func(_text: String) -> void: value.set_meta("typed",true))
+		button(controls,"Setează",change_resource.bind(key,value,"set"))
+		button(controls,"Adaugă",change_resource.bind(key,value,"add"))
+		button(controls,"Zero",change_resource.bind(key,value,"zero"))
 
 func _travel(col: Node) -> void:
 	label(col,"Următoarea aruncare · două zaruri 1–6")
@@ -679,7 +715,7 @@ func _visual(col: Node) -> void:
 			close_panel()
 			sync_map()
 			map.open_chest(kind))
-	label(col,"Efect câștig resurse (numai vizual)")
+	label(col,"DEMONSTRAȚIE VIZUALĂ · câștig resurse. Nu modifică soldul; pentru valori reale folosește «Resurse».")
 	var gains := row(col)
 	for entry in [["Monede","coins",125],["Cristale","fragments",8],["Energie","energy",10],["Puncte","build_points",5]]:
 		button(gains,entry[0],func() -> void:
@@ -947,6 +983,8 @@ func refresh_data() -> void:
 	if active and is_instance_valid(diagnostic):
 		diagnostic.text = JSON.stringify(map.game.state,"  ")
 	if active:
+		for key: String in balance_labels:
+			balance_labels[key].text = "Sold actual: %d" % int(map.game.state.wallet[key])
 		status.text = "DEBUG · căsuța %d · energie %d · niveluri %s" % [map.game.state.board_position_index,map.game.state.energy,str(map.game.state.levels)]
 
 ## Energy and event read-outs, refreshed twice a second while the panel is open.

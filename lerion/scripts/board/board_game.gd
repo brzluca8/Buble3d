@@ -35,6 +35,8 @@ const CardsScreen := preload("res://scripts/crystal/cards_screen.gd")
 const CardService := preload("res://scripts/economy/card_service.gd")
 var chest_screen: ChestScreen
 var cards_screen: CardsScreen
+const BuildPointsScreen := preload("res://scripts/board/build_points_screen.gd")
+var build_screen: BuildPointsScreen
 var event_clock := 0.0
 @onready var sounds := $Sunete
 @onready var dice := $Zaruri
@@ -137,6 +139,11 @@ func _connect_mode() -> void:
 	cards_screen.setup(hud)
 	hud.open_chest_requested.connect(open_chest)
 	hud.cards_requested.connect(open_cards)
+	build_screen = BuildPointsScreen.new()
+	build_screen.name = "PuncteConstructie"
+	add_child(build_screen)
+	build_screen.setup(hud)
+	hud.build_points_requested.connect(open_build_points)
 	game.start_scheduled_events()
 	game.close_expired_events()
 	_sync_crystal()
@@ -313,6 +320,8 @@ func _show_lap() -> void:
 func _refresh() -> void:
 	super()
 	_sync_crystal()
+	if build_screen != null and build_screen.is_open():
+		build_screen.refresh()
 	if marked_levels != game.state.levels:
 		marked_levels = game.state.levels.duplicate()
 		path.mark_levels(marked_levels, game.cfg.buildings.positions)
@@ -599,7 +608,14 @@ func _tick_events() -> void:
 # Chests and cards. The screens show saved receipts; opening goes through the save transaction.
 
 func _screens_open() -> bool:
-	return chest_screen != null and (chest_screen.is_open() or cards_screen.is_open())
+	return chest_screen != null and (chest_screen.is_open() or cards_screen.is_open() or (build_screen != null and build_screen.is_open()))
+
+
+## Build-points window, opened from the hammer counter. Read-only: it shows the saved balance.
+func open_build_points() -> void:
+	if game.state.is_empty() or wheel_open() or event_screen.is_open() or _screens_open() or hud.overlay.visible:
+		return
+	build_screen.open(game)
 
 
 func open_chest(kind: String) -> void:
@@ -693,12 +709,11 @@ func _show_aura(on: bool) -> void:
 # and nothing is saved.
 
 func debug_gain(key: String, amount: int) -> void:
-	var stat: String = {"coins": "coins", "fragments": "fragments", "energy": "energy"}.get(key,"")
+	# No counter pop or "+X" badge here: those are reserved for confirmed balance changes.
 	hud.fly_prize(key,pawn.global_position + Vector3.UP*0.8,camera,0,amount >= 100,amount)
 	polish.emote(pawn.position + Vector3.UP*1.95,key)
-	if not stat.is_empty():
-		hud.pop_stat(stat,amount)
-	hud.show_landing("+%d %s" % [amount,game.ECONOMY.unit(key,amount)],camera,pawn.global_position + Vector3.UP*2.13,key)
+	# Demonstration only: the label says so, and no counter shows a balance it does not have.
+	hud.show_landing("+%d %s\nDemonstrație · soldul nu se schimbă" % [amount,game.ECONOMY.unit(key,amount)],camera,pawn.global_position + Vector3.UP*2.13,key)
 	sounds.play_event("coin_gain" if key == "coins" else "hud_pop")
 
 

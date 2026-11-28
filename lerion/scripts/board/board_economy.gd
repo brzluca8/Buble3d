@@ -74,3 +74,41 @@ func preview(building: String, level: int) -> String:
 	var category: String = {"coin":"monede","crystal":"fragmente","construction":"construcție",
 		"energy":"energie","magic":"magie","quest":"jetoane"}[type]
 	return "%s\nToate căsuțele cu %s · %s" % [heading,category," sau ".join(options)]
+
+
+# Presentation helpers (Etapa 4.3). They only read the configured tables above.
+
+const CATEGORY_TILES := {"coin":"monede","crystal":"cristale","construction":"ciocan","magic":"magie","quest":"aventură"}
+
+
+## "7 monede", "20 de monede", "1 monedă": Romanian counts take "de" from 20 upwards (and at 100, 200…).
+static func count_text(value: int, one: String, many: String) -> String:
+	if value == 1:
+		return "1 " + one
+	var rest := absi(value) % 100
+	return "%d %s%s" % [value,"de " if rest >= 20 or (rest == 0 and value != 0) else "",many]
+
+
+func amount_text(key: String, value: int) -> String:
+	return count_text(value,UNITS[key][0],UNITS[key][1])
+
+
+## Bonus paid by every tile of this building's category at `level`, e.g. "+3 puncte de construcție".
+func bonus_text(building: String, level: int) -> String:
+	var type: String = building_categories[building]
+	if type == "event_energy":
+		var percent := EVENTS.mill_percent(level)
+		return "+%d%% energie din evenimente" % percent if percent > 0 else "Fără bonus de energie"
+	var options := PackedStringArray()
+	for key: String in payouts[type]:
+		options.append("+" + amount_text(key,amount(type,key,level)))
+	return " sau ".join(options)
+
+
+## Where the bonus applies, read from the 36-tile layout.
+func scope_text(building: String, count: int) -> String:
+	var type: String = building_categories[building]
+	if type == "event_energy":
+		return "Se aplică energiei primite din recompensele evenimentelor."
+	var tiles := tiles_for(building,count).size()
+	return "Se aplică tuturor celor %d căsuțe cu %s de pe traseu." % [tiles,CATEGORY_TILES.get(type,type)]
