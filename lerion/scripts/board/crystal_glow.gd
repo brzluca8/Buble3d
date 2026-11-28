@@ -18,6 +18,7 @@ var tier := 2
 var age := 0.0
 var accumulated := 0.0
 var burst_age := -1.0
+var pulse := 0.0
 var center := Vector3(0,1.48,0)
 
 
@@ -105,6 +106,12 @@ func burst() -> void:
 	ring.show()
 
 
+## A quick bright beat, for example when a roll adds charge or the crystal becomes ready.
+func pulse_now(strength := 1.0) -> void:
+	pulse = maxf(pulse,strength)
+	set_process(true)
+
+
 func _process(delta: float) -> void:
 	age += delta
 	accumulated += delta
@@ -120,11 +127,12 @@ func _apply(_step: float) -> void:
 	var beat := 0.5 + 0.5*sin(age*(4.2 if charged else 2.0))
 	if jewel:
 		jewel.emission = Color("#19566d").lerp(Color("#7fe8ff"),fraction*0.6 + (0.4*beat if charged else 0.0))
-		jewel.emission_energy_multiplier = 0.28 + 0.75*fraction + (0.9 + 0.7*beat if charged else 0.12*beat*fraction)
-	var glow := fraction*0.26 + (0.26 + 0.16*beat if charged else 0.0)
+		jewel.emission_energy_multiplier = 0.28 + 0.75*fraction + (0.9 + 0.7*beat if charged else 0.12*beat*fraction) + 1.6*pulse
+	pulse = maxf(0.0,pulse - maxf(_step,1.0/30.0)*2.6)
+	var glow := fraction*0.26 + (0.26 + 0.16*beat if charged else 0.0) + 0.5*pulse
 	halo.visible = glow > 0.03
 	halo_material.albedo_color = Color(0.55,0.88,1.0,glow).lerp(Color(1.0,0.86,0.45,glow),0.35 if charged else 0.0)
-	halo.scale = Vector3.ONE*(0.75 + 0.35*fraction + (0.12*beat if charged else 0.0))
+	halo.scale = Vector3.ONE*(0.75 + 0.35*fraction + (0.12*beat if charged else 0.0) + 0.35*pulse)
 	var show_motes := charged and not reduced
 	mote_batch.visible = show_motes
 	if show_motes:
@@ -149,4 +157,4 @@ func _apply(_step: float) -> void:
 		if burst_age >= 1.0:
 			burst_age = -1.0
 			ring.hide()
-	set_process(fraction > 0.0 or charged or burst_age >= 0.0)
+	set_process(fraction > 0.0 or charged or burst_age >= 0.0 or pulse > 0.0)

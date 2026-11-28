@@ -118,7 +118,9 @@ func _run() -> void:
 	check(map.path.lit_tiles == PackedInt32Array([1,7,11,13,19,26,32]),"Construcție pe toate dalele cu monede")
 	var purchase: Dictionary = map.game.state.duplicate(true)
 	map._upgrade(4,0)
-	check(map.game.state == purchase and map.find_children("*","CPUParticles3D",true,false).size() == 1,"Un singur șantier la confirmare")
+	# Polish bursts live under Polish/Efecte; only construction puffs are counted here.
+	var puffs := map.find_children("*","CPUParticles3D",true,false).filter(func(node: Node) -> bool: return node.get_parent() != map.polish.fx_root)
+	check(map.game.state == purchase and puffs.size() == 1,"Un singur șantier la confirmare")
 	await create_timer(1.65).timeout
 	check(map.find_children("*","CPUParticles3D",true,false).is_empty() and map.game.state == purchase,"Șantierul dispare fără să modifice progresul")
 	map._deselect()

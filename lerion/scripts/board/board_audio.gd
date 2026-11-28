@@ -85,6 +85,35 @@ func impact(strength: float) -> void:
 func magic() -> void:
 	_play(impacts,GEM,1.35)
 
+
+## Named sound events for the polish layer. Each name may get its own stream later (assign it in
+## `event_streams`); until then it falls back to the closest existing sound, so the call sites
+## never change when real audio arrives.
+const EVENTS := {
+	"roll_press": "click", "wheel_spin": "toss", "wheel_tick": "click", "wheel_stop": "land",
+	"win_energy": "gem", "win_chest_wood": "magic", "win_chest_silver": "magic", "win_chest_gold": "upgrade",
+	"coin_gain": "coin", "hud_pop": "click", "start_pass": "coin", "landing": "land", "crystal_pulse": "magic",
+	"crystal_ready": "upgrade", "chest_open": "upgrade", "card_reveal": "click", "card_reveal_rare": "upgrade",
+	"upgrade": "upgrade"}
+var event_streams := {}
+
+
+func play_event(event: String, pitch := 1.0) -> void:
+	if not EVENTS.has(event):
+		return
+	var clip: AudioStream = event_streams.get(event)
+	if clip != null:
+		_play(chime,clip,pitch)
+		return
+	match EVENTS[event]:
+		"click": click()
+		"toss": toss()
+		"land": land()
+		"gem": _play(chime,GEM,pitch)
+		"coin": _play(chime,COIN,pitch)
+		"magic": magic()
+		"upgrade": upgrade()
+
 func _notification(what: int) -> void:
 	if not is_instance_valid(music_voice):
 		return

@@ -6,6 +6,7 @@ var tint := Color.WHITE
 var phase := 0.0
 var shape := ""
 var rare := false
+var point2d := Vector2.ZERO
 
 func play(camera: Camera3D, location: Vector3, color: Color, key := "", special := false) -> void:
 	eye = camera
@@ -18,9 +19,15 @@ func play(camera: Camera3D, location: Vector3, color: Color, key := "", special 
 	sparkle.tween_method(_frame,0.0,1.0,0.52 if rare else 0.39)
 	sparkle.tween_callback(queue_free)
 
+## Same crown of glints at a screen position (HUD buttons and counters).
+func play_at(screen: Vector2, color: Color, key := "", special := false) -> void:
+	point2d = screen
+	play(null,Vector3.ZERO,color,key,special)
+
+
 func _frame(t: float) -> void:
 	phase = t
-	position = eye.unproject_position(point)
+	position = eye.unproject_position(point) if eye else point2d
 	queue_redraw()
 
 func _draw() -> void:

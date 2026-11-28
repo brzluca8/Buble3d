@@ -9,6 +9,9 @@ const Cards := preload("res://scripts/economy/card_service.gd")
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const CardView := preload("res://scripts/crystal/card_view.gd")
 const Fx := preload("res://scripts/crystal/prize_fx.gd")
+const ChestArt := preload("res://scripts/crystal/chest_art.gd")
+const RAY_TINT := {"wood": Color(1.0,0.8,0.5), "silver": Color(0.75,0.9,1.0), "gold": Color(1.0,0.86,0.4)}
+const READY_RAYS := {"wood": 0.2, "silver": 0.4, "gold": 0.75}
 const GOLD := Color("#ffd06a")
 const CREAM := Color("#fff3d6")
 const NAVY := Color("#0f2552")
@@ -53,6 +56,8 @@ var ray_power := 0.0
 var seq: Tween
 var show_tween: Tween
 var flips: Array[Tween] = []
+var chest_rest_y := 0.0
+var shake_tween: Tween
 
 
 func setup(owner_hud: CanvasLayer, audio: Node) -> void:
@@ -144,6 +149,7 @@ func open(chest_kind: String, count: int) -> void:
 	open_button.disabled = count < 1
 	later_button.disabled = false
 	_present()
+	_drop_in()
 
 
 ## Restores a confirmed but unseen opening after a restart. Nothing is granted here.
@@ -247,6 +253,23 @@ func _present() -> void:
 	set_process(true)
 
 
+## The chest drops in with a squash and a ring of dust, tinted by its tier.
+func _drop_in() -> void:
+	if reduced:
+		return
+	chest.position.y = chest_rest_y - 300.0
+	chest.scale = Vector2(0.9,1.1)
+	var drop := create_tween()
+	drop.tween_property(chest,"position:y",chest_rest_y,0.5).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	drop.parallel().tween_property(chest,"scale",Vector2.ONE,0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	drop.tween_callback(func() -> void:
+		fx.reduced = reduced
+		fx.play(_chest_center() + Vector2(0,90),kind)
+		ray_power = READY_RAYS[kind]
+		if sounds:
+			sounds.play_event("landing"))
+
+
 func _buttons() -> void:
 	open_button.visible = phase == Phase.READY
 	later_button.visible = phase == Phase.READY
@@ -295,16 +318,33 @@ func _shake(t: float) -> void:
 func _burst() -> void:
 	chest.rotation = 0.0
 	chest.scale = Vector2.ONE
-	ray_power = 1.0
+	ray_power = {"wood": 0.7, "silver": 1.0, "gold": 1.6}[kind]
 	if sounds:
-		sounds.magic()
-	var style: String = kind
+		sounds.play_event("chest_open")
 	fx.reduced = reduced
-	fx.play(_chest_center() - Vector2(0,40),style)
+	var top := _chest_center() - Vector2(0,40)
+	fx.play(top,kind)
+	if kind == "gold" and not reduced:
+		# Second, wider burst a moment later and a short screen shake: the gold chest feels bigger.
+		var again := create_tween()
+		again.tween_interval(0.18)
+		again.tween_callback(func() -> void: fx.play(top + Vector2(0,-30),"gold"))
+		_shake_screen(10.0)
+	elif kind == "silver" and not reduced:
+		_shake_screen(4.0)
 	if not reduced:
-		flash.color.a = 0.5 if kind == "gold" else 0.3
+		flash.color.a = {"wood": 0.2, "silver": 0.35, "gold": 0.6}[kind]
 		var fade := create_tween()
-		fade.tween_property(flash,"color:a",0.0,0.4)
+		fade.tween_property(flash,"color:a",0.0,0.45)
+
+
+func _shake_screen(amount: float) -> void:
+	if shake_tween:
+		shake_tween.kill()
+	shake_tween = create_tween()
+	for i in range(6):
+		shake_tween.tween_property(screen,"position",Vector2(randf_range(-1,1),randf_range(-1,1))*amount*(1.0 - i/6.0),0.04)
+	shake_tween.tween_property(screen,"position",Vector2.ZERO,0.04)
 
 
 func _deal(t: float) -> void:
@@ -368,14 +408,15 @@ func _reveal_effects(i: int) -> void:
 	var view := cards[i]
 	var rarity_id: String = str(Cards.card(str(receipt.cards[i])).rarity)
 	if sounds:
-		if rarity_id == "rare":
-			sounds.upgrade()
-		elif bool(receipt.new[i]):
-			sounds.reward("coins")
-		else:
-			sounds.click()
+		sounds.play_event("card_reveal_rare" if rarity_id == "rare" else "card_reveal")
 	fx.reduced = reduced
 	fx.play(view.position + view.size*0.5,FX_STYLE.get(rarity_id,"wood"))
+	if not reduced and rarity_id != "common":
+		var glint := create_tween()
+		glint.tween_method(view.set_shine,0.0,1.0,0.55).set_delay(0.2)
+		glint.tween_callback(view.set_shine.bind(0.0))
+		var halo := create_tween()
+		halo.tween_method(view.set_aura,1.0 if rarity_id == "rare" else 0.6,0.0,1.2)
 	if rarity_id == "rare" and not reduced:
 		flash.color.a = 0.35
 		var glint := create_tween()
@@ -477,6 +518,11 @@ func _process(delta: float) -> void:
 	ray_power = maxf(0.0,ray_power - delta*0.5)
 	if not reduced and (ray_power > 0.0 or phase == Phase.READY):
 		rays.queue_redraw()
+	if chest.visible and (phase == Phase.READY or phase == Phase.OPENING):
+		# Idle shine, twinkles and a gentle bob while the chest waits.
+		if phase == Phase.READY and not reduced:
+			chest.position.y = chest_rest_y + 5.0*sin(ray_age*2.4)
+		chest.queue_redraw()
 
 
 # ---- Drawing ----------------------------------------------------------------------------------
@@ -486,55 +532,18 @@ func _draw_rays() -> void:
 		return
 	var c := _chest_center() if phase < Phase.REVEAL else rays.size*0.5
 	var reach := maxf(rays.size.x,rays.size.y)
-	var power := 0.25 if phase == Phase.READY else ray_power
+	var power := maxf(READY_RAYS.get(kind,0.25) if phase == Phase.READY else 0.0,ray_power)
 	var count := 12
 	for i in range(count):
 		var a := ray_age*0.2 + TAU*i/count
 		var w := 0.08
-		var tint := Color(1.0,0.86,0.45,0.13*power) if i % 2 == 0 else Color(0.5,0.8,1.0,0.1*power)
+		var warm: Color = RAY_TINT.get(kind,Color(1.0,0.86,0.45))
+		var tint := Color(warm,0.15*power) if i % 2 == 0 else Color(0.5,0.8,1.0,0.1*power)
 		rays.draw_colored_polygon(PackedVector2Array([c,c + Vector2.from_angle(a - w)*reach,c + Vector2.from_angle(a + w)*reach]),tint)
 
 
 func _draw_chest() -> void:
-	var wood: Color = TINT[kind]
-	var deep: Color = DARK[kind]
-	var body := Rect2(30,120,240,120)
-	chest.draw_circle(Vector2(150,240),104.0,Color(0,0,0,0.25))
-	# Light spilling out of the open chest.
-	if glow > 0.02:
-		var beam := PackedVector2Array([Vector2(60,126),Vector2(240,126),Vector2(300,-60),Vector2(0,-60)])
-		chest.draw_colored_polygon(beam,Color(1,0.95,0.7,0.35*glow))
-		chest.draw_circle(Vector2(150,124),70.0*glow + 10.0,Color(1,0.96,0.75,0.55*glow))
-	var base := StyleBoxFlat.new()
-	base.bg_color = wood
-	base.set_corner_radius_all(16)
-	base.border_color = deep
-	base.set_border_width_all(6)
-	chest.draw_style_box(base,body)
-	if lid > 0.02:
-		var mouth := StyleBoxFlat.new()
-		mouth.bg_color = Color("#2a1a10") if glow < 0.5 else Color(1,0.9,0.55)
-		mouth.set_corner_radius_all(10)
-		chest.draw_style_box(mouth,Rect2(40,120,220,26))
-	for x in [70.0,215.0]:
-		chest.draw_rect(Rect2(x,120,18,120),deep)
-	chest.draw_rect(Rect2(30,200,240,12),deep)
-	# Lid, hinged at the back left, swings up with `lid`.
-	chest.draw_set_transform(Vector2(30,128),-lid*1.05,Vector2.ONE)
-	var cover := StyleBoxFlat.new()
-	cover.bg_color = wood.lightened(0.08)
-	cover.set_corner_radius_all(28)
-	cover.border_color = deep
-	cover.set_border_width_all(6)
-	chest.draw_style_box(cover,Rect2(0,-86,240,96))
-	for x in [40.0,185.0]:
-		chest.draw_rect(Rect2(x,-86,18,96),deep)
-	chest.draw_set_transform(Vector2.ZERO,0,Vector2.ONE)
-	# Lock plate.
-	var lock_y := 118.0 + lid*8.0
-	chest.draw_circle(Vector2(150,lock_y + 24),22.0,deep)
-	chest.draw_circle(Vector2(150,lock_y + 24),16.0,Color("#ffd06a"))
-	chest.draw_rect(Rect2(146,lock_y + 24,8,16),deep)
+	ChestArt.draw(chest,kind,lid,glow,ray_age)
 
 
 # ---- Layout -----------------------------------------------------------------------------------
@@ -596,7 +605,8 @@ func _layout() -> void:
 	title.size = Vector2(area.size.x,60)
 	subtitle.position = Vector2(area.position.x + 10,area.position.y + 76)
 	subtitle.size = Vector2(area.size.x - 20,60)
-	chest.position = Vector2(area.position.x + (area.size.x - 300.0)*0.5,area.position.y + 190.0)
+	chest_rest_y = area.position.y + 190.0
+	chest.position = Vector2(area.position.x + (area.size.x - 300.0)*0.5,chest_rest_y)
 	odds_label.position = Vector2(area.position.x + 10,chest.position.y + 280.0)
 	odds_label.size = Vector2(area.size.x - 20,70)
 	var buttons_y := area.end.y - 84.0

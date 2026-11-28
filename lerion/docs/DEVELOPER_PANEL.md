@@ -94,3 +94,7 @@ Câmpuri locale de profil: `debug_log`, `debug_skew`, `debug_regen_off`. Funcți
 ## Extensii Etapa 4.1
 
 Pagina „Cufere” conține acum și: deschidere reală de cufere, raritate forțată, simulare de 10/100/1.000 de cufere, testul de salvare și redeschidere, testul de restart în timpul deschiderii și resetarea selectivă „Cărți și deschideri”. Vezi [ETAPA_4_1_CUFERE_CARTI.md](ETAPA_4_1_CUFERE_CARTI.md).
+
+## Extensii Etapa 4.0
+
+Pagina «Efecte vizuale»: comutatoare pentru efecte ambientale, speciale, bloom și scântei HUD; test ruletă cu premiu ales; test cufăr; test câștig resurse; aterizare, START, upgrade și puls cristal. Vezi [ETAPA_4_0_VISUAL_POLISH.md](ETAPA_4_0_VISUAL_POLISH.md).

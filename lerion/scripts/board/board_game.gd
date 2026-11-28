@@ -6,6 +6,13 @@ const RULES := preload("res://assets/board/rules.tres")
 const LoopPath := preload("res://scripts/board/loop_path.gd")
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const CrystalGlow := preload("res://scripts/board/crystal_glow.gd")
+const Polish := preload("res://scripts/board/polish.gd")
+var polish: Polish
+var aura: MeshInstance3D
+var aura_material: StandardMaterial3D
+var aura_tween: Tween
+var last_charge := -1
+var last_ready := false
 const WheelScreen := preload("res://scripts/crystal/wheel_screen.gd")
 var crystal_glow: CrystalGlow
 var wheel: WheelScreen
@@ -52,6 +59,10 @@ func _connect_mode() -> void:
 	enamel.vertex_color_use_as_albedo = true
 	enamel.roughness = 0.72
 	enamel.metallic_specular = 0.27
+	# A faint warm rim keeps the silhouettes of roofs and towers readable against the meadow.
+	enamel.rim_enabled = true
+	enamel.rim = 0.22
+	enamel.rim_tint = 0.55
 	for group in [village,$Castel]:
 		for part in group.find_children("*","MeshInstance3D",true,false):
 			part.material_override = enamel
@@ -65,6 +76,12 @@ func _connect_mode() -> void:
 	crystal_glow.name = "SuperCristal"
 	add_child(crystal_glow)
 	crystal_glow.setup($Ambient.gem,glow)
+	polish = Polish.new()
+	polish.name = "Polish"
+	add_child(polish)
+	polish.setup(path,village,crystal_glow.crystal_center())
+	polish.configure(hud.prefs.quality,hud.prefs.reduced)
+	_make_aura()
 	wheel = WheelScreen.new()
 	wheel.name = "RuletaMagica"
 	add_child(wheel)
@@ -129,6 +146,8 @@ func _roll() -> void:
 	var steps := int(roll.a) + int(roll.b)
 	_refresh()
 	sounds.toss()
+	polish.ring_burst(pawn.position,Color("#ffe08a"),1.2,0.4)
+	hud.spark_screen(hud.roll_button.get_global_rect().get_center(),Color("#ffe08a"))
 	dice.play(Vector2i(roll.a,roll.b),camera,hud.map_window())
 	camera.frame_throw(dice.global_position)
 	if joy:
@@ -147,6 +166,7 @@ func _roll() -> void:
 
 func _start_walk() -> void:
 	hud.throwing = false
+	_show_aura(true)
 	_refresh()
 
 
@@ -182,6 +202,7 @@ func _pose(step: float) -> void:
 func _arrived(index: int) -> void:
 	walked_steps += 1
 	sounds.step(index)
+	polish.step_dust(pawn.position)
 	if index == 0:
 		_show_lap()
 	message.text = "START" if index == 0 else "Căsuța %d" % index
@@ -213,6 +234,12 @@ func _finish() -> void:
 	var key := str(landing.get("resource","coins"))
 	rare_joy = game.ECONOMY.kind(visual_tile,RULES.tile_count) == "magic" or (key == "coins" and int(landing.get("amount",0)) >= 125)
 	path.flash(visual_tile,hud.prize_color(key))
+	_show_aura(false)
+	var category: String = game.ECONOMY.kind(visual_tile,RULES.tile_count)
+	polish.landing(path.centers[visual_tile],Color(path.CATEGORY_TINT.get(category,"ffd866")).lightened(0.25),rare_joy)
+	sounds.play_event("landing")
+	if not landing.is_empty():
+		polish.emote(pawn.position + Vector3.UP*1.95,str(landing.resource))
 	var event_points := int(game.state.last_roll.get("event_points",0))
 	if event_points > 0:
 		hud.show_event_points(event_points,str(Events.definition(str(game.state.event.id)).name))
@@ -229,7 +256,7 @@ func _finish() -> void:
 			_camera_lift(0.085)
 		var balance := int(game.state.wallet.get(landing.resource,game.state.energy))
 		hud.fly_prize(landing.resource,pawn.global_position + Vector3.UP*0.8,camera,balance,rare_joy,int(landing.amount))
-		hud.show_landing(text,camera,pawn.global_position + Vector3.UP * 2.13)
+		hud.show_landing(text,camera,pawn.global_position + Vector3.UP * 2.13,key)
 
 
 func _show_lap() -> void:
@@ -237,6 +264,8 @@ func _show_lap() -> void:
 	if game.busy:
 		_refresh()
 	_camera_lift(0.085)
+	polish.start_burst(path.centers[0])
+	hud.pop_stat("coins",0,1.3)
 	var coins := int(game.state.last_roll.start_coins)
 	sounds.reward("coins")
 	hud.fly_prize("coins",path.centers[0]+Vector3.UP*0.75,camera,int(game.state.wallet.coins))
@@ -293,6 +322,8 @@ func _upgrade(slot: int, level: int) -> void:
 		reveals.erase(slot)
 		construction_tweens.erase(slot))
 	hud.spark_at(camera,model.global_position+Vector3.UP*1.45,Color("#ffe992"))
+	polish.upgrade_burst(model.global_position)
+	sounds.play_event("upgrade")
 	if not hud.prefs.reduced:
 		var puff := CONSTRUCTION_PUFF.instantiate() as CPUParticles3D
 		puff.amount = [5,8,12][hud.prefs.quality]
@@ -372,6 +403,8 @@ func apply_preferences() -> void:
 	camera.reduced = hud.prefs.reduced
 	if crystal_glow:
 		crystal_glow.configure(tier,hud.prefs.reduced)
+	if polish:
+		polish.configure(tier,hud.prefs.reduced)
 	if wheel:
 		wheel.reduced = hud.prefs.reduced
 	if chest_screen:
@@ -392,7 +425,20 @@ func _sync_crystal() -> void:
 	if crystal_glow == null or game.state.is_empty():
 		return
 	var s: Dictionary = game.state
-	crystal_glow.set_progress(float(Crystal.charge(s))/Crystal.target(s),Crystal.is_ready(s))
+	var charge := Crystal.charge(s)
+	var ready := Crystal.is_ready(s)
+	crystal_glow.set_progress(float(charge)/Crystal.target(s),ready)
+	# Visual beats only: a pulse for every point of charge, a burst when the crystal becomes ready.
+	if last_charge >= 0 and polish:
+		if ready and not last_ready:
+			crystal_glow.pulse_now(1.5)
+			polish.crystal_burst()
+			sounds.play_event("crystal_ready")
+		elif charge > last_charge:
+			crystal_glow.pulse_now(0.7)
+			sounds.play_event("crystal_pulse")
+	last_charge = charge
+	last_ready = ready
 
 
 func _crystal_hit(screen_point: Vector2) -> bool:
@@ -419,6 +465,7 @@ func open_crystal() -> void:
 	camera.manual_override = false
 	camera.frame_crystal(crystal_glow.crystal_center())
 	crystal_glow.burst()
+	polish.crystal_burst()
 	sounds.magic()
 	message.text = "Ruleta Magică"
 	wheel.open()
@@ -556,3 +603,73 @@ func open_cards() -> void:
 	if game.busy or wheel_open() or _screens_open() or hud.overlay.visible:
 		return
 	cards_screen.open(game.state)
+
+
+# Soft golden ground spot that follows Lerik while he walks, so the eye keeps him in view.
+
+func _make_aura() -> void:
+	aura_material = polish.glow_material(Polish.soft_texture,false)
+	aura_material.albedo_color = Color(1.0,0.86,0.45,0.0)
+	var disc := QuadMesh.new()
+	disc.size = Vector2(2.3,2.3)
+	disc.orientation = PlaneMesh.FACE_Y
+	disc.material = aura_material
+	aura = MeshInstance3D.new()
+	aura.name = "Aura"
+	aura.mesh = disc
+	aura.position = Vector3(0,-0.17,0)
+	aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.visible = false
+	pawn.add_child(aura)
+
+
+func _show_aura(on: bool) -> void:
+	if aura == null:
+		return
+	if aura_tween:
+		aura_tween.kill()
+	if not on or not polish.special_active():
+		aura_tween = create_tween()
+		aura_tween.tween_property(aura_material,"albedo_color:a",0.0,0.2)
+		aura_tween.tween_callback(func() -> void: aura.visible = false)
+		return
+	aura.visible = true
+	aura_tween = create_tween()
+	aura_tween.tween_property(aura_material,"albedo_color:a",0.5,0.2)
+
+
+# Visual-effect tests for the Developer Panel. They only play effects: no state is read for rewards
+# and nothing is saved.
+
+func debug_gain(key: String, amount: int) -> void:
+	var stat: String = {"coins": "coins", "fragments": "fragments", "energy": "energy"}.get(key,"")
+	hud.fly_prize(key,pawn.global_position + Vector3.UP*0.8,camera,0,amount >= 100,amount)
+	polish.emote(pawn.position + Vector3.UP*1.95,key)
+	if not stat.is_empty():
+		hud.pop_stat(stat,amount)
+	hud.show_landing("+%d %s" % [amount,game.ECONOMY.unit(key,amount)],camera,pawn.global_position + Vector3.UP*2.13,key)
+	sounds.play_event("coin_gain" if key == "coins" else "hud_pop")
+
+
+func debug_landing_effect(rare := false) -> void:
+	var tile := visual_tile
+	polish.landing(path.centers[tile],Color("#ffd866"),rare)
+	path.flash(tile,Color("#fff0a4"))
+	_celebrate()
+
+
+func debug_start_effect() -> void:
+	polish.start_burst(path.centers[0])
+	hud.pop_stat("coins",0,1.3)
+
+
+func debug_upgrade_effect(slot := 0) -> void:
+	var model: Node3D = village.models[slot]
+	polish.upgrade_burst(model.global_position)
+	hud.spark_at(camera,model.global_position + Vector3.UP*1.45,Color("#ffe992"))
+
+
+func debug_crystal_pulse(ready := false) -> void:
+	crystal_glow.pulse_now(1.5 if ready else 0.8)
+	if ready:
+		polish.crystal_burst()

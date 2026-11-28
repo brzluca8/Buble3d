@@ -8,6 +8,7 @@ signal later_requested
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const Wheel := preload("res://scripts/crystal/magic_wheel.gd")
 const Fx := preload("res://scripts/crystal/prize_fx.gd")
+const ResultArt := preload("res://scripts/crystal/result_art.gd")
 const ENERGY := preload("res://assets/crystal/energy.svg")
 const CHEST := preload("res://assets/crystal/chest.svg")
 const GOLD := Color("#ffd06a")
@@ -33,7 +34,14 @@ var odds_note: Label
 var spin_button: Button
 var later_button: Button
 var result_panel := PanelContainer.new()
-var result_icon := TextureRect.new()
+var result_icon := ResultArt.new()
+var sheen := Control.new()
+var spin_power := 0.0
+var last_rotation := 0.0
+var pointer_settle := 0.0
+var shock := -1.0
+var shake_tween: Tween
+var bounce_tween: Tween
 var result_title: Label
 var result_detail: Label
 var continue_button: Button
@@ -78,6 +86,10 @@ func setup(owner_hud: CanvasLayer, audio: Node) -> void:
 	screen.add_child(subtitle)
 	wheel = Wheel.new()
 	screen.add_child(wheel)
+	# Fixed (non-rotating) glass highlight over the wheel.
+	sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sheen.draw.connect(_draw_sheen)
+	screen.add_child(sheen)
 	pointer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pointer.draw.connect(_draw_pointer)
 	screen.add_child(pointer)
@@ -129,8 +141,6 @@ func _make_result() -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(holder)
 	result_icon.custom_minimum_size = Vector2(150,150)
-	result_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	result_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	result_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(result_icon)
 	result_detail = hud._label("",24,CREAM)
@@ -195,6 +205,12 @@ func _reset() -> void:
 		if tween:
 			tween.kill()
 	receipt = {}
+	spin_power = 0.0
+	pointer_settle = 0.0
+	shock = -1.0
+	wheel.win_index = -1
+	wheel.scale = Vector2.ONE
+	screen.position = Vector2.ZERO
 	open_now = false
 	open_now_button.hide()
 	fx.clear()
@@ -222,6 +238,7 @@ func _on_spin() -> void:
 		return
 	spin_button.disabled = true
 	later_button.disabled = true
+	hud.spark_screen(spin_button.get_global_rect().get_center(),GOLD)
 	spin_requested.emit()
 
 
@@ -247,6 +264,9 @@ func play(confirmed: Dictionary) -> void:
 	spin_from = wheel.rotation
 	spin_to = wheel.rotation_for(index,spin_from,5,randf())
 	last_slice = wheel.slice_under_pointer(spin_from)
+	last_rotation = wheel.rotation
+	if sounds:
+		sounds.play_event("wheel_spin")
 	spin_tween = create_tween()
 	spin_tween.tween_method(_spin_step,0.0,SPIN_ACCEL + SPIN_DECEL,SPIN_ACCEL + SPIN_DECEL)
 	spin_tween.tween_callback(_land)
@@ -272,6 +292,8 @@ static func spin_curve(time: float, total: float) -> float:
 
 func _spin_step(time: float) -> void:
 	wheel.rotation = spin_from + spin_curve(time,spin_to - spin_from)
+	spin_power = lerpf(spin_power,clampf(absf(wheel.rotation - last_rotation)/0.3,0.0,1.0),0.35)
+	last_rotation = wheel.rotation
 	var slice := wheel.slice_under_pointer(wheel.rotation)
 	if slice != last_slice:
 		last_slice = slice
@@ -279,12 +301,30 @@ func _spin_step(time: float) -> void:
 		var now := Time.get_ticks_msec()/1000.0
 		if sounds and now - last_tick > 0.06:
 			last_tick = now
-			sounds.click()
+			sounds.play_event("wheel_tick")
 
 
 func _land() -> void:
 	wheel.rotation = spin_to
 	wheel.spinning = false
+	spin_power = 0.0
+	wheel.win_index = wheel.slice_under_pointer(wheel.rotation)
+	wheel.win_age = 0.0
+	pointer_settle = 1.0
+	pointer_kick = 1.0
+	if sounds:
+		sounds.play_event("wheel_stop")
+	if not reduced:
+		# Subtle stop: a ring of light leaves the rim and the wheel settles with a small bounce.
+		var wave := create_tween()
+		wave.tween_method(func(v: float) -> void: shock = v,0.0,1.0,0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		wave.tween_callback(func() -> void: shock = -1.0)
+		if bounce_tween:
+			bounce_tween.kill()
+		wheel.pivot_offset = wheel.size*0.5
+		bounce_tween = create_tween()
+		bounce_tween.tween_property(wheel,"scale",Vector2.ONE*1.035,0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		bounce_tween.tween_property(wheel,"scale",Vector2.ONE,0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_show_result(false)
 
 
@@ -311,31 +351,54 @@ func _show_result(recovered: bool) -> void:
 		result_detail.text += "\nEnergia poate depăși 100. Regenerarea se reia sub 100."
 	else:
 		result_detail.text += "\n" + str(Crystal.config().chests.get(chest,{}).get("hint","")) + "\nCuferele se păstrează în Sac."
-	result_icon.texture = ENERGY if kind == "energy" else CHEST
-	result_icon.modulate = Color("#fff59a") if kind == "energy" else Wheel.CHEST_TINT.get(chest,Color.WHITE)
+	if kind == "energy":
+		result_icon.show_texture(ENERGY,Color("#fff59a"))
+	else:
+		result_icon.show_chest(chest)
 	result_panel.show()
 	open_now_button.visible = kind == "chest" and not recovered
 	open_now_button.disabled = false
 	_layout()
 	continue_button.disabled = false
 	if sounds:
-		if kind == "energy":
-			sounds.reward("energy")
-		elif style == "gold":
-			sounds.upgrade()
-		else:
-			sounds.magic()
+		sounds.play_event("win_energy" if kind == "energy" else "win_chest_" + chest)
+	_pop_panel(style)
 	_animate_icon(style)
 	var origin := result_panel.position + Vector2(result_panel.size.x*0.5,result_panel.size.y*0.36)
 	fx.reduced = reduced
 	fx.play(origin,style)
 	if style == "gold" and not reduced:
-		flash.color.a = 0.65
+		flash.color.a = 0.8
 		var glow := create_tween()
-		glow.tween_property(flash,"color:a",0.0,0.45)
-		ray_power = 1.0
+		glow.tween_property(flash,"color:a",0.0,0.6)
+		ray_power = 1.8
+		# The gold chest gets a second, wider burst and a short shake so it clearly outshines the rest.
+		var again := create_tween()
+		again.tween_interval(0.2)
+		again.tween_callback(func() -> void: fx.play(origin + Vector2(0,-60),"gold"))
+		_shake(9.0)
 	elif style == "silver":
 		ray_power = 0.6
+
+
+func _shake(amount: float) -> void:
+	if shake_tween:
+		shake_tween.kill()
+	shake_tween = create_tween()
+	for i in range(6):
+		shake_tween.tween_property(screen,"position",Vector2(randf_range(-1,1),randf_range(-1,1))*amount*(1.0 - i/6.0),0.04)
+	shake_tween.tween_property(screen,"position",Vector2.ZERO,0.04)
+
+
+## The result card pops in with a small overshoot instead of appearing flat.
+func _pop_panel(style: String) -> void:
+	if reduced:
+		return
+	result_panel.pivot_offset = result_panel.size*0.5
+	result_panel.scale = Vector2.ONE*0.62
+	var pop := create_tween()
+	pop.tween_property(result_panel,"scale",Vector2.ONE*(1.08 if style == "gold" else 1.04),0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	pop.tween_property(result_panel,"scale",Vector2.ONE,0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _animate_icon(style: String) -> void:
@@ -407,10 +470,12 @@ func _process(delta: float) -> void:
 	ray_age += delta
 	if idle_drift and phase in [Phase.INTRO,Phase.READY]:
 		wheel.rotation += delta*0.12
-	if pointer_kick > 0.0:
+	if pointer_kick > 0.0 or pointer_settle > 0.0:
 		pointer_kick = maxf(0.0,pointer_kick - delta*7.0)
+		pointer_settle = maxf(0.0,pointer_settle - delta*1.7)
 		pointer.queue_redraw()
-	ray_power = lerpf(ray_power,0.35,delta*0.8)
+	var floor_power := 0.35 + 0.8*spin_power if phase == Phase.SPINNING else 0.35
+	ray_power = lerpf(ray_power,floor_power,delta*(6.0 if phase == Phase.SPINNING else 0.8))
 	if not reduced:
 		rays.queue_redraw()
 
@@ -426,13 +491,30 @@ func _draw_rays() -> void:
 		var w := 0.09
 		var tint := Color(1.0,0.85,0.45,0.10*ray_power) if i % 2 == 0 else Color(0.5,0.8,1.0,0.08*ray_power)
 		rays.draw_colored_polygon(PackedVector2Array([c,c + Vector2.from_angle(a - w)*reach,c + Vector2.from_angle(a + w)*reach]),tint)
-	rays.draw_circle(c,wheel.radius*1.08,Color(0.45,0.75,1.0,0.12 + 0.1*ray_power))
+	var pulse := 0.04*sin(ray_age*12.0)*spin_power
+	rays.draw_circle(c,wheel.radius*(1.08 + pulse),Color(0.45,0.75,1.0,0.12 + 0.1*ray_power))
+	rays.draw_arc(c,wheel.radius*(1.04 + pulse),0.0,TAU,64,Color(1.0,0.9,0.55,0.12 + 0.3*spin_power),6.0,true)
+	if shock >= 0.0:
+		rays.draw_arc(c,wheel.radius*lerpf(1.0,1.6,shock),0.0,TAU,72,Color(1.0,0.95,0.7,0.85*(1.0 - shock)),10.0*(1.0 - shock) + 2.0,true)
+
+
+func _draw_sheen() -> void:
+	if wheel == null:
+		return
+	var c := sheen.size*0.5
+	var r := wheel.radius
+	# Curved window reflection upper-left, a thin rim light lower-right and a specular dot.
+	sheen.draw_arc(c,r*0.9,deg_to_rad(200.0),deg_to_rad(262.0),24,Color(1,1,1,0.22),12.0,true)
+	sheen.draw_arc(c,r*0.8,deg_to_rad(206.0),deg_to_rad(246.0),16,Color(1,1,1,0.12),8.0,true)
+	sheen.draw_arc(c,r*0.97,deg_to_rad(20.0),deg_to_rad(60.0),16,Color(1,0.95,0.7,0.35),5.0,true)
+	sheen.draw_circle(c + Vector2.from_angle(deg_to_rad(228.0))*r*0.9,5.0,Color(1,1,1,0.55))
 
 
 func _draw_pointer() -> void:
 	var w := pointer.size.x
-	var tilt := -0.35*pointer_kick
-	pointer.draw_set_transform(Vector2(w*0.5,10),tilt,Vector2.ONE)
+	var tilt := -0.35*pointer_kick + 0.2*pointer_settle*sin(ray_age*30.0)
+	pointer.draw_set_transform(Vector2(w*0.5,10),tilt,Vector2.ONE*1.2)
+	pointer.draw_circle(Vector2(0,26),38.0,Color(1.0,0.88,0.45,0.1 + 0.25*maxf(spin_power,pointer_settle)))
 	var shape := PackedVector2Array([Vector2(-30,-4),Vector2(30,-4),Vector2(0,58)])
 	pointer.draw_colored_polygon(PackedVector2Array([Vector2(-34,-8),Vector2(34,-8),Vector2(0,64)]),Color("#8a5a16"))
 	pointer.draw_colored_polygon(shape,GOLD)
@@ -468,7 +550,9 @@ func _layout() -> void:
 	subtitle.size = Vector2(width,34)
 	var wheel_top := top_y + 124
 	wheel.size = Vector2.ONE*diameter
+	sheen.size = wheel.size
 	wheel.position = Vector2(left + (width - diameter)*0.5,wheel_top)
+	sheen.position = wheel.position
 	pointer.size = Vector2(80,80)
 	pointer.position = Vector2(left + width*0.5 - 40,wheel_top - 26)
 	var below := wheel_top + diameter + 18
@@ -484,6 +568,8 @@ func _layout() -> void:
 	spin_button.position = Vector2(left + 182,buttons_y)
 	spin_button.size = Vector2(width - 182,84)
 	var panel_width := minf(width - 40,520.0)
+	# Give the wrapped prize text a real width before measuring; otherwise its minimum height explodes.
+	result_detail.custom_minimum_size.x = panel_width - 48.0
 	result_panel.size = Vector2(panel_width,0)
 	result_panel.reset_size()
 	result_panel.size.x = panel_width

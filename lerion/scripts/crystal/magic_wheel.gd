@@ -17,6 +17,9 @@ var bulbs: Control
 var bulb_phase := 0
 var bulb_clock := 0.0
 var spinning := false
+var win_index := -1
+var win_age := 0.0
+const ACCENT := {"energy": Color("#5fe0cf"), "wood": Color("#d99a58"), "silver": Color("#e6f0f8"), "gold": Color("#ffd04a")}
 
 
 func _ready() -> void:
@@ -68,7 +71,8 @@ func rotation_for(index: int, from_rotation: float, turns: int, offset01: float)
 
 func _process(delta: float) -> void:
 	bulb_clock += delta
-	if bulb_clock >= (0.07 if spinning else 0.32):
+	win_age += delta
+	if bulb_clock >= (0.07 if spinning else (0.04 if win_index >= 0 else 0.16)):
 		bulb_clock = 0.0
 		bulb_phase += 1
 		bulbs.queue_redraw()
@@ -98,6 +102,21 @@ func _draw() -> void:
 		for k in range(steps+1):
 			band.append(c + Vector2.from_angle(starts[i] + spans[i]*k/steps)*inner*0.42)
 		draw_colored_polygon(band,fill.lightened(0.12))
+		# Rim band in the prize colour so energy and each chest tier read at a glance.
+		var accent: Color = ACCENT["energy"] if item.kind == "energy" else ACCENT[item.chest]
+		var rim := PackedVector2Array()
+		for k in range(steps+1):
+			rim.append(c + Vector2.from_angle(starts[i] + spans[i]*k/steps)*inner)
+		for k in range(steps,-1,-1):
+			rim.append(c + Vector2.from_angle(starts[i] + spans[i]*k/steps)*(inner - 11.0))
+		draw_colored_polygon(rim,Color(accent,0.85))
+		# Soft highlight on the outer third of the slice.
+		var gloss := PackedVector2Array()
+		for k in range(steps+1):
+			gloss.append(c + Vector2.from_angle(starts[i] + spans[i]*(0.1 + 0.8*k/steps))*(inner*0.9))
+		for k in range(steps,-1,-1):
+			gloss.append(c + Vector2.from_angle(starts[i] + spans[i]*(0.1 + 0.8*k/steps))*(inner*0.62))
+		draw_colored_polygon(gloss,Color(1,1,1,0.06))
 	for i in range(starts.size()):
 		draw_line(c,c + Vector2.from_angle(starts[i])*inner,GOLD,4.0,true)
 		draw_circle(c + Vector2.from_angle(starts[i])*(inner-3),5.0,Color("#fff3c4"))
@@ -137,3 +156,25 @@ func _draw_bulbs() -> void:
 		bulbs.draw_circle(p,6.5,Color("#fff7cf") if lit else Color("#a5691e"))
 		if lit:
 			bulbs.draw_circle(p,10.0,Color(1.0,0.95,0.7,0.25))
+	var inner := radius - 20.0
+	# The gold slice always twinkles a little: it is the prize worth spotting.
+	var now := Time.get_ticks_msec()/1000.0
+	for i in range(starts.size()):
+		var item: Dictionary = Crystal.prizes()[i]
+		if item.kind == "chest" and item.chest == "gold":
+			for k in range(4):
+				var t := pow(maxf(0.0,sin(now*2.3 + k*1.7)),4.0)
+				var a: float = starts[i] + spans[i]*(0.2 + 0.2*k)
+				var q := c + Vector2.from_angle(a)*(inner*(0.5 + 0.12*k))
+				var r := 4.0 + 8.0*t
+				bulbs.draw_colored_polygon(PackedVector2Array([q + Vector2(0,-r),q + Vector2(r*0.2,-r*0.2),q + Vector2(r,0),q + Vector2(r*0.2,r*0.2),
+					q + Vector2(0,r),q + Vector2(-r*0.2,r*0.2),q + Vector2(-r,0),q + Vector2(-r*0.2,-r*0.2)]),Color(1,1,0.8,0.9*t))
+	# Winning slice: pulsing light over the confirmed prize.
+	if win_index >= 0 and win_index < starts.size():
+		var pulse := 0.5 + 0.5*sin(win_age*9.0)
+		var poly := PackedVector2Array([c])
+		var steps := maxi(4,int(spans[win_index]/0.05))
+		for k in range(steps+1):
+			poly.append(c + Vector2.from_angle(starts[win_index] + spans[win_index]*k/steps)*inner)
+		bulbs.draw_colored_polygon(poly,Color(1,0.97,0.75,0.16 + 0.22*pulse))
+		bulbs.draw_arc(c,inner - 3.0,starts[win_index],starts[win_index] + spans[win_index],24,Color(1,0.95,0.6,0.7 + 0.3*pulse),6.0,true)

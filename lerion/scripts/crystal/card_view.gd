@@ -16,6 +16,7 @@ var badge := ""
 var badge_color := Color("#ff6b6b")
 var compact := false
 var shine := 0.0
+var aura := 0.0
 
 
 func show_card(id: String, up := true, has_it := true) -> void:
@@ -32,6 +33,17 @@ func set_badge(text: String, color: Color) -> void:
 	queue_redraw()
 
 
+func set_shine(value: float) -> void:
+	shine = value
+	queue_redraw()
+
+
+## Glow around the card, strongest right after a rare reveal.
+func set_aura(value: float) -> void:
+	aura = value
+	queue_redraw()
+
+
 func flip_to(up: bool) -> void:
 	face_up = up
 	queue_redraw()
@@ -42,6 +54,13 @@ func _draw() -> void:
 	var unit := minf(size.x / 160.0, size.y / 220.0)
 	var rare: Dictionary = Cards.rarity(str(card.get("rarity", "common")))
 	var rarity_color := Color(str(rare.get("color", "#9fb4c8")))
+	if aura > 0.01 and face_up:
+		var glow_box := StyleBoxFlat.new()
+		glow_box.bg_color = Color(0, 0, 0, 0)
+		glow_box.set_corner_radius_all(int(16 * unit))
+		glow_box.shadow_color = Color(rarity_color, 0.75 * aura)
+		glow_box.shadow_size = int(34 * unit * aura) + 2
+		draw_style_box(glow_box, rect)
 	var shadow := StyleBoxFlat.new()
 	shadow.bg_color = Color(0, 0, 0, 0.3)
 	shadow.set_corner_radius_all(int(16 * unit))
@@ -70,8 +89,10 @@ func _draw() -> void:
 		var icon: Texture2D = ICONS.get(str(card.art.get("icon", "chest")), ICONS.chest)
 		var side := minf(art_rect.size.x, art_rect.size.y) * 0.82
 		draw_texture_rect(icon, Rect2(art_rect.get_center() - Vector2.ONE * side * 0.5, Vector2.ONE * side), false)
-		if shine > 0.0:
-			draw_rect(Rect2(art_rect.position + Vector2(art_rect.size.x * shine - 12 * unit, 0), Vector2(18 * unit, art_rect.size.y)), Color(1, 1, 1, 0.28))
+		if shine > 0.0 and shine < 1.0:
+			var band := art_rect.size.x * (shine*1.4 - 0.2)
+			draw_colored_polygon(PackedVector2Array([art_rect.position + Vector2(band, 0), art_rect.position + Vector2(band + 26 * unit, 0),
+				art_rect.position + Vector2(band + 8 * unit, art_rect.size.y), art_rect.position + Vector2(band - 18 * unit, art_rect.size.y)]), Color(1, 1, 1, 0.38))
 	else:
 		var q := "?"
 		var qs := int(60 * unit)

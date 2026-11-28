@@ -19,6 +19,12 @@ signal open_chest_requested(kind: String)
 signal cards_requested
 const Cards := preload("res://scripts/economy/card_service.gd")
 var chest_buttons := {}
+var stat_values := {}
+var stat_tweens := {}
+var roll_shine: Control
+var roll_glow: Panel
+var roll_fx: Tween
+var sparks_enabled := true
 const Events := preload("res://scripts/economy/event_service.gd")
 const Energy := preload("res://scripts/economy/energy_service.gd")
 const EventScreen := preload("res://scripts/crystal/event_screen.gd")
@@ -58,9 +64,52 @@ func _make_controls() -> void:
 	roll_button.add_theme_constant_override("icon_max_width",49)
 	roll_button.add_theme_constant_override("h_separation",12)
 	row.add_child(roll_button)
+	_decorate_roll(roll_button)
 	skip = _button("Grăbește",func() -> void: skip_requested.emit())
 	row.add_child(skip)
 	skip.hide()
+
+
+## Shine sweep and a soft gold outline that breathe while the button is ready to use.
+func _decorate_roll(button: Button) -> void:
+	button.clip_contents = true
+	roll_glow = Panel.new()
+	roll_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var outline := StyleBoxFlat.new()
+	outline.bg_color = Color(1,1,1,0)
+	outline.border_color = Color("#fff4c2")
+	outline.set_border_width_all(3)
+	outline.set_corner_radius_all(19)
+	roll_glow.add_theme_stylebox_override("panel",outline)
+	roll_glow.modulate.a = 0.0
+	button.add_child(roll_glow)
+	roll_glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	roll_shine = Control.new()
+	roll_shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	roll_shine.draw.connect(func() -> void:
+		var h := roll_shine.size.y
+		roll_shine.draw_colored_polygon(PackedVector2Array([Vector2(h*0.45,0),Vector2(h*0.45 + 46,0),Vector2(46,h),Vector2(0,h)]),Color(1,1,1,0.34))
+		roll_shine.draw_colored_polygon(PackedVector2Array([Vector2(h*0.45 + 58,0),Vector2(h*0.45 + 72,0),Vector2(72,h),Vector2(58,h)]),Color(1,1,1,0.2)))
+	roll_shine.size = Vector2(90,78)
+	roll_shine.position = Vector2(-120,0)
+	button.add_child(roll_shine)
+
+
+func _update_roll_fx(ready: bool) -> void:
+	if roll_button == null or roll_shine == null:
+		return
+	var animate := ready and not prefs.reduced
+	if animate and (roll_fx == null or not roll_fx.is_valid() or not roll_fx.is_running()):
+		roll_fx = roll_button.create_tween().set_loops()
+		roll_fx.tween_interval(2.6)
+		roll_fx.tween_property(roll_shine,"position:x",roll_button.size.x + 40.0,0.75).from(-120.0).set_trans(Tween.TRANS_SINE)
+		roll_fx.parallel().tween_property(roll_glow,"modulate:a",0.8,0.35).from(0.0)
+		roll_fx.tween_property(roll_glow,"modulate:a",0.0,0.4)
+	elif not animate:
+		if roll_fx:
+			roll_fx.kill()
+		roll_shine.position.x = -120.0
+		roll_glow.modulate.a = 0.0
 
 
 func _make_projection() -> void:
@@ -70,6 +119,7 @@ func _make_projection() -> void:
 	crystal_chip.add_theme_constant_override("icon_max_width",30)
 	crystal_chip.custom_minimum_size = Vector2(0,52)
 	crystal_chip.add_theme_font_size_override("font_size",19)
+	crystal_chip.set_meta("no_press_fx",true)
 	crystal_chip.accessibility_name = "Super Cristal"
 	crystal_chip.tooltip_text = "Super Cristal · se încarcă la fiecare aruncare"
 	add_child(crystal_chip)
@@ -79,6 +129,7 @@ func _make_projection() -> void:
 	event_chip.add_theme_constant_override("icon_max_width",30)
 	event_chip.custom_minimum_size = Vector2(0,52)
 	event_chip.add_theme_font_size_override("font_size",19)
+	event_chip.set_meta("no_press_fx",true)
 	event_chip.accessibility_name = "Eveniment"
 	event_chip.hide()
 	add_child(event_chip)
@@ -138,6 +189,7 @@ func _refresh_controls(game: RefCounted, s: Dictionary) -> void:
 	playing = game.busy
 	super_help.text = "O aruncare consumă %d energie." % RULES.energy_cost
 	roll_button.disabled = playing or int(s.energy) < RULES.energy_cost
+	_update_roll_fx(not roll_button.disabled)
 	roll_button.text = "ARUNCĂ"
 	if playing:
 		roll_button.text = "Aruncare…" if throwing else "În mers…"
@@ -176,6 +228,7 @@ func map_window() -> Rect2:
 
 func refresh(game: RefCounted, slot: int) -> void:
 	super(game, slot)
+	_react_counters()
 	energy_bar.value = int(energy.text.get_slice("/",0))
 	for i in range(ranks.get_child_count()):
 		ranks.get_child(i).color = GOLD if i < preview_level else Color("#4e7779")
@@ -201,6 +254,79 @@ func refresh(game: RefCounted, slot: int) -> void:
 	price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
+## Coins, crystals and energy pop when their displayed value goes up and dip when energy is spent.
+func _react_counters() -> void:
+	var now := {"coins": int(coins.text), "fragments": int(fragments.text), "energy": int(energy.text.get_slice("/",0))}
+	if not stat_values.is_empty():
+		for key: String in now:
+			var change: int = now[key] - int(stat_values[key])
+			if change > 0:
+				pop_stat(key,change)
+			elif change < 0 and key == "energy":
+				dip_stat(key)
+	stat_values = now
+
+
+func stat_button(key: String) -> Button:
+	return {"coins": coins, "fragments": fragments, "energy": energy}.get(key)
+
+
+func pop_stat(key: String, gained := 0, strength := 1.0) -> void:
+	var button := stat_button(key)
+	if button == null:
+		return
+	if stat_tweens.has(key) and stat_tweens[key]:
+		stat_tweens[key].kill()
+	button.pivot_offset = button.size*0.5
+	button.scale = Vector2.ONE
+	if prefs.reduced:
+		return
+	var tween := button.create_tween()
+	stat_tweens[key] = tween
+	tween.tween_property(button,"scale",Vector2.ONE*(1.0 + 0.1*strength),0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button,"scale",Vector2.ONE,0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_balance_glint(button)
+	if gained > 0:
+		_float_text("+%d" % gained,button.get_global_rect().position + Vector2(button.size.x*0.5,button.size.y*0.15),TINTS.get({"coins":"coins","fragments":"fragments","energy":"energy"}[key],GOLD))
+
+
+func dip_stat(key: String) -> void:
+	var button := stat_button(key)
+	if button == null or prefs.reduced:
+		return
+	if stat_tweens.has(key) and stat_tweens[key]:
+		stat_tweens[key].kill()
+	button.pivot_offset = button.size*0.5
+	var tween := button.create_tween()
+	stat_tweens[key] = tween
+	tween.tween_property(button,"scale",Vector2.ONE*0.965,0.06)
+	tween.tween_property(button,"scale",Vector2.ONE,0.14).set_trans(Tween.TRANS_SINE)
+
+
+func _float_text(text: String, at: Vector2, color: Color) -> void:
+	if prefs.reduced:
+		return
+	var label := _label(text,24,color)
+	label.add_theme_constant_override("outline_size",7)
+	label.add_theme_color_override("font_outline_color",Color("#143040"))
+	flights.add_child(label)
+	label.reset_size()
+	label.position = at - Vector2(label.size.x*0.5,0)
+	var rise := label.create_tween().set_parallel(true)
+	rise.tween_property(label,"position:y",at.y - 30.0,0.8).set_trans(Tween.TRANS_SINE)
+	rise.tween_property(label,"modulate:a",0.0,0.3).set_delay(0.5)
+	rise.chain().tween_callback(label.queue_free)
+
+
+## Small crown of glints at a screen position, used by buttons and counters.
+func spark_screen(at: Vector2, color: Color, key := "", special := false) -> void:
+	if prefs.reduced or not sparks_enabled:
+		return
+	var spark := Spark.new()
+	flights.add_child(spark)
+	spark.play_at(at,color,key,special)
+
+
 func _toast(text: String) -> Label:
 	var label := _label(text, 24, GOLD)
 	label.add_theme_stylebox_override("normal", _style(NAVY, GOLD, 14))
@@ -218,9 +344,39 @@ func show_lap(bonus: int) -> void:
 	fade.tween_callback(label.queue_free)
 
 
-func show_landing(text: String, camera: Camera3D, point: Vector3) -> void:
+func show_landing(text: String, camera: Camera3D, point: Vector3, key := "") -> void:
 	var label := _toast(text)
 	label.name = "Premiu"
+	var tint: Color = TINTS.get(key,GOLD)
+	label.add_theme_font_size_override("font_size",27)
+	label.add_theme_color_override("font_color",Color("#fff8e0"))
+	label.add_theme_constant_override("outline_size",8)
+	label.add_theme_color_override("font_outline_color",Color("#16303f"))
+	var frame := _style(NAVY,tint,16)
+	frame.set_border_width_all(3)
+	frame.shadow_color = Color(tint,0.35)
+	frame.shadow_size = 8
+	if PRIZE_ICONS.has(key):
+		frame.content_margin_left = 58
+		label.add_theme_stylebox_override("normal",frame)
+		var badge := TextureRect.new()
+		badge.texture = ICONS[PRIZE_ICONS[key]]
+		badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		badge.size = Vector2(40,40)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_child(badge)
+		label.reset_size()
+		badge.position = Vector2(10,(label.size.y - 40.0)*0.5)
+	else:
+		label.add_theme_stylebox_override("normal",frame)
+		label.reset_size()
+	if not prefs.reduced:
+		label.pivot_offset = label.size*0.5
+		label.scale = Vector2.ONE*0.55
+		var pop := label.create_tween()
+		pop.tween_property(label,"scale",Vector2.ONE*1.12,0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		pop.tween_property(label,"scale",Vector2.ONE,0.12).set_trans(Tween.TRANS_BACK)
 	var track := func(rise: float) -> void:
 		var p := camera.unproject_position(point) - Vector2(label.size.x*0.5,label.size.y+rise)
 		label.position = p.clamp(Vector2(top.position.x,top.position.y+top.size.y),
@@ -279,6 +435,18 @@ func fly_prize(key: String, point: Vector3, camera: Camera3D, balance: int, spec
 	flight.tween_method(glide,0.0,1.0,0.53).set_trans(Tween.TRANS_SINE)
 	flight.tween_callback(_balance_glint.bind(target))
 	flight.tween_callback(icon.queue_free)
+
+
+func _press_fx(button: Button, down: bool) -> void:
+	if prefs.reduced or button.has_meta("no_press_fx") or button.disabled:
+		return
+	button.pivot_offset = button.size*0.5
+	var tween := button.create_tween()
+	if down:
+		tween.tween_property(button,"scale",Vector2.ONE*0.95,0.06).set_trans(Tween.TRANS_QUAD)
+	else:
+		tween.tween_property(button,"scale",Vector2.ONE*1.045,0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(button,"scale",Vector2.ONE,0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _balance_glint(target: Control) -> void:
@@ -368,6 +536,9 @@ func _ready() -> void:
 func _button(caption: String, action: Callable, primary := false) -> Button:
 	var button := super(caption,action,primary)
 	button.button_down.connect(func() -> void: control_touched.emit())
+	button.resized.connect(func() -> void: button.pivot_offset = button.size*0.5)
+	button.button_down.connect(func() -> void: _press_fx(button,true))
+	button.button_up.connect(func() -> void: _press_fx(button,false))
 	for state_name in ["normal","hover","pressed","disabled"]:
 		var color := Color("#ffd283") if primary else Color("#305461")
 		if state_name == "hover":
@@ -381,7 +552,15 @@ func _button(caption: String, action: Callable, primary := false) -> Button:
 		style.shadow_size = 2
 		style.shadow_offset = Vector2(0,2)
 		style.shadow_color = Color(0.05,0.13,0.16,0.28)
+		if primary and state_name == "normal":
+			style.shadow_color = Color(1.0,0.82,0.4,0.38)
+			style.shadow_size = 7
 		button.add_theme_stylebox_override(state_name,style)
+		if state_name == "hover":
+			var focus := style.duplicate() as StyleBoxFlat
+			focus.border_color = Color("#fff4c2")
+			focus.set_border_width_all(4)
+			button.add_theme_stylebox_override("focus",focus)
 	if primary:
 		var lettering := FontVariation.new()
 		lettering.base_font = ThemeDB.fallback_font

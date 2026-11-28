@@ -10,6 +10,8 @@ const ANCHORS := [Vector2(0,9.25), Vector2(1.78,8.90), Vector2(2.68,7.15),
 	Vector2(4.64,-2.82), Vector2(4.62,-3.80), Vector2(3.35,-4.96),
 	Vector2(2.75,-6.03),Vector2(1.62,-6.24),Vector2(0,-6.21)]
 const PALETTE := ["f3ca86","ffdda2","efbc7a"]
+## Each category gets its own hue so a tile reads at a glance; the sandy palette still alternates underneath.
+const CATEGORY_TINT := {"coin": "f9d47a", "crystal": "9fdcea", "construction": "f7b37c", "magic": "b3a0e6", "quest": "a6dc98"}
 const ECONOMY := preload("res://assets/board/economy.tres")
 const ICONS := {
 	"coin":preload("res://assets/crystal/coin.svg"), "crystal":preload("res://assets/crystal/crystal.svg"),
@@ -57,11 +59,11 @@ func _ready() -> void:
 		var color := Color(PALETTE[i % 3])
 		if i == 0:
 			color = Color("#e99363")
-		elif ECONOMY.kind(i, RULES.tile_count) == "magic":
-			color = Color("#aa98cd")
-		elif ECONOMY.kind(i, RULES.tile_count) == "energy":
-			color = Color("#8fcbb7")
-		_ribbon(i-0.479,i+0.479,8,HALF_WIDTH-0.055,0.077,SURFACE_Y,color.darkened(0.17),color)
+		else:
+			var tint: String = CATEGORY_TINT.get(ECONOMY.kind(i, RULES.tile_count), "")
+			if not tint.is_empty():
+				color = Color(tint).lerp(color,0.22)
+		_ribbon(i-0.479,i+0.479,8,HALF_WIDTH-0.055,0.077,SURFACE_Y,color.darkened(0.3),color)
 		if i == 0:
 			_start_arrow()
 	var paint := StandardMaterial3D.new()
@@ -141,6 +143,26 @@ func _build_icons() -> void:
 		for i in range(1, centers.size()):
 			if ECONOMY.kind(i, centers.size()) == type:
 				positions.append(centers[i] + Vector3.UP * 0.026)
+		# A dark offset copy under each icon works as a cartoon outline and lifts contrast.
+		var outline := StandardMaterial3D.new()
+		outline.albedo_texture = ICONS[type]
+		outline.albedo_color = Color(0.1,0.14,0.28)
+		outline.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		outline.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		outline.alpha_scissor_threshold = 0.4
+		var halo := PlaneMesh.new()
+		halo.size = Vector2(1.04,1.04)
+		halo.material = outline
+		var shade_batch := MultiMesh.new()
+		shade_batch.transform_format = MultiMesh.TRANSFORM_3D
+		shade_batch.mesh = halo
+		shade_batch.instance_count = positions.size()
+		for j in range(positions.size()):
+			shade_batch.set_instance_transform(j, Transform3D(Basis.IDENTITY, positions[j] + Vector3(0.022,-0.0015,0.03)))
+		var shade_node := MultiMeshInstance3D.new()
+		shade_node.multimesh = shade_batch
+		shade_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(shade_node)
 		var ink := StandardMaterial3D.new()
 		ink.albedo_texture = ICONS[type]
 		ink.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

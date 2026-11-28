@@ -10,6 +10,7 @@ var accents: Array[Node3D] = []
 var levels: Array = []
 @export_range(1,3) var mill_moves_from_level := 3
 var phase := 0.0
+var mill_angle := 0.0
 
 
 func populate(plots: Node3D, saved: Array) -> void:
@@ -44,7 +45,11 @@ func _process(delta: float) -> void:
 			continue
 		match i:
 			0, 3: accents[i].position.y = PIVOTS[i].y + 0.08 * sin(phase * (2 + i))
-			1: accents[i].rotation.z = phase * 0.8
+			1:
+				# Blades speed up and ease off with the breeze; the angle is accumulated so it never jumps.
+				mill_angle = fmod(mill_angle + delta*(0.85 + 0.35*sin(phase*0.41) + 0.12*sin(phase*1.7)),TAU)
+				accents[i].rotation.z = mill_angle
+				accents[i].rotation.x = 0.025*sin(phase*0.9)
 			2: accents[i].rotation.z = 0.32 * sin(phase * 3)
 			4, 5: accents[i].rotation.z = 0.13 * sin(phase * 2 + i)
 

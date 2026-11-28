@@ -24,6 +24,8 @@ var reset_part_menu: OptionButton
 var event_menu: OptionButton
 var landing_input: SpinBox
 var live_age := 0.0
+var visual_status: Label
+var visual_prize: OptionButton
 var crystal_status: Label
 var chest_status: Label
 var sim_wheel: TextEdit
@@ -83,7 +85,7 @@ func _ready() -> void:
 		section.custom_minimum_size.y = 58
 		section.add_theme_font_size_override("font_size",23)
 		layout.add_child(section)
-		var names := ["Resurse","Energie","Zaruri și traseu","Clădiri","Super Cristal","Cufere","Evenimente","Salvări și diagnostic","Simularea economiei"]
+		var names := ["Resurse","Energie","Zaruri și traseu","Clădiri","Super Cristal","Cufere","Efecte vizuale","Evenimente","Salvări și diagnostic","Simularea economiei"]
 		for title in names:
 			section.add_item(title)
 			var scroll := ScrollContainer.new()
@@ -101,9 +103,10 @@ func _ready() -> void:
 		_buildings(pages[3].get_child(0))
 		_future(pages[4].get_child(0))
 		_chests(pages[5].get_child(0))
-		_events(pages[6].get_child(0))
-		_diagnostics(pages[7].get_child(0))
-		_simulations(pages[8].get_child(0))
+		_visual(pages[6].get_child(0))
+		_events(pages[7].get_child(0))
+		_diagnostics(pages[8].get_child(0))
+		_simulations(pages[9].get_child(0))
 		section.item_selected.connect(show_page)
 		show_page(0)
 		map.hud.roll_requested.connect(apply_speed)
@@ -611,6 +614,99 @@ func _events(col: Node) -> void:
 		event_report.text = "\n".join(lines))
 	event_report = text_area(col,260)
 
+func _visual(col: Node) -> void:
+	label(col,"Efecte vizuale · numai pentru verificare. Nu modifică economia, salvarea sau probabilitățile.")
+	visual_status = label(col,"")
+	for entry in [["Efecte ambientale (licurici, praf, frunze, sclipiri)","ambient"],["Efecte speciale (inele, particule, emoții)","special"],["Bloom și grad de culoare","post"]]:
+		var toggle := CheckButton.new()
+		toggle.text = entry[0]
+		toggle.custom_minimum_size.y = 58
+		toggle.add_theme_font_size_override("font_size",20)
+		toggle.button_pressed = bool(map.polish.get(entry[1] + "_on"))
+		toggle.toggled.connect(func(on: bool) -> void:
+			map.polish.set_toggle(entry[1],on)
+			refresh_data())
+		col.add_child(toggle)
+	var sparks := CheckButton.new()
+	sparks.text = "Scântei pe butoane și contoare"
+	sparks.custom_minimum_size.y = 58
+	sparks.add_theme_font_size_override("font_size",20)
+	sparks.button_pressed = map.hud.sparks_enabled
+	sparks.toggled.connect(func(on: bool) -> void: map.hud.sparks_enabled = on)
+	col.add_child(sparks)
+	label(col,"Calitate efecte (numai în această sesiune)")
+	var tiers := OptionButton.new()
+	for title in ["Redusă","Medie","Ridicată"]:
+		tiers.add_item(title)
+	tiers.select(map.hud.prefs.quality)
+	tiers.custom_minimum_size.y = 58
+	tiers.add_theme_font_size_override("font_size",21)
+	tiers.item_selected.connect(func(index: int) -> void:
+		map.hud.prefs.quality = index
+		map.apply_preferences()
+		refresh_data())
+	col.add_child(tiers)
+	label(col,"Ruletă Magică")
+	visual_prize = OptionButton.new()
+	visual_prize.add_item("Premiu aleatoriu")
+	for item: Dictionary in Crystal.prizes():
+		visual_prize.add_item(str(item.label))
+	visual_prize.custom_minimum_size.y = 58
+	visual_prize.add_theme_font_size_override("font_size",21)
+	col.add_child(visual_prize)
+	button(col,"Testează ruleta cu premiul ales",func() -> void:
+		if map.game.busy or not map.game.pending_spin().is_empty() or map.chest_screen.is_open():
+			status.text = "Așteaptă finalul operației."
+			return
+		var id: String = "" if visual_prize.selected <= 0 else str(Crystal.prizes()[visual_prize.selected - 1].id)
+		if not map.game.force_prize(id) or not map.game.charge_crystal():
+			result(false)
+			return
+		sync_map()
+		close_panel()
+		map.open_crystal())
+	label(col,"Cufere")
+	var chest_row := row(col)
+	for kind in ["wood","silver","gold"]:
+		button(chest_row,{"wood":"Lemn","silver":"Argint","gold":"Aur"}[kind],func() -> void:
+			if map.game.busy or not map.game.pending_open().is_empty():
+				status.text = "Așteaptă finalul operației."
+				return
+			if int(map.game.state.chests[kind]) < 1 and not map.game.add_chests(kind,1):
+				result(false)
+				return
+			close_panel()
+			sync_map()
+			map.open_chest(kind))
+	label(col,"Efect câștig resurse (numai vizual)")
+	var gains := row(col)
+	for entry in [["Monede","coins",125],["Cristale","fragments",8],["Energie","energy",10],["Puncte","build_points",5]]:
+		button(gains,entry[0],func() -> void:
+			close_panel()
+			map.debug_gain(entry[1],entry[2]))
+	label(col,"Alte efecte")
+	var misc := row(col)
+	button(misc,"Aterizare",func() -> void:
+		close_panel()
+		map.debug_landing_effect(false))
+	button(misc,"Aterizare rară",func() -> void:
+		close_panel()
+		map.debug_landing_effect(true))
+	var misc2 := row(col)
+	button(misc2,"START",func() -> void:
+		close_panel()
+		map.debug_start_effect())
+	button(misc2,"Upgrade",func() -> void:
+		close_panel()
+		map.debug_upgrade_effect(0))
+	var crystal_row := row(col)
+	button(crystal_row,"Puls cristal",func() -> void:
+		close_panel()
+		map.debug_crystal_pulse(false))
+	button(crystal_row,"Cristal gata",func() -> void:
+		close_panel()
+		map.debug_crystal_pulse(true))
+
 func _confirmed_reset() -> void:
 	if pending_part.is_empty():
 		result(map.game.reset_profile(true))
@@ -699,6 +795,9 @@ func refresh_data() -> void:
 		if not recovery_probe.is_empty():
 			var probe: Dictionary = recovery_probe
 			chest_status.text += "\nTest recuperare #%d · energie înainte %d, acum %d · cufere înainte %s" % [int(probe.receipt.id),int(probe.energy_before),int(s.energy),str(probe.chests_before)]
+	if active and is_instance_valid(visual_status):
+		visual_status.text = "FPS %d · efecte active %d · calitate %d · ambient %s · speciale %s · bloom %s" % [Engine.get_frames_per_second(),map.polish.active_effects(),
+			map.polish.tier,"da" if map.polish.ambient_active() else "nu","da" if map.polish.special_active() else "nu","da" if map.polish.environment != null and map.polish.environment.glow_enabled else "nu"]
 	if active and is_instance_valid(card_status):
 		card_status.text = map.game.cards_summary()
 		if not card_probe.is_empty():

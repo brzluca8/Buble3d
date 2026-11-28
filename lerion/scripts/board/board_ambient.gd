@@ -12,6 +12,7 @@ var step_time := 1.0/30.0
 var accumulated := 0.0
 var reduced := false
 var age := 0.0
+var jets := 6
 
 
 func _ready() -> void:
@@ -46,7 +47,7 @@ func _ready() -> void:
 	pearl.material = water
 	beads.transform_format = MultiMesh.TRANSFORM_3D
 	beads.mesh = pearl
-	beads.instance_count = 4
+	beads.instance_count = 8
 	var streams := MultiMeshInstance3D.new()
 	streams.multimesh = beads
 	streams.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -59,7 +60,7 @@ func _ready() -> void:
 	ring.material = water
 	ripples.transform_format = MultiMesh.TRANSFORM_3D
 	ripples.mesh = ring
-	ripples.instance_count = 4
+	ripples.instance_count = 8
 	var foam := MultiMeshInstance3D.new()
 	foam.multimesh = ripples
 	foam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -88,15 +89,15 @@ func _process(delta: float) -> void:
 	if not reduced:
 		_drift_embers()
 	var breath := 0.5-0.5*cos(age*2.0)
-	gem.scale = Vector3.ONE * (1.0+0.035*breath)
+	gem.scale = Vector3.ONE * (1.0+0.035*breath+0.012*sin(age*5.3))
 	gem.position.y = 0.012*breath
 	for i in range(flags.size()):
-		var wave := sin(age*2.8+i) * 0.15 + sin(age*4.3+i)*0.05
-		var turn := Basis(Vector3.UP,wave) * Basis(Vector3.BACK,0.04*sin(age*3+i))
+		var wave := sin(age*2.8+i) * 0.15 + sin(age*4.3+i)*0.05 + sin(age*1.1+i*0.7)*0.08
+		var turn := Basis(Vector3.UP,wave) * Basis(Vector3.BACK,0.06*sin(age*3.3+i*1.7) + 0.03*sin(age*5.1+i))
 		flags[i].transform = Transform3D(turn,anchors[i]-turn*anchors[i])
-	for i in range(4):
+	for i in range(jets):
 		var t := fposmod(age*1.16+i*0.27,1.0)
-		var axis := Vector2.from_angle((i+0.5)*TAU/4.0)
+		var axis := Vector2.from_angle((i+0.5)*TAU/jets)
 		var distance := 0.62+0.52*t
 		var height := 1.045+0.82*t-1.21*t*t
 		beads.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3(axis.x*distance,height,axis.y*distance)))
@@ -146,6 +147,9 @@ func _drift_embers() -> void:
 
 func configure(tier: int, fewer: bool) -> void:
 	reduced = fewer
+	jets = [4,6,8][tier]
+	beads.visible_instance_count = jets
+	ripples.visible_instance_count = jets
 	step_time = 1.0/[15.0,24.0,30.0][tier]
 	for i in range(butterflies.size()):
 		butterflies[i].visible = not fewer and i < tier
