@@ -7,8 +7,9 @@ const ECONOMY := preload("res://assets/board/economy.tres")
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const Energy := preload("res://scripts/economy/energy_service.gd")
 const Events := preload("res://scripts/economy/event_service.gd")
+const Cards := preload("res://scripts/economy/card_service.gd")
 const WALLET := ["coins","build_points","fragments","tickets"]
-const VERSION := 6
+const VERSION := 7
 
 
 ## The only place that reads the device clock. The developer profile adds its simulated offset;
@@ -55,6 +56,7 @@ func _init(prefix := "user://satul_trasnitilor", now := -1) -> void:
 			"crystal_charge":0,"super_crystal_remaining_landings":0}
 		_add_crystal_fields(next)
 		_add_event_fields(next)
+		Cards.empty_fields(next)
 		next.wallet.quest_tokens = 0
 		if not _commit(next):
 			state.clear()
@@ -73,6 +75,7 @@ func _init(prefix := "user://satul_trasnitilor", now := -1) -> void:
 		migrated.wallet.quest_tokens = int(migrated.wallet.get("quest_tokens", 0))
 		_add_crystal_fields(migrated)
 		_add_event_fields(migrated)
+		Cards.empty_fields(migrated)
 		if not _commit(migrated):
 			state.clear()
 			return
@@ -82,6 +85,7 @@ func _init(prefix := "user://satul_trasnitilor", now := -1) -> void:
 		state.version = VERSION
 		_add_crystal_fields(state)
 		_add_event_fields(state)
+		Cards.empty_fields(state)
 	state.wallet.quest_tokens = int(state.wallet.quest_tokens)
 	# JSON numbers are doubles. Restore integer resource and movement counters.
 	for field: String in ["version","energy","seq","tick","laps","board_position_index","tile_count","crystal_charge","super_crystal_remaining_landings"]:
@@ -103,6 +107,13 @@ func _init(prefix := "user://satul_trasnitilor", now := -1) -> void:
 		if state.last_spin.has(field):
 			state.last_spin[field] = int(state.last_spin[field])
 	state.clock_mark = int(state.clock_mark)
+	state.chests_opened = int(state.chests_opened)
+	for id: String in state.cards:
+		state.cards[id] = int(state.cards[id])
+	if not state.last_open.is_empty():
+		state.last_open.id = int(state.last_open.id)
+		for i in range(state.last_open.counts.size()):
+			state.last_open.counts[i] = int(state.last_open.counts[i])
 	for field: String in ["start","end","points"]:
 		if state.event.has(field):
 			state.event[field] = int(state.event[field])
@@ -156,7 +167,9 @@ func _valid_board(s: Variant) -> bool:
 				return false
 	if s.version >= 5 and not Crystal.valid_fields(s,_integer):
 		return false
-	if s.version == VERSION and not Events.valid_fields(s,_integer):
+	if s.version >= 6 and not Events.valid_fields(s,_integer):
+		return false
+	if s.version == VERSION and not Cards.valid_fields(s,_integer):
 		return false
 	return _integer(s.crystal_charge,Crystal.max_target()) and _integer(s.super_crystal_remaining_landings,3)
 
@@ -339,3 +352,42 @@ func claim_event_reward(milestone_id: String, now := -1) -> Dictionary:
 	if receipt.is_empty() or not _commit(next):
 		return {}
 	return receipt
+
+
+# Chest opening. The rules are in scripts/economy/card_service.gd.
+
+## One transaction: the contents are drawn once, then the consumed chest, every card and the
+## receipt are written in the same save. The animation only presents this receipt.
+func open_chest(kind: String) -> Dictionary:
+	if busy or state.is_empty() or not pending_open().is_empty():
+		return {}
+	var next := state.duplicate(true)
+	Cards.empty_fields(next)
+	var receipt := Cards.open(next,kind,_draw_cards(kind)) if int(next.chests.get(kind,0)) > 0 and kind in Cards.CHEST_KINDS else {}
+	if receipt.is_empty() or not _commit(next):
+		return {}
+	return receipt.duplicate(true)
+
+
+## A confirmed opening whose presentation was not acknowledged (e.g. closed during the animation).
+func pending_open() -> Dictionary:
+	var receipt: Dictionary = state.get("last_open",{})
+	return receipt if not receipt.is_empty() and not receipt.presented else {}
+
+
+## Marks the opening as seen. Cards and chests are untouched, so repeating it never grants twice.
+func acknowledge_open(id: int) -> bool:
+	var receipt := pending_open()
+	if busy or receipt.is_empty() or int(receipt.id) != id:
+		return false
+	var next := state.duplicate(true)
+	next.last_open.presented = true
+	return _commit(next)
+
+
+func _draw_cards(kind: String) -> Array:
+	return Cards.draw_contents(rng,kind,_forced_rarity())
+
+
+func _forced_rarity() -> String:
+	return ""

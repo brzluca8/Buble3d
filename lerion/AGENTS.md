@@ -1,4 +1,5 @@
 # AGENTS.md — LERION V3 (TRASEU + DOUĂ ZARURI)
+> Actualizare Etapa 4.1 — cuferele se pot deschide și dau cărți colecționabile (36 de cărți, 6 colecții), salvare v7. Vezi [ETAPA_4_1_CUFERE_CARTI.md](docs/ETAPA_4_1_CUFERE_CARTI.md). Albumul complet și schimburile nu sunt implementate.
 > Actualizare Etapa 3.5 — căsuțele nu mai acordă energie, regenerarea este +1 la 10 minute, Moara Trăsnită crește energia din evenimente, există evenimente temporare. Vezi [ETAPA_3_5_ENERGIE_EVENIMENTE.md](docs/ETAPA_3_5_ENERGIE_EVENIMENTE.md); suprascrie regulile de energie din documentele anterioare.
 > Actualizare Etapa 3.0 — la cererea utilizatorului, Super Cristalul deschide Ruleta Magică (50, apoi 100 de aruncări) cu cufere salvate. Vezi [ETAPA_3_0_SUPER_CRISTAL.md](docs/ETAPA_3_0_SUPER_CRISTAL.md). Regula x2 pentru 3 aterizări și interdicția ruletei de mai jos sunt depășite pentru această mecanică.
 ## Prioritate

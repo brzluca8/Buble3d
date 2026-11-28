@@ -1,0 +1,450 @@
+{
+ "version": 1,
+ "rarities": [
+  {
+   "id": "common",
+   "name": "Comună",
+   "color": "#9fb4c8",
+   "stars": 1
+  },
+  {
+   "id": "uncommon",
+   "name": "Neobișnuită",
+   "color": "#58c88f",
+   "stars": 2
+  },
+  {
+   "id": "rare",
+   "name": "Rară",
+   "color": "#ffc94d",
+   "stars": 3
+  }
+ ],
+ "collections": [
+  {
+   "id": "aventurierii",
+   "name": "Aventurile lui Lerik",
+   "icon": "lerik",
+   "color": "#2fb6a8"
+  },
+  {
+   "id": "constructorii",
+   "name": "Atelierul lui Pongo",
+   "icon": "pongo",
+   "color": "#5fae3b"
+  },
+  {
+   "id": "magia",
+   "name": "Magia lui Pufi",
+   "icon": "pufi",
+   "color": "#8a5bd6"
+  },
+  {
+   "id": "cladiri",
+   "name": "Clădirile Regatului",
+   "icon": "hammer",
+   "color": "#e2883a"
+  },
+  {
+   "id": "cristalul",
+   "name": "Cristalul și Castelul",
+   "icon": "crystal",
+   "color": "#3f7fe0"
+  },
+  {
+   "id": "drumul",
+   "name": "Drumul Trăsniților",
+   "icon": "coin",
+   "color": "#d9a620"
+  }
+ ],
+ "cards": [
+  {
+   "id": "c1_01",
+   "collection": "aventurierii",
+   "name": "Lerik cu Ochelari",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "lerik"
+   }
+  },
+  {
+   "id": "c1_02",
+   "collection": "aventurierii",
+   "name": "Rucsacul Fără Fund",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "chest"
+   }
+  },
+  {
+   "id": "c1_03",
+   "collection": "aventurierii",
+   "name": "Harta Mototolită",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c1_04",
+   "collection": "aventurierii",
+   "name": "Salt peste Baltă",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "lerik"
+   }
+  },
+  {
+   "id": "c1_05",
+   "collection": "aventurierii",
+   "name": "Râsul Aventurier",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "energy"
+   }
+  },
+  {
+   "id": "c1_06",
+   "collection": "aventurierii",
+   "name": "Lerik, Exploratorul Suprem",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "lerik"
+   }
+  },
+  {
+   "id": "c2_01",
+   "collection": "constructorii",
+   "name": "Pongo cu Casca",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "pongo"
+   }
+  },
+  {
+   "id": "c2_02",
+   "collection": "constructorii",
+   "name": "Ciocanul Năzdrăvan",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "hammer"
+   }
+  },
+  {
+   "id": "c2_03",
+   "collection": "constructorii",
+   "name": "Cărucior cu Cărămizi",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "coin"
+   }
+  },
+  {
+   "id": "c2_04",
+   "collection": "constructorii",
+   "name": "Schela Strâmbă",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "hammer"
+   }
+  },
+  {
+   "id": "c2_05",
+   "collection": "constructorii",
+   "name": "Planul Verde",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c2_06",
+   "collection": "constructorii",
+   "name": "Pongo, Maestrul Constructor",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "pongo"
+   }
+  },
+  {
+   "id": "c3_01",
+   "collection": "magia",
+   "name": "Pufi Strănută",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "pufi"
+   }
+  },
+  {
+   "id": "c3_02",
+   "collection": "magia",
+   "name": "Puf de Poțiune",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "chaos"
+   }
+  },
+  {
+   "id": "c3_03",
+   "collection": "magia",
+   "name": "Aripi Mov",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "pufi"
+   }
+  },
+  {
+   "id": "c3_04",
+   "collection": "magia",
+   "name": "Cazanul Clocotitor",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "chaos"
+   }
+  },
+  {
+   "id": "c3_05",
+   "collection": "magia",
+   "name": "Artificii de Dragon",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "energy"
+   }
+  },
+  {
+   "id": "c3_06",
+   "collection": "magia",
+   "name": "Pufi, Dragonul Magic",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "pufi"
+   }
+  },
+  {
+   "id": "c4_01",
+   "collection": "cladiri",
+   "name": "Mina de Cristale",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "crystal"
+   }
+  },
+  {
+   "id": "c4_02",
+   "collection": "cladiri",
+   "name": "Moara Trăsnită",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "energy"
+   }
+  },
+  {
+   "id": "c4_03",
+   "collection": "cladiri",
+   "name": "Atelierul lui Pongo",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "hammer"
+   }
+  },
+  {
+   "id": "c4_04",
+   "collection": "cladiri",
+   "name": "Laboratorul lui Pufi",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "chaos"
+   }
+  },
+  {
+   "id": "c4_05",
+   "collection": "cladiri",
+   "name": "Piața Poznașă",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "coin"
+   }
+  },
+  {
+   "id": "c4_06",
+   "collection": "cladiri",
+   "name": "Hanul Aventurierilor",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "lerik"
+   }
+  },
+  {
+   "id": "c5_01",
+   "collection": "cristalul",
+   "name": "Fântâna Cristalină",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "crystal"
+   }
+  },
+  {
+   "id": "c5_02",
+   "collection": "cristalul",
+   "name": "Turnurile Albastre",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c5_03",
+   "collection": "cristalul",
+   "name": "Steagul Regatului",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c5_04",
+   "collection": "cristalul",
+   "name": "Poarta Castelului",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "chest"
+   }
+  },
+  {
+   "id": "c5_05",
+   "collection": "cristalul",
+   "name": "Cristalul Central",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "crystal"
+   }
+  },
+  {
+   "id": "c5_06",
+   "collection": "cristalul",
+   "name": "Super Cristalul",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "crystal"
+   }
+  },
+  {
+   "id": "c6_01",
+   "collection": "drumul",
+   "name": "Căsuța START",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "lerik"
+   }
+  },
+  {
+   "id": "c6_02",
+   "collection": "drumul",
+   "name": "Zarurile Norocoase",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c6_03",
+   "collection": "drumul",
+   "name": "Moneda de Aur",
+   "rarity": "common",
+   "art": {
+    "status": "placeholder",
+    "icon": "coin"
+   }
+  },
+  {
+   "id": "c6_04",
+   "collection": "drumul",
+   "name": "Drumul Șerpuit",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "challenge"
+   }
+  },
+  {
+   "id": "c6_05",
+   "collection": "drumul",
+   "name": "Ruleta Magică",
+   "rarity": "uncommon",
+   "art": {
+    "status": "placeholder",
+    "icon": "energy"
+   }
+  },
+  {
+   "id": "c6_06",
+   "collection": "drumul",
+   "name": "Cufărul Regelui",
+   "rarity": "rare",
+   "art": {
+    "status": "placeholder",
+    "icon": "chest"
+   }
+  }
+ ],
+ "chests": {
+  "wood": {
+   "cards": 3,
+   "rarity_weights": {
+    "common": 80,
+    "uncommon": 17,
+    "rare": 3
+   }
+  },
+  "silver": {
+   "cards": 4,
+   "rarity_weights": {
+    "common": 45,
+    "uncommon": 42,
+    "rare": 13
+   }
+  },
+  "gold": {
+   "cards": 5,
+   "rarity_weights": {
+    "common": 20,
+    "uncommon": 45,
+    "rare": 35
+   }
+  }
+ },
+ "_note": "Ilustrațiile sunt PROVIZORII (pictograme existente, status 'placeholder'). Identificatorii sunt stabili și nu se refolosesc. Ponderile sunt valori de proiectare, ajustabile. Fiecare carte din cufăr se extrage independent (duplicatele sunt posibile)."
+}

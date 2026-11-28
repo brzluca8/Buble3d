@@ -6,6 +6,7 @@ const FUTURE := preload("res://scripts/developer/future_features.json")
 var memory_only := false
 var forced_pair := Vector2i.ZERO
 var forced_prize := ""
+var forced_rarity := ""
 var recording := false
 var op := ""
 const LOG_LIMIT := 40
@@ -66,6 +67,83 @@ func _draw_faces() -> Vector2i:
 	if allowed() and forced_pair != Vector2i.ZERO:
 		return forced_pair
 	return super()
+
+func _forced_rarity() -> String:
+	return forced_rarity if allowed() else ""
+
+func force_rarity(id: String) -> bool:
+	if not allowed() or busy or (not id.is_empty() and Cards.rarity(id).is_empty()):
+		return false
+	forced_rarity = id
+	return true
+
+func open_chest(kind: String) -> Dictionary:
+	if not allowed():
+		return {}
+	op = "open_chest " + kind
+	var receipt := super(kind)
+	op = ""
+	return receipt
+
+## Opens `count` chests of one kind on an isolated in-memory copy and reports the statistics.
+## The profile and the normal save are never written.
+func simulate_chests(kind: String, count: int, seed_value := 4101, rarity := "") -> Dictionary:
+	if not allowed() or kind not in Cards.CHEST_KINDS or count < 1 or count > 100000:
+		return {}
+	var trial = get_script().new(true)
+	trial.state = state.duplicate(true)
+	trial.state.cards = {}
+	trial.state.last_open = {}
+	trial.state.chests[kind] = count
+	trial.rng.seed = seed_value
+	trial.forced_rarity = rarity
+	var report := {"chest":kind,"requested":count,"opened":0,"seed":seed_value,"forced_rarity":rarity,"cards_drawn":0,
+		"by_rarity":{},"expected_percent":{},"observed_percent":{},"double_open_refused":0}
+	for item: Dictionary in Cards.rarities():
+		report.by_rarity[item.id] = 0
+		report.expected_percent[item.id] = snappedf(Cards.rarity_probability(kind,item.id)*100.0,0.01)
+	for i in range(count):
+		var receipt: Dictionary = trial.open_chest(kind)
+		if receipt.is_empty():
+			return {"error":trial.error,"opened":report.opened}
+		# A second request before the first is acknowledged must be refused.
+		trial.state.chests[kind] += 1
+		if trial.open_chest(kind).is_empty():
+			report.double_open_refused += 1
+		trial.state.chests[kind] -= 1
+		trial.acknowledge_open(int(receipt.id))
+		report.opened += 1
+		for id: String in receipt.cards:
+			report.by_rarity[Cards.card(id).rarity] += 1
+			report.cards_drawn += 1
+	for id: String in report.by_rarity:
+		report.observed_percent[id] = snappedf(100.0*report.by_rarity[id]/maxf(1.0,report.cards_drawn),0.01)
+	report.unique_cards = Cards.unique_owned(trial.state)
+	report.catalog_size = Cards.catalog().size()
+	report.total_copies = Cards.total_copies(trial.state)
+	report.duplicate_copies = Cards.duplicate_copies(trial.state)
+	report.cards_consistent = report.total_copies == report.cards_drawn and report.cards_drawn == count*Cards.chest_size(kind)
+	report.chests_left = int(trial.state.chests[kind])
+	var collections := {}
+	for col: Dictionary in Cards.collections():
+		collections[col.name] = "%d/6" % Cards.collection_owned(trial.state,col.id)
+	report.collections = collections
+	return report
+
+## Compares the in-memory cards, chests and pending opening with a fresh load from disk.
+func verify_cards_saved() -> Dictionary:
+	if not allowed() or memory_only:
+		return {}
+	var disk = get_script().new()
+	var same: bool = disk.state.cards == state.cards and disk.state.chests == state.chests and disk.state.last_open == state.last_open \
+		and disk.state.chests_opened == state.chests_opened
+	return {"identical":same,"unique":Cards.unique_owned(state),"unique_disk":Cards.unique_owned(disk.state),
+		"copies":Cards.total_copies(state),"copies_disk":Cards.total_copies(disk.state),"opened":int(state.chests_opened),
+		"opened_disk":int(disk.state.chests_opened),"pending":not disk.pending_open().is_empty()}
+
+func cards_summary() -> String:
+	return "Cărți unice %d/%d · exemplare %d · duplicate %d · cufere deschise %d" % [Cards.unique_owned(state),Cards.catalog().size(),
+		Cards.total_copies(state),Cards.duplicate_copies(state),int(state.chests_opened)]
 
 func _draw_prize() -> String:
 	if allowed() and not forced_prize.is_empty():
@@ -229,6 +307,7 @@ func reset_profile(confirmed: bool) -> bool:
 	next.debug_regen_off = false
 	forced_pair = Vector2i.ZERO
 	forced_prize = ""
+	forced_rarity = ""
 	return _commit(next)
 
 func set_future(charge: int, later: bool, prize: String) -> bool:
@@ -417,7 +496,7 @@ func duplicate_claim_test(milestone_id: String) -> Dictionary:
 
 # ---- Selective reset, history -----------------------------------------------------------------
 
-const RESET_PARTS := {"energy":"Energie","chests":"Cufere","crystal":"Super Cristal","event":"Evenimente",
+const RESET_PARTS := {"energy":"Energie","chests":"Cufere","cards":"Cărți și deschideri","crystal":"Super Cristal","event":"Evenimente",
 	"position":"Poziție și ture","levels":"Niveluri clădiri","wallet":"Solduri","clock":"Ceas simulat"}
 
 func reset_part(part: String, confirmed: bool) -> bool:
@@ -433,6 +512,11 @@ func reset_part(part: String, confirmed: bool) -> bool:
 			next.debug_regen_off = false
 		"chests":
 			next.chests = Crystal.empty_chests()
+		"cards":
+			next.cards = {}
+			next.chests_opened = 0
+			next.last_open = {}
+			forced_rarity = ""
 		"crystal":
 			next.crystal_charge = 0
 			next.crystal_activations = 0

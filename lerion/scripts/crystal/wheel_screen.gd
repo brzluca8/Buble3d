@@ -37,6 +37,8 @@ var result_icon := TextureRect.new()
 var result_title: Label
 var result_detail: Label
 var continue_button: Button
+var open_now_button: Button
+var open_now := false
 var flash := ColorRect.new()
 var fx: Fx
 var receipt: Dictionary = {}
@@ -134,8 +136,14 @@ func _make_result() -> void:
 	result_detail = hud._label("",24,CREAM)
 	result_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(result_detail)
-	continue_button = hud._button("Continuă",_on_continue,true)
-	continue_button.custom_minimum_size.y = 72
+	open_now_button = hud._button("Deschide acum",func() -> void:
+		open_now = true
+		_on_continue(),true)
+	open_now_button.custom_minimum_size.y = 72
+	col.add_child(open_now_button)
+	open_now_button.hide()
+	continue_button = hud._button("Continuă",_on_continue)
+	continue_button.custom_minimum_size.y = 64
 	col.add_child(continue_button)
 	result_panel.hide()
 
@@ -187,6 +195,8 @@ func _reset() -> void:
 		if tween:
 			tween.kill()
 	receipt = {}
+	open_now = false
+	open_now_button.hide()
 	fx.clear()
 	result_panel.hide()
 	flash.color.a = 0.0
@@ -304,6 +314,8 @@ func _show_result(recovered: bool) -> void:
 	result_icon.texture = ENERGY if kind == "energy" else CHEST
 	result_icon.modulate = Color("#fff59a") if kind == "energy" else Wheel.CHEST_TINT.get(chest,Color.WHITE)
 	result_panel.show()
+	open_now_button.visible = kind == "chest" and not recovered
+	open_now_button.disabled = false
 	_layout()
 	continue_button.disabled = false
 	if sounds:
@@ -372,6 +384,7 @@ func _on_continue() -> void:
 	if phase != Phase.RESULT:
 		return
 	continue_button.disabled = true
+	open_now_button.disabled = true
 	var shown := receipt.duplicate()
 	_hide()
 	closed.emit(shown)

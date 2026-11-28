@@ -92,7 +92,7 @@ func wheel_geometry() -> void:
 func charging_and_spins() -> void:
 	var p := prefix + "_tx"
 	var game := ForcedSave.new(p)
-	check(game.state.version == 6 and game.state.crystal_charge == 0 and game.state.chests == Crystal.empty_chests(),"Salvare nouă v6")
+	check(game.state.version == 7 and game.state.crystal_charge == 0 and game.state.chests == Crystal.empty_chests(),"Salvare nouă v7")
 	check(Crystal.target(game.state) == 50 and not Crystal.is_ready(game.state),"Prima țintă 50")
 	check(game.spin_wheel().is_empty(),"Rotire refuzată fără încărcare")
 	for i in range(49):
@@ -182,12 +182,12 @@ func version_four_compatibility() -> void:
 	game._commit(old)
 	var hashes := _files(p)
 	var loaded := Save.new(p)
-	check(loaded.error.is_empty() and loaded.state.version == 6,"Salvarea v4 se încarcă")
+	check(loaded.error.is_empty() and loaded.state.version == 7,"Salvarea v4 se încarcă")
 	check(loaded.state.wallet == old.wallet and loaded.state.levels == old.levels and loaded.state.board_position_index == 17 and loaded.state.laps == 12 and loaded.state.energy == 44,"Progresul v4 rămâne intact")
 	check(loaded.state.crystal_charge == 0 and loaded.state.chests == Crystal.empty_chests() and loaded.state.last_spin.is_empty(),"Câmpuri noi neutre")
 	check(hashes == _files(p),"Încărcarea nu rescrie salvarea v4")
 	loaded.roll()
-	check(Save.new(p).state.version == 6 and Save.new(p).state.crystal_charge == 1,"Prima tranzacție scrie v6")
+	check(Save.new(p).state.version == 7 and Save.new(p).state.crystal_charge == 1,"Prima tranzacție scrie v7")
 	var corrupt := Save.new(p)
 	var bad: Dictionary = corrupt.state.duplicate(true)
 	bad.chests.gold = -1

@@ -155,7 +155,7 @@ func event_points_rules() -> void:
 	var game := PairSave.new(p,T)
 	game.state.levels.fill(0)
 	game.state.clock_mark = 0
-	check(game.state.version == 6 and game.state.event.is_empty() and game.state.event_history.is_empty(),"Fără eveniment implicit")
+	check(game.state.version == 7 and game.state.event.is_empty() and game.state.event_history.is_empty(),"Fără eveniment implicit")
 	var idle := _land(game,2,Vector2i(1,2),T)
 	check(not idle.has("event_points"),"Fără eveniment: fără puncte")
 	check(game.start_event("pufi_festival",T) and not game.start_event("pufi_festival",T),"Pornire o singură dată")
@@ -301,7 +301,7 @@ func migration() -> void:
 	for slot in range(2):
 		hashes.append(FileAccess.get_sha256(game._path(slot)) if FileAccess.file_exists(game._path(slot)) else "")
 	var loaded := Save.new(p,T)
-	check(loaded.error.is_empty() and loaded.state.version == 6,"Salvare v5 încărcată")
+	check(loaded.error.is_empty() and loaded.state.version == 7,"Salvare v5 încărcată")
 	check(loaded.state.wallet == old.wallet and loaded.state.levels == old.levels and loaded.state.chests == old.chests and loaded.state.crystal_charge == 33 and loaded.state.board_position_index == 21,"Progresul existent rămâne")
 	check(loaded.state.event.is_empty() and loaded.state.clock_mark == 0 and loaded.state.energy == 61,"Energie și câmpuri noi neutre")
 	var again := []

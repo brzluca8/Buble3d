@@ -15,6 +15,10 @@ signal roll_requested
 signal indices_requested
 signal crystal_requested
 signal event_requested
+signal open_chest_requested(kind: String)
+signal cards_requested
+const Cards := preload("res://scripts/economy/card_service.gd")
+var chest_buttons := {}
 const Events := preload("res://scripts/economy/event_service.gd")
 const Energy := preload("res://scripts/economy/energy_service.gd")
 const EventScreen := preload("res://scripts/crystal/event_screen.gd")
@@ -84,6 +88,21 @@ func _make_projection() -> void:
 
 
 func _make_debug(col: VBoxContainer) -> void:
+	col.add_child(_label("Cufere · atinge pentru a deschide",21,GOLD))
+	var chest_row := HBoxContainer.new()
+	chest_row.add_theme_constant_override("separation",8)
+	col.add_child(chest_row)
+	for kind in Cards.CHEST_KINDS:
+		var opener := _button("",func() -> void:
+			overlay.hide()
+			open_chest_requested.emit(kind))
+		opener.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opener.add_theme_font_size_override("font_size",19)
+		chest_row.add_child(opener)
+		chest_buttons[kind] = opener
+	col.add_child(_button("Cărțile mele",func() -> void:
+		overlay.hide()
+		cards_requested.emit()))
 	var audio_row := HBoxContainer.new()
 	col.add_child(audio_row)
 	music_toggle = _toggle(audio_row,"Muzică","music")
@@ -164,6 +183,12 @@ func refresh(game: RefCounted, slot: int) -> void:
 	inventory.text += "\nJetoane locale   %d" % game.state.wallet.quest_tokens
 	var chests: Dictionary = game.state.get("chests",{})
 	inventory.text += "\nCufere   lemn %d · argint %d · aur %d" % [int(chests.get("wood",0)),int(chests.get("silver",0)),int(chests.get("gold",0))]
+	inventory.text += "\nCărți   %d/%d unice · %d exemplare" % [Cards.unique_owned(game.state),Cards.catalog().size(),Cards.total_copies(game.state)]
+	for kind: String in chest_buttons:
+		var have := int(chests.get(kind,0))
+		var opener: Button = chest_buttons[kind]
+		opener.text = "%s ×%d" % [{"wood":"Lemn","silver":"Argint","gold":"Aur"}[kind],have]
+		opener.disabled = have < 1 or game.busy
 	if slot < 0:
 		return
 	var building: String = game.cfg.buildings.positions[slot].id

@@ -12,6 +12,11 @@ var wheel: WheelScreen
 const EventScreen := preload("res://scripts/crystal/event_screen.gd")
 const Events := preload("res://scripts/economy/event_service.gd")
 var event_screen: EventScreen
+const ChestScreen := preload("res://scripts/crystal/chest_screen.gd")
+const CardsScreen := preload("res://scripts/crystal/cards_screen.gd")
+const CardService := preload("res://scripts/economy/card_service.gd")
+var chest_screen: ChestScreen
+var cards_screen: CardsScreen
 var event_clock := 0.0
 @onready var sounds := $Sunete
 @onready var dice := $Zaruri
@@ -74,11 +79,25 @@ func _connect_mode() -> void:
 	event_screen.setup(hud)
 	event_screen.claim_requested.connect(_claim_event)
 	hud.event_requested.connect(open_event)
+	chest_screen = ChestScreen.new()
+	chest_screen.name = "DeschidereCufar"
+	add_child(chest_screen)
+	chest_screen.setup(hud,sounds)
+	chest_screen.open_requested.connect(_open_chest_request)
+	chest_screen.closed.connect(_chest_closed)
+	cards_screen = CardsScreen.new()
+	cards_screen.name = "CartileMele"
+	add_child(cards_screen)
+	cards_screen.setup(hud)
+	hud.open_chest_requested.connect(open_chest)
+	hud.cards_requested.connect(open_cards)
 	game.start_scheduled_events()
 	game.close_expired_events()
 	_sync_crystal()
 	if not game.pending_spin().is_empty():
 		_recover_spin.call_deferred()
+	elif not game.pending_open().is_empty():
+		_recover_open.call_deferred()
 	_pose(float(game.state.board_position_index))
 	pawn.rotation.y = 0.20
 	if OS.is_debug_build() and ProjectSettings.get_setting("lerion/developer_panel",true):
@@ -94,7 +113,7 @@ func _last_message() -> String:
 
 
 func _roll() -> void:
-	if selected_plot >= 0 or hud.overlay.visible or wheel_open() or event_screen.is_open():
+	if selected_plot >= 0 or hud.overlay.visible or wheel_open() or event_screen.is_open() or _screens_open():
 		return
 	var roll: Dictionary = game.roll()
 	if roll.is_empty():
@@ -287,7 +306,7 @@ func _upgrade(slot: int, level: int) -> void:
 
 
 func _select_at(screen_point: Vector2) -> void:
-	if event_screen.is_open():
+	if event_screen.is_open() or _screens_open():
 		return
 	if not game.busy and not wheel_open() and _crystal_hit(screen_point):
 		open_crystal()
@@ -355,6 +374,8 @@ func apply_preferences() -> void:
 		crystal_glow.configure(tier,hud.prefs.reduced)
 	if wheel:
 		wheel.reduced = hud.prefs.reduced
+	if chest_screen:
+		chest_screen.reduced = hud.prefs.reduced
 	dice.reduced = hud.prefs.reduced
 	dice.impacts.multimesh.visible_instance_count = 8 if tier == 0 else 16
 	if camera.reduced and camera.shot != camera.Shot.OVERVIEW:
@@ -386,7 +407,7 @@ func _crystal_hit(screen_point: Vector2) -> bool:
 
 
 func open_crystal() -> void:
-	if game.busy or wheel_open() or hud.overlay.visible or game.state.is_empty():
+	if game.busy or wheel_open() or _screens_open() or hud.overlay.visible or game.state.is_empty():
 		return
 	if selected_plot >= 0:
 		_deselect()
@@ -419,6 +440,7 @@ func _wheel_later() -> void:
 
 
 func _wheel_closed(receipt: Dictionary) -> void:
+	var open_now: bool = wheel.open_now
 	camera.return_home()
 	if not game.acknowledge_spin(int(receipt.get("id",0))) and not game.pending_spin().is_empty():
 		message.text = game.error
@@ -430,6 +452,10 @@ func _wheel_closed(receipt: Dictionary) -> void:
 	else:
 		hud.spark_at(camera,crystal_glow.crystal_center(),Color("#ffd04a"),"",true)
 	crystal_glow.burst()
+	if open_now and receipt.get("kind") == "chest":
+		_open_when_wheel_gone(str(receipt.chest))
+	elif not game.pending_open().is_empty():
+		_open_when_wheel_gone("")
 
 
 func _recover_spin() -> void:
@@ -443,7 +469,7 @@ func _recover_spin() -> void:
 # Events. The screen shows the saved state; claims go through the save transaction.
 
 func open_event() -> void:
-	if game.busy or wheel_open() or hud.overlay.visible or game.state.event.is_empty():
+	if game.busy or wheel_open() or _screens_open() or hud.overlay.visible or game.state.event.is_empty():
 		return
 	if selected_plot >= 0:
 		_deselect()
@@ -470,3 +496,63 @@ func _tick_events() -> void:
 		game.close_expired_events()
 		event_screen.refresh()
 	hud.refresh_event(game,game.state)
+
+
+# Chests and cards. The screens show saved receipts; opening goes through the save transaction.
+
+func _screens_open() -> bool:
+	return chest_screen != null and (chest_screen.is_open() or cards_screen.is_open())
+
+
+func open_chest(kind: String) -> void:
+	if game.busy or wheel_open() or event_screen.is_open() or _screens_open() or hud.overlay.visible or game.state.is_empty():
+		return
+	if selected_plot >= 0:
+		_deselect()
+	if not game.pending_open().is_empty():
+		_recover_open()
+		return
+	var count := int(game.state.chests.get(kind,0))
+	if count < 1:
+		message.text = "Nu ai cufere de acest tip"
+		return
+	chest_screen.open(kind,count)
+
+
+func _open_chest_request(kind: String) -> void:
+	var receipt: Dictionary = game.open_chest(kind)
+	if receipt.is_empty():
+		chest_screen.refuse(game.error if not game.error.is_empty() else "Cufărul nu a putut fi deschis.")
+		return
+	_refresh()
+	chest_screen.play(receipt)
+
+
+func _chest_closed(receipt: Dictionary) -> void:
+	game.acknowledge_open(int(receipt.get("id",0)))
+	message.text = "Cufăr deschis · " + CardService.describe(receipt)
+	_refresh()
+
+
+## The wheel fades out for a moment after it is closed; the chest screen opens right after.
+func _open_when_wheel_gone(kind: String) -> void:
+	while wheel_open():
+		await get_tree().process_frame
+	if kind.is_empty():
+		_recover_open()
+	else:
+		open_chest(kind)
+
+
+func _recover_open() -> void:
+	var receipt: Dictionary = game.pending_open()
+	if receipt.is_empty() or _screens_open() or wheel_open():
+		return
+	message.text = "Cărți confirmate · " + CardService.describe(receipt)
+	chest_screen.show_recovered(receipt)
+
+
+func open_cards() -> void:
+	if game.busy or wheel_open() or _screens_open() or hud.overlay.visible:
+		return
+	cards_screen.open(game.state)

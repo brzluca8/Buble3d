@@ -5,6 +5,11 @@ const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const Energy := preload("res://scripts/economy/energy_service.gd")
 const Events := preload("res://scripts/economy/event_service.gd")
 const RULES := preload("res://assets/board/rules.tres")
+const Cards := preload("res://scripts/economy/card_service.gd")
+var card_status: Label
+var card_probe := {}
+var rarity_menu: OptionButton
+var sim_kind: OptionButton
 var energy_report: TextEdit
 var charge_value: SpinBox
 var energy_status: Label
@@ -13,7 +18,7 @@ var event_report: TextEdit
 var history_view: TextEdit
 var spin_history_view: TextEdit
 var travel_sim: TextEdit
-var chest_report: Label
+var chest_report: TextEdit
 var pending_part := ""
 var reset_part_menu: OptionButton
 var event_menu: OptionButton
@@ -177,7 +182,7 @@ func show_page(index: int) -> void:
 	layout_panel.call_deferred()
 
 func open_panel() -> void:
-	if map.game.busy or map.wheel_open():
+	if map.game.busy or map.wheel_open() or map.chest_screen.is_open():
 		return
 	cover.show()
 	map.camera._reset_gesture()
@@ -205,6 +210,9 @@ func _switch(development: bool, open_after := true) -> void:
 	if development:
 		var panel = next.get_node("DeveloperPanel")
 		panel.old_normal_prefix = old_normal_prefix if active else previous.save_prefix
+		if not card_probe.is_empty():
+			panel.card_probe = card_probe
+			panel.status.text = "Repornit. Cărțile confirmate #%d trebuie afișate o singură dată." % int(card_probe.receipt.id)
 		if not recovery_probe.is_empty():
 			panel.recovery_probe = recovery_probe
 			panel.status.text = "Repornit. Premiul confirmat #%d trebuie să apară o singură dată." % int(recovery_probe.receipt.id)
@@ -426,22 +434,113 @@ func _future(col: Node) -> void:
 	spin_history_view = text_area(col,220)
 
 func _chests(col: Node) -> void:
-	label(col,"Inventar cufere · salvat în profilul DEBUG. Deschiderea cuferelor și albumul nu sunt implementate încă.")
+	label(col,"Cufere și cărți · profilul DEBUG. Probabilitățile de câștigare a cuferelor la ruletă nu se modifică aici.")
 	chest_status = label(col,"")
+	card_status = label(col,"")
+	label(col,"Adaugă cufere")
 	for kind in ["wood","silver","gold"]:
 		var title: String = Crystal.chest_name(kind)
 		var line := row(col)
 		for count in [1,10,100]:
 			button(line,"+%d %s" % [count,title.replace("Cufăr de ","")],func() -> void: result(map.game.add_chests(kind,count)))
 	button(col,"Golește cuferele",func() -> void: result(map.game.set_chests(0,0,0)))
-	button(col,"Verifică salvarea (memorie vs disc)",func() -> void:
-		var report: Dictionary = map.game.verify_saved()
-		chest_report.text = ("Identic cu discul · seq %d" % int(report.seq)) if report.get("identical",false) else "DIFERIT: %s" % str(report))
-	chest_report = label(col,"")
-	for title in ["Deschide cufăr","Generează cărți","Adaugă duplicate","Completează colecția","Testează recompensa albumului"]:
+	label(col,"Deschide un cufăr real (cu animație). Adaugă unul dacă nu ai.")
+	var openers := row(col)
+	for kind in ["wood","silver","gold"]:
+		button(openers,{"wood":"Lemn","silver":"Argint","gold":"Aur"}[kind],func() -> void:
+			if map.game.busy or not map.game.pending_open().is_empty():
+				status.text = "Așteaptă finalul operației."
+				return
+			if int(map.game.state.chests[kind]) < 1 and not map.game.add_chests(kind,1):
+				result(false)
+				return
+			close_panel()
+			sync_map()
+			map.open_chest(kind))
+	label(col,"Forțează raritatea tuturor cărților următoarelor deschideri (până la repornire)")
+	rarity_menu = OptionButton.new()
+	rarity_menu.add_item("Aleatoriu (ponderi configurate)")
+	for item: Dictionary in Cards.rarities():
+		rarity_menu.add_item("Numai %s" % str(item.name).to_lower())
+	rarity_menu.custom_minimum_size.y = 58
+	rarity_menu.add_theme_font_size_override("font_size",21)
+	col.add_child(rarity_menu)
+	button(col,"Aplică raritatea",func() -> void:
+		var id: String = "" if rarity_menu.selected <= 0 else str(Cards.rarities()[rarity_menu.selected-1].id)
+		var ok: bool = map.game.force_rarity(id)
+		status.text = ("Raritate forțată: %s." % id if not id.is_empty() else "Rarități aleatorii.") if ok else "Așteaptă oprirea.")
+	label(col,"Simulare izolată: deschide 10 / 100 / 1.000 de cufere pe o copie în memorie (profilul rămâne neschimbat)")
+	sim_kind = OptionButton.new()
+	for title in ["Cufere de lemn","Cufere de argint","Cufere de aur"]:
+		sim_kind.add_item(title)
+	sim_kind.custom_minimum_size.y = 58
+	sim_kind.add_theme_font_size_override("font_size",21)
+	col.add_child(sim_kind)
+	var sims := row(col)
+	for count in [10,100,1000]:
+		button(sims,str(count),func() -> void:
+			var kind: String = ["wood","silver","gold"][sim_kind.selected]
+			var forced: String = "" if rarity_menu.selected <= 0 else str(Cards.rarities()[rarity_menu.selected-1].id)
+			var report: Dictionary = map.game.simulate_chests(kind,count,4101,forced)
+			last_simulation = {"chests":report}
+			chest_report.text = _format_chest_report(report))
+	chest_report = text_area(col,420)
+	label(col,"Salvare și redeschidere")
+	button(col,"Testează salvarea și redeschiderea",test_card_save)
+	button(col,"Testează restart în timpul deschiderii",test_card_recovery)
+	for title in ["Completează colecția","Testează recompensa albumului","Schimburi între jucători"]:
 		var control := button(col,title+" · indisponibil",func() -> void: pass)
 		control.disabled = true
-		control.tooltip_text = "Albumul și deschiderea cuferelor vor fi implementate într-o etapă viitoare."
+		control.tooltip_text = "Albumul complet și schimburile vor fi implementate într-o etapă viitoare."
+
+func _format_chest_report(report: Dictionary) -> String:
+	if report.is_empty() or report.has("error"):
+		return "Simularea a eșuat: %s" % str(report)
+	var lines := PackedStringArray()
+	lines.append("%d × %s · %d cărți extrase%s" % [int(report.opened),Crystal.chest_name(str(report.chest)),int(report.cards_drawn),
+		(" · raritate forțată " + str(report.forced_rarity)) if str(report.forced_rarity) != "" else ""])
+	for item: Dictionary in Cards.rarities():
+		lines.append("  %s: %d (%s%% observat, %s%% configurat)" % [item.name,int(report.by_rarity[item.id]),str(report.observed_percent[item.id]),str(report.expected_percent[item.id])])
+	lines.append("Cărți unice: %d din %d · duplicate: %d · exemplare: %d" % [int(report.unique_cards),int(report.catalog_size),int(report.duplicate_copies),int(report.total_copies)])
+	lines.append("Contabilitate corectă: %s · a doua deschidere refuzată: %d/%d" % [str(report.cards_consistent),int(report.double_open_refused),int(report.opened)])
+	for key: String in report.collections:
+		lines.append("  %s: %s" % [key,str(report.collections[key])])
+	return "\n".join(lines)
+
+func test_card_save() -> void:
+	if map.game.busy or not map.game.pending_open().is_empty():
+		status.text = "Așteaptă finalul operației."
+		return
+	if int(map.game.state.chests.wood) < 1 and not map.game.add_chests("wood",1):
+		result(false)
+		return
+	var before: Dictionary = map.game.state.duplicate(true)
+	var receipt: Dictionary = map.game.open_chest("wood")
+	if receipt.is_empty():
+		status.text = map.game.error if not map.game.error.is_empty() else "Deschidere refuzată."
+		return
+	var again: Dictionary = map.game.open_chest("wood")
+	map.game.acknowledge_open(int(receipt.id))
+	var report: Dictionary = map.game.verify_cards_saved()
+	chest_report.text = "Cufăr de lemn deschis · %s\nCufere lemn: %d → %d\nA doua deschidere imediată refuzată: %s\nMemorie = disc: %s · unice %d/%d · exemplare %d/%d · deschideri %d/%d" % [
+		Cards.describe(receipt),int(before.chests.wood),int(map.game.state.chests.wood),str(again.is_empty()),str(report.identical),
+		int(report.unique),int(report.unique_disk),int(report.copies),int(report.copies_disk),int(report.opened),int(report.opened_disk)]
+	result(true)
+
+func test_card_recovery() -> void:
+	if map.game.busy or map.wheel_open() or map.chest_screen.is_open() or simulation != null or not map.game.pending_open().is_empty():
+		status.text = "Așteaptă finalul operației."
+		return
+	if int(map.game.state.chests.silver) < 1 and not map.game.add_chests("silver",1):
+		result(false)
+		return
+	var before: Dictionary = map.game.state.duplicate(true)
+	var receipt: Dictionary = map.game.open_chest("silver")
+	if receipt.is_empty():
+		status.text = map.game.error if not map.game.error.is_empty() else "Deschidere refuzată."
+		return
+	card_probe = {"receipt":receipt,"cards_before":before.cards.duplicate(),"chests_before":before.chests.duplicate(),"copies_before":Cards.total_copies(before)}
+	_switch.call_deferred(true,false)
 
 func _add_chest(kind: String) -> bool:
 	return map.game.add_chests(kind,1)
@@ -600,6 +699,12 @@ func refresh_data() -> void:
 		if not recovery_probe.is_empty():
 			var probe: Dictionary = recovery_probe
 			chest_status.text += "\nTest recuperare #%d · energie înainte %d, acum %d · cufere înainte %s" % [int(probe.receipt.id),int(probe.energy_before),int(s.energy),str(probe.chests_before)]
+	if active and is_instance_valid(card_status):
+		card_status.text = map.game.cards_summary()
+		if not card_probe.is_empty():
+			var copies_now := Cards.total_copies(map.game.state)
+			card_status.text += "\nTest restart #%d · exemplare înainte %d, acum %d (așteptat +%d) · cufere argint înainte %d, acum %d" % [int(card_probe.receipt.id),
+				int(card_probe.copies_before),copies_now,Cards.chest_size("silver"),int(card_probe.chests_before.silver),int(map.game.state.chests.silver)]
 	if active and is_instance_valid(energy_status):
 		_refresh_live()
 		charge_value.value = Crystal.charge(map.game.state)

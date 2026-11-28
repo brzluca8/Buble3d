@@ -90,3 +90,7 @@ Pagini: Resurse, **Energie**, Zaruri și traseu, Clădiri, Super Cristal, **Cufe
 - **Salvări și diagnostic:** export JSON, snapshot și restaurare, istoricul ultimelor 40 de tranzacții (`debug_log`), resetare selectivă cu confirmare (energie, cufere, cristal, evenimente, poziție, niveluri, solduri, ceas simulat), resetare completă.
 
 Câmpuri locale de profil: `debug_log`, `debug_skew`, `debug_regen_off`. Funcțiile nu există în salvarea normală.
+
+## Extensii Etapa 4.1
+
+Pagina „Cufere” conține acum și: deschidere reală de cufere, raritate forțată, simulare de 10/100/1.000 de cufere, testul de salvare și redeschidere, testul de restart în timpul deschiderii și resetarea selectivă „Cărți și deschideri”. Vezi [ETAPA_4_1_CUFERE_CARTI.md](ETAPA_4_1_CUFERE_CARTI.md).
