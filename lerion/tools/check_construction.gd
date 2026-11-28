@@ -112,6 +112,12 @@ func landing_rewards(game: Profile) -> void:
 			for label: Node in badge.find_children("*","Label",true,false):
 				spelled = spelled or (label as Label).text == "+%d puncte de construcție" % expected
 		check(spelled,"Indicator «+%d puncte de construcție»" % expected)
+		for badge: Control in badges:
+			var view := Rect2(Vector2.ZERO,map.hud.get_viewport().get_visible_rect().size)
+			var box := Rect2(badge.position,badge.size)
+			check(badge.size.x >= badge.get_combined_minimum_size().x - 0.5 and view.encloses(box),"Indicatorul încape întreg pe ecran")
+			var launcher: Control = map.get_node("DeveloperPanel").launcher
+			check(not box.intersects(map.hud.crystal_chip.get_global_rect()) and not box.intersects(launcher.get_global_rect()),"Indicatorul nu e acoperit de butoane")
 		check(Save.new(Profile.PREFIX).state.wallet.build_points == now,"Salvat și reîncărcat nivel %d" % level)
 	# The Workshop panel reads the new level and the hammer tiles of the whole loop.
 	map._select_at(map.camera.unproject_position(map.plots.get_child(slot).position + Vector3.UP*0.3))

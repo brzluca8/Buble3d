@@ -18,7 +18,7 @@ godot --headless --import                                   # reimport după sch
 XDG_DATA_HOME=$(mktemp -d) godot --headless --fixed-fps 60 --script tools/check_board.gd
 # suitele: check_board, check_board_polish, check_board_rewards, check_crystal, check_developer,
 # check_map, check_premium, check_village_flow, check_super_crystal, check_energy_events,
-# check_cards, check_visual, check_animation
+# check_cards, check_visual, check_animation, check_construction
 python3 tools/build_characters.py   # regenerează Lerik, Pongo, Pufi și cuferele 3D (Etapa 4.2)
 python3 tools/build_board_audio.py  # regenerează sunetele
 ```
@@ -28,3 +28,6 @@ Capturile din joc se fac cu `xvfb-run -a godot --rendering-driver opengl3 --scri
 - Verificare pe telefon: FPS pe Low/Medium/High, lizibilitatea cadrelor de cameră, volumul sunetelor.
 - Modele cu schelet pentru Lerik, Pongo și Pufi (aceleași nume de piese) și ilustrațiile finale ale cărților.
 - Înlocuirea sunetelor sintetizate cu sunete produse de un sound designer (`event_streams`).
+
+## Etapa 4.3
+Puncte de construcție în HUD și fereastră dedicată, panou de upgrade nou, confirmări în Developer Panel, rafinări de lumină, animație, zaruri și cameră. Detalii, cauzele bug-ului raportat și checklist pentru telefon: [ETAPA_4_3.md](ETAPA_4_3.md).

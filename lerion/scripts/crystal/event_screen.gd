@@ -230,7 +230,7 @@ func _add_row(item: Dictionary, ev: Dictionary, now: int) -> void:
 	else:
 		action = hud._button("Blocat" if not reached else "—",func() -> void: pass)
 		action.disabled = true
-	action.custom_minimum_size = Vector2(170,52)
+	action.custom_minimum_size = Vector2(170,56)
 	action.add_theme_font_size_override("font_size",19)
 	row.add_child(action)
 

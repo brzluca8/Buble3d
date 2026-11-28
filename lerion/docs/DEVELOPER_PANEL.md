@@ -102,3 +102,7 @@ Pagina «Efecte vizuale»: comutatoare pentru efecte ambientale, speciale, bloom
 ## Extensii Etapa 4.2
 
 Pagina „Animații și momente”: comutatoare pentru animații ambientale, particule, efecte de lumină, mișcarea cinematică a camerei, sunete și calitatea Low/Medium/High; declanșare separată pentru zaruri (numai vizual), aruncare cu urmărire, aterizare, premiu obișnuit și special, bonus START, upgrade cu Pongo, clipurile lui Lerik, Pufi, cristal încărcat, activarea cristalului, ruleta cu premiu energie sau cufăr, deschiderea fiecărui cufăr, carte rară și cele trei momente WOW. Vezi [ETAPA_4_2_PREMIUM.md](ETAPA_4_2_PREMIUM.md).
+
+## Extensii Etapa 4.3
+
+Pagina „Resurse” face **modificări reale**, salvate numai în profilul DEBUG: Setează, Adaugă și Zero pentru monede, fragmente, puncte de construcție și jetoane, cu „Sold actual” și o confirmare persistentă (✔ sau ✖, cu soldul înainte și după). Efectele din „Efecte vizuale” sunt **demonstrații** marcate ca atare și nu schimbă și nu afișează niciun sold.

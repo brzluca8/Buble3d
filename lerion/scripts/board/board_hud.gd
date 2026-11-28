@@ -123,7 +123,7 @@ func _make_projection() -> void:
 	crystal_chip.icon = ICONS["crystal"]
 	crystal_chip.expand_icon = true
 	crystal_chip.add_theme_constant_override("icon_max_width",30)
-	crystal_chip.custom_minimum_size = Vector2(0,52)
+	crystal_chip.custom_minimum_size = Vector2(0,56)
 	crystal_chip.add_theme_font_size_override("font_size",19)
 	crystal_chip.set_meta("no_press_fx",true)
 	crystal_chip.accessibility_name = "Super Cristal"
@@ -133,7 +133,7 @@ func _make_projection() -> void:
 	event_chip.icon = ICONS["chaos"]
 	event_chip.expand_icon = true
 	event_chip.add_theme_constant_override("icon_max_width",30)
-	event_chip.custom_minimum_size = Vector2(0,52)
+	event_chip.custom_minimum_size = Vector2(0,56)
 	event_chip.add_theme_font_size_override("font_size",19)
 	event_chip.set_meta("no_press_fx",true)
 	event_chip.accessibility_name = "Eveniment"
@@ -382,11 +382,13 @@ func gain_badge(key: String, gained: int, button: Control) -> Control:
 	label.add_theme_color_override("font_outline_color",Color("#143040"))
 	row.add_child(label)
 	flights.add_child(badge)
-	badge.reset_size()
+	# The icon and label are not laid out yet: size the badge from its content before placing it.
+	badge.size = badge.get_combined_minimum_size()
 	var anchor := button.get_global_rect()
 	var bounds := get_viewport().get_visible_rect().size
 	var x := clampf(anchor.get_center().x - badge.size.x*0.5,top.position.x,minf(bounds.x,top.position.x + top.size.x) - badge.size.x)
-	var y := anchor.end.y + 6.0
+	# Below the chip row (Super Cristal, event, DEBUG launcher), so nothing covers the badge.
+	var y := maxf(anchor.end.y + 6.0,top.position.y + top.size.y + 76.0)
 	badge.position = Vector2(x,y + 10.0)
 	badge.pivot_offset = badge.size*0.5
 	badge.scale = Vector2.ONE*0.6

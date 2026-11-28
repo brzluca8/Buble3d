@@ -18,7 +18,7 @@ Actualizat la Etapa 4.2. Versiunea anterioară, cu reguli V3 depășite, este î
 - **Cufere și cărți**: 3/4/5 cărți, 36 de cărți în 6 colecții, inventar cu duplicate, salvare v7 (Etapa 4.1). Albumul complet și schimburile NU sunt implementate.
 - **Evenimente**: „Festivalul lui Pufi” (puncte la aterizare, praguri cu revendicare unică) (Etapa 3.5).
 - **Developer Panel**: numai în build DEBUG, profil separat `user://lerion_developer/`.
-- Prezentare: Etapa 4.0 (polish) și Etapa 4.2 (animație, cameră, VFX, audio; vezi `docs/ETAPA_4_2_PREMIUM.md`) — **numai vizual**, fără efect asupra stării. Lerik, Pongo și Pufi sunt rig-uri din piese rigide (fără schelet); numele pieselor din GLB sunt contract pentru animație.
+- Prezentare: Etapa 4.0 (polish) și Etapa 4.2 (animație, cameră, VFX, audio; vezi `docs/ETAPA_4_2_PREMIUM.md` și `docs/ETAPA_4_3.md`) — **numai vizual**, fără efect asupra stării. Lerik, Pongo și Pufi sunt rig-uri din piese rigide (fără schelet); numele pieselor din GLB sunt contract pentru animație.
 
 ## Principii ferme
 - Personaje originale: **Lerik** (râs aventurier cu ochelari, eșarfă, rucsac), **Pongo** (constructor verde, cască galbenă; niciodată „Bubu”), **Pufi** (dragon mic mov/roz). Nu copia artă, UI sau branding din alte jocuri.

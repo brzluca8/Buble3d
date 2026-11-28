@@ -157,7 +157,9 @@ func _apply(_step: float) -> void:
 		jewel.emission = Color("#19566d").lerp(Color("#7fe8ff"),fraction*0.6 + (0.4*beat if charged else 0.0))
 		jewel.emission_energy_multiplier = 0.28 + 0.75*fraction + (0.9 + 0.7*beat if charged else 0.12*beat*fraction) + 1.6*pulse
 	pulse = maxf(0.0,pulse - maxf(_step,1.0/30.0)*2.6)
-	var glow := fraction*0.26 + (0.26 + 0.16*beat if charged else 0.0) + 0.5*pulse
+	# Etapa 4.3: a faint, slow breath even when empty, so the heart of the kingdom never looks dead.
+	var idle := 0.0 if reduced else 0.07*(0.5 + 0.5*sin(age*1.1))
+	var glow := idle + fraction*0.26 + (0.26 + 0.16*beat if charged else 0.0) + 0.5*pulse
 	halo.visible = glow > 0.03
 	halo_material.albedo_color = Color(0.55,0.88,1.0,glow).lerp(Color(1.0,0.86,0.45,glow),0.35 if charged else 0.0)
 	halo.scale = Vector3.ONE*(0.75 + 0.35*fraction + (0.12*beat if charged else 0.0) + 0.35*pulse)
@@ -198,4 +200,4 @@ func _apply(_step: float) -> void:
 	spin_speed = lerpf(spin_speed,0.9 if charged else 0.0,0.1)
 	if gem and spin_speed > 0.001:
 		gem.rotation.y += spin_speed*maxf(_step,1.0/30.0)
-	set_process(fraction > 0.0 or charged or burst_age >= 0.0 or pulse > 0.0 or spin_speed > 0.001)
+	set_process(not reduced or fraction > 0.0 or charged or burst_age >= 0.0 or pulse > 0.0 or spin_speed > 0.001)
