@@ -48,6 +48,10 @@ func animate(t: float, size_factor := 1.0) -> void:
 		hop = 0.045*sin(PI*(t-0.76)/0.24)
 	# The model has a 0.39 half-core and 0.11 rounding radius on each edge.
 	var support := 0.11 + 0.39*(absf(pose.x.y)+absf(pose.y.y)+absf(pose.z.y))
-	position = origin + Vector3(-side*0.20*remaining,support*size_m+hop,2.08*remaining)
+	# Etapa 4.3: a brief squash at each ground contact (none at rest), with the base kept on the grass.
+	var squash := 0.07*exp(-pow((t - 0.46)/0.025,2.0)) + 0.04*exp(-pow((t - 0.76)/0.022,2.0))
+	if squash > 0.001:
+		basis = Basis.from_scale(Vector3(1.0 + squash*0.5,1.0 - squash,1.0 + squash*0.5))*basis
+	position = origin + Vector3(-side*0.20*remaining,support*size_m*(1.0 - squash)+hop,2.08*remaining)
 	shadow.position = Vector3(position.x,origin.y+0.016,position.z)
 	shadow.scale = Vector3.ONE * size_factor * (1.0-0.30*hop)

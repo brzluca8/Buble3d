@@ -109,7 +109,9 @@ func return_home() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	var rate := 5.0 if shot == Shot.DICE else (3.2 if shot == Shot.CRYSTAL else 8.0)
+	# Etapa 4.3: each shot has its own pace. Following stays responsive; the reward focus settles in
+	# and the return to the overview glides instead of snapping back.
+	var rate: float = {Shot.DICE: 5.0, Shot.CRYSTAL: 3.2, Shot.TRACK: 6.5, Shot.LAND: 5.0, Shot.RETURN: 5.8}.get(shot,8.0)
 	var weight := 1.0-exp(-rate*delta)
 	position = position.lerp(target_eye,weight)
 	rotation.x = lerpf(rotation.x,-target_pitch,weight)
@@ -118,7 +120,7 @@ func _process(delta: float) -> void:
 		landing_hold -= delta
 		if landing_hold <= 0.0:
 			return_home()
-	elif shot == Shot.RETURN and position.distance_squared_to(target_eye) < 0.0004:
+	elif shot == Shot.RETURN and position.distance_squared_to(target_eye) < 0.0004 and absf(angle_difference(rotation.y,0.0)) < 0.002:
 		shot = Shot.OVERVIEW
 		rotation.y = 0.0
 		_update_pose()

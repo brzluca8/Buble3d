@@ -19,10 +19,12 @@ var gust := 0.0
 func _ready() -> void:
 	var light: WorldEnvironment = $"../Lumina"
 	var air := light.environment.duplicate() as Environment
-	air.ambient_light_color = Color("#e5efff")
-	air.ambient_light_energy = 0.49
-	air.fog_light_color = Color("#b3dce6")
-	air.fog_density = 0.0044
+	# Etapa 4.3: a little less fill and haze, a warmer key light. Shadows and forms read better while
+	# the far hills keep a soft aerial blue. The palette and the models are unchanged.
+	air.ambient_light_color = Color("#e3ecff")
+	air.ambient_light_energy = 0.41
+	air.fog_light_color = Color("#a9d8e8")
+	air.fog_density = 0.0024
 	light.environment = air
 	var jewel := StandardMaterial3D.new()
 	jewel.vertex_color_use_as_albedo = true

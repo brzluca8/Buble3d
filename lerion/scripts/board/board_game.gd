@@ -220,6 +220,8 @@ func walked_target() -> int:
 	return int(last.get("a",1)) + int(last.get("b",1))
 
 
+const TURN_SPEED := 10.0
+
 func _pose(step: float) -> void:
 	var here := path.at_step(step)
 	var direction := path.at_step(step+0.18) - path.at_step(step-0.10)
@@ -231,7 +233,16 @@ func _pose(step: float) -> void:
 		camera.track_path(here,path.at_step(step+3.7))
 	animator.drive_run(step,bank)
 	pawn.position = here + Vector3.UP * 0.038
-	pawn.rotation.y = lerp_angle(launch_yaw,atan2(direction.x,direction.z),smoothstep(0.0,0.70,step-launch_step))
+	var heading := atan2(direction.x,direction.z)
+	if game.busy and not hud.throwing:
+		# Etapa 4.3: while walking, turn toward the path with a damped, speed-limited turn
+		# (the first turn from the dice and every curve), never a per-frame snap.
+		var dt := get_process_delta_time()
+		var diff := angle_difference(pawn.rotation.y,heading)
+		var turn := clampf(diff*(1.0 - exp(-dt*16.0)),-TURN_SPEED*dt,TURN_SPEED*dt)
+		pawn.rotation.y = wrapf(pawn.rotation.y + turn,-PI,PI)
+	else:
+		pawn.rotation.y = heading
 	visual_tile = posmod(roundi(step),RULES.tile_count)
 
 
@@ -259,7 +270,7 @@ func _finish() -> void:
 	pawn.rotation.y = atan2(tangent.x,tangent.z)
 	idle_turn = create_tween()
 	var forward := pawn.rotation.y + angle_difference(pawn.rotation.y,0.20)
-	idle_turn.tween_property(pawn,"rotation:y",forward,0.24)
+	idle_turn.tween_property(pawn,"rotation:y",forward,0.42).set_delay(0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	camera.frame_landing(pawn.position,walked_steps > 0)
 	game.busy = false
 	message.text = _last_message()

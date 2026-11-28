@@ -211,8 +211,8 @@ func _apply_environment() -> void:
 	environment = holder.environment
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	environment.adjustment_enabled = post_on
-	environment.adjustment_contrast = 1.08
-	environment.adjustment_saturation = 1.12
+	environment.adjustment_contrast = 1.1
+	environment.adjustment_saturation = 1.1
 	var glow_on: bool = post_on and not reduced and bool(budget().glow)
 	environment.glow_enabled = glow_on
 	environment.glow_intensity = 0.4

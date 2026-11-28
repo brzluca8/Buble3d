@@ -108,6 +108,14 @@ var last_world := Vector3.ZERO
 var last_velocity := Vector3.ZERO
 var has_history := false
 var last_pose: Dictionary = {}
+# Etapa 4.3: state changes cross-fade from the last base pose instead of snapping; the bank angle
+# and the measured acceleration are low-pass filtered so curves and frame hitches do not jitter.
+const STATE_FADE := 0.22
+var base_pose: Dictionary = {}
+var state_from: Dictionary = {}
+var state_age := 1.0
+var smooth_bank := 0.0
+var smooth_accel := Vector3.ZERO
 
 
 func setup(owner_pawn: Node3D, body: Node3D, shadow: Node3D) -> void:
@@ -120,8 +128,15 @@ func setup(owner_pawn: Node3D, body: Node3D, shadow: Node3D) -> void:
 
 # ---- Commands from the game -------------------------------------------------------------------
 
+func _enter(next: State) -> void:
+	if next != state and not base_pose.is_empty():
+		state_from = base_pose.duplicate()
+		state_age = 0.0
+	state = next
+
+
 func watch_dice(target: Vector3) -> void:
-	state = State.WATCH
+	_enter(State.WATCH)
 	watch_target = target
 	idle_timer = 8.0
 
@@ -132,7 +147,7 @@ func react_to_dice(total: int) -> void:
 
 
 func start_run(origin: float, steps: int, tile_length: float) -> void:
-	state = State.RUN
+	_enter(State.RUN)
 	run_origin = origin
 	run_steps = maxi(1,steps)
 	run_step = origin
@@ -154,7 +169,7 @@ func cheer_pass() -> void:
 ## Landing on the final tile. `kind` is "normal", "big" (rare reward) or "empty" (START, no reward).
 ## `total` lets the dice result trigger an occasional comic reaction.
 func land(kind := "normal", total := 7) -> void:
-	state = State.IDLE
+	_enter(State.IDLE)
 	idle_timer = 5.0 + rng.randf()*4.0
 	var comic := ""
 	if total == 2:
@@ -188,6 +203,10 @@ func stop_clip() -> void:
 ## Jump straight to rest (Grăbește, profile switch, tests).
 func settle() -> void:
 	state = State.IDLE
+	state_from = {}
+	state_age = 1.0
+	smooth_bank = 0.0
+	smooth_accel = Vector3.ZERO
 	stop_clip()
 	for key: String in spring:
 		spring[key] = Vector2.ZERO
@@ -252,9 +271,9 @@ func _run_pose() -> Dictionary:
 	var stride := sin(TAU*phase)
 	var contact := absf(cos(TAU*phase))
 	var pose := {"lift": 0.075*(1.0 - contact), "squash": 0.05*contact - 0.03, "lean": 0.17*intensity + 0.02,
-		"roll": -run_bank*0.32, "twist": 0.06*stride, "arm_l": -stride*0.95, "arm_r": stride*0.95,
+		"roll": -smooth_bank*0.32, "twist": 0.06*stride, "arm_l": -stride*0.95, "arm_r": stride*0.95,
 		"raise_l": 0.18, "raise_r": 0.18, "leg_l": stride*0.85, "leg_r": -stride*0.85,
-		"head_pitch": -0.05 + 0.04*contact, "head_roll": -0.04*stride + run_bank*0.25, "head_yaw": run_bank*0.6,
+		"head_pitch": -0.05 + 0.04*contact, "head_roll": -0.04*stride + smooth_bank*0.25, "head_yaw": smooth_bank*0.6,
 		"ear_back": 0.12}
 	# The last tile is a jump: short crouch, take-off, tucked flight, and the landing clip follows.
 	var p := travelled - (final - 1.0)
@@ -280,15 +299,21 @@ func _process(delta: float) -> void:
 	delta = minf(delta,1.0/15.0)
 	age += delta
 	var pose: Dictionary
+	smooth_bank = lerpf(smooth_bank,run_bank,1.0 - exp(-delta*9.0))
 	match state:
 		State.WATCH: pose = _watch_pose()
 		State.RUN: pose = _run_pose()
 		_: pose = _idle_pose()
+	base_pose = pose
+	if state_age < STATE_FADE and not state_from.is_empty():
+		state_age += delta
+		pose = blend(state_from,pose,smoothstep(0.0,1.0,state_age/STATE_FADE))
 	if clip != "":
 		clip_time += delta*clip_speed
 		var length := float(CLIPS[clip][0])
-		var fade_in := clampf(clip_time/0.07,0.0,1.0)
-		var fade_out := clampf((length - clip_time)/0.1,0.0,1.0)
+		# Ease in and out over a share of the clip, so short clips still blend without a pop.
+		var fade_in := clampf(clip_time/minf(0.12,length*0.25),0.0,1.0)
+		var fade_out := clampf((length - clip_time)/minf(0.16,length*0.3),0.0,1.0)
 		clip_weight = minf(fade_in,fade_out) if clip_time > 0.0 else 0.0
 		var key_pose := sample(clip,clip_time)
 		if key_pose.has("twist"):
@@ -336,19 +361,24 @@ func _secondary(delta: float, pose: Dictionary) -> void:
 	var accel := ((velocity - last_velocity)/maxf(delta,0.001)).limit_length(40.0)
 	last_world = world
 	last_velocity = velocity
-	var local := pawn.global_basis.inverse()*accel
+	smooth_accel = smooth_accel.lerp(accel,1.0 - exp(-delta*12.0))
+	var local := pawn.global_basis.inverse()*smooth_accel
 	var speed := (pawn.global_basis.inverse()*velocity).z
 	var forces := {"pack_pitch": -local.z*0.010 + local.y*0.004, "pack_roll": -local.x*0.008,
 		"ear_l": -local.y*0.004, "ear_r": -local.y*0.004, "ear_back": local.z*0.006,
 		"tail_pitch": -local.z*0.008 - local.y*0.006, "tail_yaw": -local.x*0.012, "scarf": -local.z*0.006}
 	var rest := {"scarf": clampf(-speed*0.22,-0.9,0.2)}
+	# Fixed sub-steps keep the springs stable and identical at 30, 60 or 120 FPS.
+	var substeps := maxi(1,ceili(delta/(1.0/120.0)))
+	var h := delta/substeps
 	for key: String in spring:
 		var s: Vector2 = spring[key]
 		var stiffness := 90.0 if key.begins_with("ear") else 70.0
-		var damping := 9.0
-		var acc := stiffness*(float(rest.get(key,0.0)) - s.x) - damping*s.y + float(forces[key])*stiffness*intensity
-		s.y += acc*delta
-		s.x = clampf(s.x + s.y*delta,-0.7,0.7)
+		var damping := 10.0
+		for i in range(substeps):
+			var acc := stiffness*(float(rest.get(key,0.0)) - s.x) - damping*s.y + float(forces[key])*stiffness*intensity
+			s.y += acc*h
+			s.x = clampf(s.x + s.y*h,-0.7,0.7)
 		spring[key] = s
 		pose[key] = float(pose.get(key,0.0)) + s.x
 

@@ -58,6 +58,7 @@ func _run() -> void:
 	await build_window(game)
 	await interrupted(game)
 	await layout()
+	await refinements()
 	check(snapshot(normal._path(0)) == normal_hash[0] and snapshot(normal._path(1)) == normal_hash[1],"Profilul normal rămâne neatins de DEBUG")
 	check(Save.new("user://construction_normal").state.wallet.build_points == 31,"Soldul normal se încarcă separat")
 	map.free()
@@ -250,6 +251,66 @@ func interrupted(game: Profile) -> void:
 	check(again.state.wallet.build_points == before + 3 and not again.busy,"Restart: punctele o singură dată")
 	check(map.hud.build_stat.text == str(before + 3),"Restart: HUD cu soldul salvat")
 	check(again.state.board_position_index == 5 and map.visual_tile == 5,"Restart: Lerik pe căsuța confirmată")
+
+
+## Etapa 4.3 animation refinements: no pose pop on a state change, springs that do not depend on
+## the frame rate, no heading snaps on the path and dice that rest unsquashed on the reported face.
+func refinements() -> void:
+	var animator: Node = map.animator
+	animator.settle()
+	for i in range(30):
+		animator._process(1.0/60.0)
+	var before: Dictionary = animator.last_pose.duplicate()
+	animator.watch_dice(map.pawn.global_position + Vector3(2,0,3))
+	animator._process(1.0/60.0)
+	var jump := 0.0
+	for key: String in ["raise_l","arm_l","leg_l","lean","head_pitch","squash"]:
+		jump = maxf(jump,absf(float(animator.last_pose.get(key,0.0)) - float(before.get(key,0.0))))
+	check(jump < 0.12,"Trecere lină din repaus în așteptarea zarurilor (salt %.3f)" % jump)
+	for i in range(30):
+		animator._process(1.0/60.0)
+	check(absf(float(animator.last_pose.raise_l) - float(animator._watch_pose().raise_l)) < 0.05,"Postura de așteptare atinsă după tranziție")
+	animator.settle()
+	# Same push at 30 and 120 FPS: the springs end close to each other.
+	var ends := []
+	for rate in [30.0,120.0]:
+		animator.settle()
+		var start: Vector3 = map.pawn.position
+		var t := 0.0
+		while t < 0.6:
+			map.pawn.position = start + Vector3(0,0,1.5*smoothstep(0.0,0.3,t))
+			animator._process(1.0/rate)
+			t += 1.0/rate
+		ends.append(float(animator.spring.pack_pitch.x))
+		map.pawn.position = start
+	check(absf(ends[0] - ends[1]) < 0.03,"Mișcare secundară independentă de FPS (%.3f / %.3f)" % ends)
+	animator.settle()
+	var game: Profile = map.game
+	game.set_resource("energy",50)
+	game.teleport(8)
+	map.get_node("DeveloperPanel").sync_map()
+	await frames()
+	game.force_pair(Vector2i(6,5))
+	map._roll()
+	var largest := 0.0
+	var last_yaw: float = map.pawn.rotation.y
+	var walked := false
+	for i in range(400):
+		await process_frame
+		if not map.hud.throwing:
+			walked = true
+			largest = maxf(largest,absf(angle_difference(last_yaw,map.pawn.rotation.y)))
+		last_yaw = map.pawn.rotation.y
+		if not game.busy:
+			break
+	check(walked and not game.busy and game.state.board_position_index == 19,"Mers complet pe traseu")
+	check(largest < 0.2,"Fără rotiri bruște pe traseu (max %.3f rad/cadru)" % largest)
+	var die: Node3D = map.dice.faces[0]
+	die.animate(1.0)
+	var axes: Vector3 = die.basis.get_scale()
+	check(absf(axes.x - axes.y) < 0.001 and absf(axes.y - axes.z) < 0.001,"Zarul nu rămâne turtit la oprire")
+	die.animate(0.46)
+	check(die.basis.get_scale().y < die.basis.get_scale().x,"Comprimare la contact")
 
 
 func layout() -> void:
