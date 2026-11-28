@@ -4,6 +4,9 @@ extends CanvasLayer
 signal closed
 const Cards := preload("res://scripts/economy/card_service.gd")
 const CardView := preload("res://scripts/crystal/card_view.gd")
+const UiKit := preload("res://scripts/crystal/ui_kit.gd")
+var detail: Label
+var state_ref: Dictionary = {}
 const GOLD := Color("#ffd06a")
 const CREAM := Color("#fff3d6")
 var hud: CanvasLayer
@@ -40,6 +43,9 @@ func setup(owner_hud: CanvasLayer) -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation",14)
 	scroll.add_child(list)
+	detail = hud._label("Atinge o carte pentru detalii",19,Color("#bfe9ff"))
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(detail)
 	col.add_child(hud._button("Închide",close))
 	get_viewport().size_changed.connect(_layout)
 	hide()
@@ -53,6 +59,7 @@ func open(state: Dictionary) -> void:
 	refresh(state)
 	show()
 	_layout()
+	UiKit.pop_in(panel,hud.prefs.reduced)
 
 
 func close() -> void:
@@ -60,7 +67,18 @@ func close() -> void:
 	closed.emit()
 
 
+func _show_detail(id: String) -> void:
+	var item: Dictionary = Cards.card(id)
+	var copies := Cards.copies(state_ref,id)
+	if copies <= 0:
+		detail.text = "Carte nedescoperită · %s · %s" % [Cards.collection(str(item.collection)).name,Cards.rarity(str(item.rarity)).name]
+	else:
+		detail.text = "%s · %s · %s · %d %s" % [item.name,Cards.rarity(str(item.rarity)).name,Cards.collection(str(item.collection)).name,
+			copies,"exemplar" if copies == 1 else "exemplare"]
+
+
 func refresh(state: Dictionary) -> void:
+	state_ref = state
 	for child in list.get_children():
 		list.remove_child(child)
 		child.queue_free()
@@ -84,6 +102,8 @@ func refresh(state: Dictionary) -> void:
 			view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			view.compact = true
 			view.show_card(item.id,true,copies > 0)
+			view.selectable = true
+			view.selected.connect(_show_detail)
 			if copies > 1:
 				view.set_badge("×%d" % copies,Color("#3b82f6"))
 			grid.add_child(view)

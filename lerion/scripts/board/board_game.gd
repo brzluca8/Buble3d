@@ -79,6 +79,7 @@ func _connect_mode() -> void:
 			part.material_override = enamel
 	hud.preferences_changed.connect(apply_preferences)
 	hud.control_touched.connect(sounds.click)
+	hud.stat_popped.connect(func() -> void: sounds.play_event("hud_pop"))
 	dice.ground_hit.connect(sounds.impact)
 	dice.ground_hit.connect(_dice_hit)
 	dice.settled.connect(_dice_settled)
@@ -266,7 +267,6 @@ func _finish() -> void:
 	_show_aura(false)
 	var category: String = game.ECONOMY.kind(visual_tile,RULES.tile_count)
 	polish.landing(path.centers[visual_tile],Color(path.CATEGORY_TINT.get(category,"ffd866")).lightened(0.25),rare_joy)
-	sounds.play_event("landing")
 	if not landing.is_empty():
 		polish.emote(pawn.position + Vector3.UP*1.95,str(landing.resource))
 	# Rare and short: sometimes Pufi pops in to sneeze magic over a magic tile.

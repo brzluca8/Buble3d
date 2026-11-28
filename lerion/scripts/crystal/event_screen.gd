@@ -112,6 +112,7 @@ func open(source: RefCounted) -> void:
 	refresh()
 	show()
 	screen.show()
+	preload("res://scripts/crystal/ui_kit.gd").pop_in(panel,hud.prefs.reduced)
 	set_process(true)
 
 

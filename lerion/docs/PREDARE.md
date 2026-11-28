@@ -9,8 +9,8 @@ Ramura de lucru: `ccr-b40a0280-sp0hf6` (proiectul Godot este în subfolderul `le
 | B — Lerik (model segmentat, rig, animator), zaruri, cameră | gata | faza B |
 | C — cristal (invitație, scufundare în fațete), cufere 3D cu coregrafie pe tip, ceremonia aurului | gata | faza C |
 | D — regatul viu (vânt, apă, fum, bule, felinare, păsări), Pongo și Pufi, trezirea regatului | gata | faza D |
-| E — UI, cărți, audio | în lucru | — |
-| F — momente WOW, calitate, panou, teste | de făcut | — |
+| E — 20 de sunete noi sintetizate, cărți cu întoarcere în perspectivă și chenare pe raritate, intrări UI unificate | gata | faza E |
+| F — panou DEBUG, calitate, teste, documentație | în lucru | — |
 
 ## Comenzi
 ```sh

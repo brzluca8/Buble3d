@@ -298,6 +298,7 @@ func _build_cards() -> void:
 		view.size = _card_size()
 		view.pivot_offset = view.size*0.5
 		view.show_card(str(ids[i]),false)
+		view.flip = 0.0
 		view.position = _chest_center() - view.size*0.5
 		view.scale = Vector2.ONE*0.25
 		view.modulate.a = 0.0
@@ -308,6 +309,7 @@ func _build_cards() -> void:
 func _apply_face(i: int) -> void:
 	var view := cards[i]
 	view.flip_to(true)
+	view.fresh = bool(receipt.new[i])
 	if bool(receipt.new[i]):
 		view.set_badge("NOUĂ!",Color("#ff5d73"))
 	else:
@@ -417,10 +419,14 @@ func _reveal_next() -> void:
 	var flip := create_tween()
 	flip.set_speed_scale(speed)
 	flips.append(flip)
-	flip.tween_property(view,"scale:x",0.0,0.12).set_trans(Tween.TRANS_SINE)
+	# Lift, turn over in depth, then uncover the illustration from the top.
+	view.reveal = 0.0
+	flip.tween_property(view,"scale",Vector2.ONE*1.1,0.08).set_trans(Tween.TRANS_QUAD)
+	flip.tween_method(view.set_flip,0.0,0.5,0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	flip.tween_callback(func() -> void: _apply_face(i))
-	flip.tween_property(view,"scale:x",1.08,0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	flip.tween_method(view.set_flip,0.5,1.0,0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	flip.tween_property(view,"scale",Vector2.ONE,0.1)
+	flip.tween_method(view.set_reveal,0.0,1.0,0.3 if str(Cards.card(str(receipt.cards[i])).rarity) != "rare" else 0.55).set_trans(Tween.TRANS_SINE)
 	_reveal_effects(i)
 
 
@@ -450,6 +456,8 @@ func _finish() -> void:
 	for i in range(revealed,cards.size()):
 		_apply_face(i)
 	for view in cards:
+		view.set_flip(1.0)
+		view.set_reveal(1.0)
 		view.scale = Vector2.ONE
 		view.modulate.a = 1.0
 	revealed = cards.size()

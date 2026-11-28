@@ -15,6 +15,7 @@ var motion_menu: OptionButton
 signal roll_requested
 signal indices_requested
 signal crystal_requested
+signal stat_popped
 signal event_requested
 signal open_chest_requested(kind: String)
 signal cards_requested
@@ -299,6 +300,7 @@ func pop_stat(key: String, gained := 0, strength := 1.0) -> void:
 	button.scale = Vector2.ONE
 	if prefs.reduced:
 		return
+	stat_popped.emit()
 	var tween := button.create_tween()
 	stat_tweens[key] = tween
 	tween.tween_property(button,"scale",Vector2.ONE*(1.0 + 0.1*strength),0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -512,7 +514,12 @@ func _ready() -> void:
 	bag.text = "Sac"
 	bag.accessibility_name = "Inventar și setări"
 	bag.tooltip_text = bag.accessibility_name
+	# Counters use a slightly bolder face so numbers read at a glance on small screens.
+	var numerals := FontVariation.new()
+	numerals.base_font = ThemeDB.fallback_font
+	numerals.variation_embolden = 0.28
 	for stat: Button in [coins,fragments,energy]:
+		stat.add_theme_font_override("font",numerals)
 		stat.add_theme_font_size_override("font_size",23)
 		stat.add_theme_constant_override("icon_max_width",37)
 	var fills := [Color("#ffd277"),Color("#8fddef"),Color("#9bdcc0")]

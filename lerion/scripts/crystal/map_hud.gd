@@ -205,6 +205,10 @@ func _force() -> void:
 func _open_bag() -> void:
 	if not playing:
 		overlay.show()
+		var center := overlay.get_child(0) as Control
+		if center and center.get_child_count() > 0:
+			var reduced: bool = get("prefs") != null and get("prefs").reduced
+			preload("res://scripts/crystal/ui_kit.gd").pop_in(center.get_child(0),reduced)
 
 
 func _layout() -> void:
