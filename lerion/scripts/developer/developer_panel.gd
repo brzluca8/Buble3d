@@ -85,7 +85,7 @@ func _ready() -> void:
 		section.custom_minimum_size.y = 58
 		section.add_theme_font_size_override("font_size",23)
 		layout.add_child(section)
-		var names := ["Resurse","Energie","Zaruri și traseu","Clădiri","Super Cristal","Cufere","Efecte vizuale","Evenimente","Salvări și diagnostic","Simularea economiei"]
+		var names := ["Resurse","Energie","Zaruri și traseu","Clădiri","Super Cristal","Cufere","Efecte vizuale","Animații și momente","Evenimente","Salvări și diagnostic","Simularea economiei"]
 		for title in names:
 			section.add_item(title)
 			var scroll := ScrollContainer.new()
@@ -104,9 +104,10 @@ func _ready() -> void:
 		_future(pages[4].get_child(0))
 		_chests(pages[5].get_child(0))
 		_visual(pages[6].get_child(0))
-		_events(pages[7].get_child(0))
-		_diagnostics(pages[8].get_child(0))
-		_simulations(pages[9].get_child(0))
+		_moments(pages[7].get_child(0))
+		_events(pages[8].get_child(0))
+		_diagnostics(pages[9].get_child(0))
+		_simulations(pages[10].get_child(0))
 		section.item_selected.connect(show_page)
 		show_page(0)
 		map.hud.roll_requested.connect(apply_speed)
@@ -706,6 +707,140 @@ func _visual(col: Node) -> void:
 	button(crystal_row,"Cristal gata",func() -> void:
 		close_panel()
 		map.debug_crystal_pulse(true))
+
+## Etapa 4.2: every animation and the three WOW moments on demand, plus presentation switches.
+## Effects are visual; actions that need a real transaction (roll, wheel, chest) use this DEBUG profile.
+func _moments(col: Node) -> void:
+	label(col,"Animații și momente · numai profilul DEBUG. Aruncarea, ruleta și cuferele folosesc tranzacțiile reale ale acestui profil.")
+	label(col,"Comutatoare de prezentare")
+	for entry in [["Animații ambientale (vânt, apă, fum, păsări, licurici)","ambient"],["Particule și efecte speciale","special"],
+		["Efecte de lumină (bloom, grad de culoare)","post"]]:
+		var toggle := CheckButton.new()
+		toggle.text = entry[0]
+		toggle.custom_minimum_size.y = 58
+		toggle.add_theme_font_size_override("font_size",20)
+		toggle.button_pressed = bool(map.polish.get(entry[1] + "_on"))
+		toggle.toggled.connect(func(on: bool) -> void: map.set_presentation(entry[1],on))
+		col.add_child(toggle)
+	var camera_toggle := CheckButton.new()
+	camera_toggle.text = "Mișcare cinematică a camerei"
+	camera_toggle.custom_minimum_size.y = 58
+	camera_toggle.add_theme_font_size_override("font_size",20)
+	camera_toggle.button_pressed = map.camera.motion < 2
+	camera_toggle.toggled.connect(func(on: bool) -> void: map.set_presentation("camera",on))
+	col.add_child(camera_toggle)
+	var sound_toggle := CheckButton.new()
+	sound_toggle.text = "Sunete"
+	sound_toggle.custom_minimum_size.y = 58
+	sound_toggle.add_theme_font_size_override("font_size",20)
+	sound_toggle.button_pressed = map.sounds.effects_enabled
+	sound_toggle.toggled.connect(func(on: bool) -> void: map.set_presentation("sound",on))
+	col.add_child(sound_toggle)
+	var tiers := row(col)
+	for i in range(3):
+		button(tiers,["Low","Medium","High"][i],func() -> void:
+			map.hud.prefs.quality = i
+			map.apply_preferences()
+			refresh_data())
+	label(col,"Secvența de aruncare")
+	var dice_row := row(col)
+	button(dice_row,"Zaruri (numai vizual)",func() -> void:
+		close_panel()
+		map.debug_dice())
+	button(dice_row,"Aruncare + urmărire",play_roll)
+	var land_row := row(col)
+	button(land_row,"Aterizare",func() -> void:
+		close_panel()
+		map.debug_landing_effect(false))
+	button(land_row,"Premiu obișnuit",func() -> void:
+		close_panel()
+		map.debug_gain("coins",100))
+	button(land_row,"Premiu special",func() -> void:
+		close_panel()
+		map.debug_gain("coins",150)
+		map.debug_landing_effect(true))
+	var start_row := row(col)
+	button(start_row,"Bonus START",func() -> void:
+		close_panel()
+		map.debug_start_effect())
+	button(start_row,"Upgrade + Pongo",func() -> void:
+		close_panel()
+		map.debug_upgrade_effect(2)
+		map.pongo_cameo(2))
+	label(col,"Lerik")
+	var clips := row(col)
+	for clip in ["surprise","confused","wobble"]:
+		button(clips,clip,func() -> void:
+			close_panel()
+			map.animator.play(clip))
+	var clips2 := row(col)
+	for clip in ["goggles","stretch","land_big"]:
+		button(clips2,clip,func() -> void:
+			close_panel()
+			map.animator.play(clip))
+	button(col,"Pufi strănută lângă Lerik",func() -> void:
+		close_panel()
+		map.pufi_cameo())
+	label(col,"Super Cristal, ruletă, cufere")
+	var crystal_row := row(col)
+	button(crystal_row,"Cristal încărcat",func() -> void:
+		close_panel()
+		map.debug_crystal_pulse(true))
+	button(crystal_row,"Activare cristal",func() -> void:
+		if map.game.busy or not map.game.pending_spin().is_empty():
+			return
+		if map.game.charge_crystal():
+			sync_map()
+			close_panel()
+			map.open_crystal())
+	var prizes := row(col)
+	for entry in [["Energie","energy_30"],["Lemn","chest_wood"],["Argint","chest_silver"],["Aur","chest_gold"]]:
+		button(prizes,entry[0],func() -> void:
+			if map.game.busy or not map.game.pending_spin().is_empty():
+				return
+			if map.game.force_prize(entry[1]) and map.game.charge_crystal():
+				sync_map()
+				close_panel()
+				map.open_crystal())
+	var opens := row(col)
+	for kind in ["wood","silver","gold"]:
+		button(opens,"Deschide " + {"wood":"lemn","silver":"argint","gold":"aur"}[kind],func() -> void:
+			if map.game.busy or not map.game.pending_open().is_empty():
+				return
+			if int(map.game.state.chests[kind]) < 1:
+				map.game.add_chests(kind,1)
+			close_panel()
+			sync_map()
+			map.open_chest(kind))
+	button(col,"Carte rară (cufăr de aur, rarități forțate)",func() -> void:
+		if map.game.busy or not map.game.pending_open().is_empty():
+			return
+		map.game.force_rarity("rare")
+		if int(map.game.state.chests.gold) < 1:
+			map.game.add_chests("gold",1)
+		close_panel()
+		sync_map()
+		map.open_chest("gold"))
+	label(col,"Momentele WOW")
+	button(col,"1 · Trezirea regatului",func() -> void:
+		close_panel()
+		map.awaken())
+	button(col,"2 · Scufundarea în cristal (spre ruletă)",func() -> void:
+		if map.game.busy or not map.game.pending_spin().is_empty():
+			return
+		if map.game.charge_crystal():
+			sync_map()
+			close_panel()
+			map.open_crystal())
+	button(col,"3 · Ceremonia cufărului de aur",func() -> void:
+		if map.game.busy or not map.game.pending_open().is_empty():
+			return
+		if int(map.game.state.chests.gold) < 1:
+			map.game.add_chests("gold",1)
+		close_panel()
+		sync_map()
+		map.open_chest("gold")
+		map.chest_screen.open_button.pressed.emit())
 
 func _confirmed_reset() -> void:
 	if pending_part.is_empty():

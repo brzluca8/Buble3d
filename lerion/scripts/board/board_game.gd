@@ -432,6 +432,10 @@ func apply_preferences() -> void:
 		life.configure(tier,hud.prefs.reduced or not polish.ambient_on)
 	if wheel:
 		wheel.reduced = hud.prefs.reduced
+		# The 3D chest views follow the quality tier: no MSAA on Low.
+		wheel.result_stage.viewport.msaa_3d = Viewport.MSAA_2X if tier > 0 else Viewport.MSAA_DISABLED
+	if chest_screen:
+		chest_screen.chest.viewport.msaa_3d = Viewport.MSAA_2X if tier > 0 else Viewport.MSAA_DISABLED
 	if chest_screen:
 		chest_screen.reduced = hud.prefs.reduced
 	dice.reduced = hud.prefs.reduced
@@ -841,3 +845,31 @@ func awaken() -> void:
 		pufi.circle(Vector3(center.x,center.y - 0.9,center.z))
 	if not game.busy:
 		animator.play("wow")
+
+
+## Presentation switches used by the Developer Panel. Visual only; nothing is saved.
+func set_presentation(key: String, on: bool) -> void:
+	match key:
+		"ambient", "special", "post":
+			polish.set_toggle(key,on)
+			if key == "ambient":
+				life.configure(hud.prefs.quality,hud.prefs.reduced or not on)
+		"camera":
+			camera.motion = hud.prefs.camera_motion if on else 2
+			if not on:
+				camera.return_home()
+		"sound":
+			sounds.configure(hud.prefs.music,on)
+
+
+## Dice tumble on their own (no roll, no transaction), with the full presentation.
+func debug_dice() -> void:
+	var pair := Vector2i(cameo_rng.randi_range(1,6),cameo_rng.randi_range(1,6))
+	dice.play(pair,camera,hud.map_window())
+	camera.frame_throw(dice.global_position)
+	animator.watch_dice(dice.global_position)
+	sounds.toss()
+	get_tree().create_timer(dice.ROLL_TIME + 0.4).timeout.connect(func() -> void:
+		animator.react_to_dice(pair.x + pair.y)
+		animator.state = animator.State.IDLE
+		camera.return_home())

@@ -98,3 +98,7 @@ Pagina „Cufere” conține acum și: deschidere reală de cufere, raritate for
 ## Extensii Etapa 4.0
 
 Pagina «Efecte vizuale»: comutatoare pentru efecte ambientale, speciale, bloom și scântei HUD; test ruletă cu premiu ales; test cufăr; test câștig resurse; aterizare, START, upgrade și puls cristal. Vezi [ETAPA_4_0_VISUAL_POLISH.md](ETAPA_4_0_VISUAL_POLISH.md).
+
+## Extensii Etapa 4.2
+
+Pagina „Animații și momente”: comutatoare pentru animații ambientale, particule, efecte de lumină, mișcarea cinematică a camerei, sunete și calitatea Low/Medium/High; declanșare separată pentru zaruri (numai vizual), aruncare cu urmărire, aterizare, premiu obișnuit și special, bonus START, upgrade cu Pongo, clipurile lui Lerik, Pufi, cristal încărcat, activarea cristalului, ruleta cu premiu energie sau cufăr, deschiderea fiecărui cufăr, carte rară și cele trei momente WOW. Vezi [ETAPA_4_2_PREMIUM.md](ETAPA_4_2_PREMIUM.md).

@@ -287,7 +287,7 @@ func panel_checks() -> void:
 	await process_frame
 	await process_frame
 	var panel = map.get_node("DeveloperPanel")
-	check(panel.pages.size() == 10 and is_instance_valid(panel.visual_status),"Pagina «Efecte vizuale» în panoul existent")
+	check(panel.pages.size() == 11 and is_instance_valid(panel.visual_status),"Pagina «Efecte vizuale» în panoul existent")
 	panel.refresh_data()
 	check(panel.visual_status.text.contains("FPS") and panel.visual_status.text.contains("calitate"),"Starea efectelor în panou")
 	var profile: Profile = map.game
