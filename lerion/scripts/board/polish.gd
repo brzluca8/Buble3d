@@ -421,6 +421,20 @@ func upgrade_burst(point: Vector3) -> void:
 	sparkle_burst(point + Vector3.UP*0.8,Color("#fff0a8"),1.2)
 
 
+## Dice touching the grass: a dust puff and a ground ring sized by the impact.
+func dice_impact(points: Array, strength: float) -> void:
+	for point: Vector3 in points:
+		ring_burst(Vector3(point.x,0.05,point.z),Color(1.0,0.95,0.8),0.9 + 0.9*strength,0.42)
+		dust_puff(Vector3(point.x,0.02,point.z),0.6 + 0.6*strength)
+
+
+## Both dice at rest: a gold ring marks each final face.
+func dice_settle(points: Array) -> void:
+	for point: Vector3 in points:
+		ring_burst(Vector3(point.x,0.05,point.z),Color("#ffd866"),1.3,0.5)
+		_particles(point + Vector3.UP*0.6,Color("#fff0b0"),5,1.2,0.5,0.24,true,star_texture)
+
+
 func crystal_burst() -> void:
 	ring_burst(crystal_center - Vector3.UP*0.9,Color("#8fe9ff"),2.6,0.8)
 	sparkle_burst(crystal_center,Color("#b6f1ff"),1.0)

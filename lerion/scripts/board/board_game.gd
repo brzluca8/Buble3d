@@ -7,6 +7,10 @@ const LoopPath := preload("res://scripts/board/loop_path.gd")
 const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const CrystalGlow := preload("res://scripts/board/crystal_glow.gd")
 const Polish := preload("res://scripts/board/polish.gd")
+const LerikAnimator := preload("res://scripts/board/lerik_animator.gd")
+var animator: LerikAnimator
+var dice_reacted := false
+var roll_total := 7
 var polish: Polish
 var aura: MeshInstance3D
 var aura_material: StandardMaterial3D
@@ -69,6 +73,8 @@ func _connect_mode() -> void:
 	hud.preferences_changed.connect(apply_preferences)
 	hud.control_touched.connect(sounds.click)
 	dice.ground_hit.connect(sounds.impact)
+	dice.ground_hit.connect(_dice_hit)
+	dice.settled.connect(_dice_settled)
 	apply_preferences()
 	hud.roll_requested.connect(_roll)
 	hud.indices_requested.connect(path.toggle_indices)
@@ -82,6 +88,12 @@ func _connect_mode() -> void:
 	polish.setup(path,village,crystal_glow.crystal_center())
 	polish.configure(hud.prefs.quality,hud.prefs.reduced)
 	_make_aura()
+	animator = LerikAnimator.new()
+	animator.name = "AnimatieLerik"
+	add_child(animator)
+	animator.setup(pawn,body,shade)
+	camera.occluders = _building_bounds()
+	animator.reduced = hud.prefs.reduced
 	wheel = WheelScreen.new()
 	wheel.name = "RuletaMagica"
 	add_child(wheel)
@@ -150,8 +162,9 @@ func _roll() -> void:
 	hud.spark_screen(hud.roll_button.get_global_rect().get_center(),Color("#ffe08a"))
 	dice.play(Vector2i(roll.a,roll.b),camera,hud.map_window())
 	camera.frame_throw(dice.global_position)
-	if joy:
-		joy.kill()
+	roll_total = steps
+	dice_reacted = false
+	animator.watch_dice(dice.global_position)
 	launch_yaw = pawn.rotation.y
 	launch_step = origin
 	travel = create_tween()
@@ -166,16 +179,21 @@ func _roll() -> void:
 
 func _start_walk() -> void:
 	hud.throwing = false
+	animator.start_run(float(launch_step),walked_target(),path.stride)
 	_show_aura(true)
 	_refresh()
 
 
+## Lerik watches the dice; when they settle (the face is the confirmed result) he reacts to the sum.
 func _anticipate(t: float) -> void:
-	var ready_to_jump := smoothstep(0.55,0.88,t)*(1.0-smoothstep(0.88,1.0,t))
-	body.pose(0.0,ready_to_jump,0.0)
-	body.position.y = 0.02
-	body.scale = rest_scale*Vector3(1.0+0.08*ready_to_jump,1.0-0.13*ready_to_jump,1.0+0.08*ready_to_jump)
-	body.rotation = Vector3(0.12*ready_to_jump,0,0)
+	if t >= 0.78 and not dice_reacted:
+		dice_reacted = true
+		animator.react_to_dice(roll_total)
+
+
+func walked_target() -> int:
+	var last: Dictionary = game.state.last_roll
+	return int(last.get("a",1)) + int(last.get("b",1))
 
 
 func _pose(step: float) -> void:
@@ -187,15 +205,9 @@ func _pose(step: float) -> void:
 	var hop := 4.0*phase*(1.0-phase)
 	if game.busy and not hud.throwing:
 		camera.track_path(here,path.at_step(step+3.7))
-	var stride := sin(PI*step)
-	body.pose(stride,0.0,0.0,bank)
+	animator.drive_run(step,bank)
 	pawn.position = here + Vector3.UP * 0.038
 	pawn.rotation.y = lerp_angle(launch_yaw,atan2(direction.x,direction.z),smoothstep(0.0,0.70,step-launch_step))
-	body.position.y = 0.02 + 0.29 * hop
-	body.rotation = Vector3(0.13 * hop,0.08*stride,0.10*stride - bank*0.27)
-	var stretch := hop * 0.09
-	body.scale = rest_scale * Vector3(1.0-stretch*0.4,1.0+stretch,1.0-stretch*0.4)
-	shade.scale = Vector3.ONE * (1.0 - 0.20 * hop)
 	visual_tile = posmod(roundi(step),RULES.tile_count)
 
 
@@ -205,6 +217,7 @@ func _arrived(index: int) -> void:
 	polish.step_dust(pawn.position)
 	if index == 0:
 		_show_lap()
+		animator.cheer_pass()
 	message.text = "START" if index == 0 else "Căsuța %d" % index
 
 
@@ -296,6 +309,7 @@ func _upgrade(slot: int, level: int) -> void:
 		return
 	sounds.upgrade()
 	village.set_level(slot, level + 1)
+	camera.occluders = _building_bounds()
 	_refresh()
 	path.pulse_zone()
 	var model: Node3D = village.models[slot]
@@ -350,23 +364,10 @@ func _select_at(screen_point: Vector2) -> void:
 		message.text = "Bonus global · căsuțele %s" % ", ".join(indices) if not indices.is_empty() else "Moara Trăsnită · energie mai multă din evenimente"
 
 
+## Landing and joy are played by the animator; the kind depends on the confirmed receipt only.
 func _celebrate() -> void:
-	if joy:
-		joy.kill()
-	joy = create_tween()
-	joy.tween_method(_joy_pose,0.0,1.0,0.54)
-
-
-func _joy_pose(t: float) -> void:
-	var lift := clampf((t-0.19)/0.68,0.0,1.0)
-	var jump := sin(PI*lift)
-	var flourish := sin(TAU*lift)*jump if rare_joy else 0.0
-	var squash := 0.17*sin(PI*clampf(t/0.19,0.0,1.0)) + 0.08*sin(PI*clampf((t-0.87)/0.13,0.0,1.0))
-	body.pose(flourish*0.65,squash/0.17,jump,flourish*0.33)
-	body.position.y = 0.02 + (0.53 if rare_joy else 0.30) * jump
-	body.scale = rest_scale * Vector3(1.0+squash,1.0-squash,1.0+squash)
-	body.rotation = Vector3(-0.12*jump,flourish*0.55,0.15*sin(TAU*t))
-	shade.scale = Vector3.ONE * (1.0-0.18*jump)
+	var landing: Dictionary = game.state.last_roll.get("landing",{})
+	animator.land("big" if rare_joy else ("empty" if landing.is_empty() else "normal"),roll_total)
 
 
 func _camera_lift(height: float) -> void:
@@ -384,10 +385,6 @@ func _process(delta: float) -> void:
 	if event_clock >= 1.0:
 		event_clock = 0.0
 		_tick_events()
-	if game.busy or (joy and joy.is_running()):
-		return
-	idle_age += delta
-	body.idle(idle_age)
 
 func apply_preferences() -> void:
 	var tier: int = hud.prefs.quality
@@ -401,6 +398,9 @@ func apply_preferences() -> void:
 	$Ambient.configure(tier,hud.prefs.reduced)
 	sounds.configure(hud.prefs.music,hud.prefs.sfx)
 	camera.reduced = hud.prefs.reduced
+	camera.motion = hud.prefs.camera_motion
+	if animator:
+		animator.reduced = hud.prefs.reduced
 	if crystal_glow:
 		crystal_glow.configure(tier,hud.prefs.reduced)
 	if polish:
@@ -673,3 +673,38 @@ func debug_crystal_pulse(ready := false) -> void:
 	crystal_glow.pulse_now(1.5 if ready else 0.8)
 	if ready:
 		polish.crystal_burst()
+
+
+# Dice choreography: the physics look is scripted towards the confirmed faces; these are only effects.
+
+func _dice_hit(strength: float) -> void:
+	var points := []
+	for die in dice.faces:
+		points.append(die.global_position)
+	polish.dice_impact(points,strength)
+	camera.kick(strength)
+
+
+func _dice_settled() -> void:
+	var points := []
+	for die in dice.faces:
+		points.append(die.global_position)
+	polish.dice_settle(points)
+	sounds.play_event("dice_settle")
+
+
+## World boxes of the castle and the built houses, for the camera's line-of-sight check.
+func _building_bounds() -> Array[AABB]:
+	var boxes: Array[AABB] = []
+	for node: Node3D in village.models + [$Castel]:
+		if not node.visible:
+			continue
+		var merged := AABB()
+		var first := true
+		for mesh: MeshInstance3D in node.find_children("*","MeshInstance3D",true,false):
+			var box := mesh.global_transform*mesh.get_aabb()
+			merged = box if first else merged.merge(box)
+			first = false
+		if not first:
+			boxes.append(merged.grow(-0.15))
+	return boxes

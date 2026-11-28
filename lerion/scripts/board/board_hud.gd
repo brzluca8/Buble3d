@@ -11,6 +11,7 @@ var fx_toggle: CheckButton
 var music_toggle: CheckButton
 var reduced_toggle: CheckButton
 var quality_menu: OptionButton
+var motion_menu: OptionButton
 signal roll_requested
 signal indices_requested
 signal crystal_requested
@@ -175,6 +176,23 @@ func _make_debug(col: VBoxContainer) -> void:
 	quality_row.add_child(quality_menu)
 	quality_menu.item_selected.connect(func(index: int) -> void:
 		prefs.quality = index
+		_save_preferences())
+	var motion_row := HBoxContainer.new()
+	col.add_child(motion_row)
+	var motion_caption := _label("Mișcare cameră",21)
+	motion_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	motion_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	motion_row.add_child(motion_caption)
+	motion_menu = OptionButton.new()
+	motion_menu.accessibility_name = "Mișcarea camerei"
+	motion_menu.custom_minimum_size = Vector2(185,56)
+	motion_menu.add_theme_font_size_override("font_size",21)
+	for item in ["Completă","Ușoară","Fixă"]:
+		motion_menu.add_item(item)
+	motion_menu.select(prefs.camera_motion)
+	motion_row.add_child(motion_menu)
+	motion_menu.item_selected.connect(func(index: int) -> void:
+		prefs.camera_motion = index
 		_save_preferences())
 	setting_error = _label("",18,GOLD)
 	setting_error.hide()
