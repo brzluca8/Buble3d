@@ -94,7 +94,7 @@ const EVENTS := {
 	"win_energy": "gem", "win_chest_wood": "magic", "win_chest_silver": "magic", "win_chest_gold": "upgrade",
 	"coin_gain": "coin", "hud_pop": "click", "start_pass": "coin", "landing": "land", "crystal_pulse": "magic",
 	"crystal_ready": "upgrade", "chest_open": "upgrade", "card_reveal": "click", "card_reveal_rare": "upgrade",
-	"upgrade": "upgrade", "dice_settle": "click", "chest_beat": "gem", "crystal_activate": "upgrade"}
+	"upgrade": "upgrade", "dice_settle": "click", "chest_beat": "gem", "crystal_activate": "upgrade", "hammer": "click", "hammer_big": "land", "cheer": "coin", "sneeze": "magic"}
 var event_streams := {}
 
 

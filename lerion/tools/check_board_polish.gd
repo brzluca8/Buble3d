@@ -119,10 +119,12 @@ func _run() -> void:
 	var purchase: Dictionary = map.game.state.duplicate(true)
 	map._upgrade(4,0)
 	# Polish bursts live under Polish/Efecte; only construction puffs are counted here.
-	var puffs := map.find_children("*","CPUParticles3D",true,false).filter(func(node: Node) -> bool: return node.get_parent() != map.polish.fx_root)
+	# Etapa 4.2: ambient emitters (smoke, bubbles) and cameo effects are not construction puffs.
+	var is_puff := func(node: Node) -> bool: return node.get_parent() != map.polish.fx_root and not map.life.is_ancestor_of(node) and not str(node.get_parent().name).begins_with("Cameo")
+	var puffs := map.find_children("*","CPUParticles3D",true,false).filter(is_puff)
 	check(map.game.state == purchase and puffs.size() == 1,"Un singur șantier la confirmare")
 	await create_timer(1.65).timeout
-	check(map.find_children("*","CPUParticles3D",true,false).is_empty() and map.game.state == purchase,"Șantierul dispare fără să modifice progresul")
+	check(map.find_children("*","CPUParticles3D",true,false).filter(is_puff).is_empty() and map.game.state == purchase,"Șantierul dispare fără să modifice progresul")
 	map._deselect()
 	map._roll()
 	var in_flight: Dictionary = map.game.state.duplicate(true)

@@ -480,6 +480,67 @@ func crystal_wave() -> void:
 	ring_burst(crystal_center - Vector3.UP*1.15,Color("#ffe58a"),3.6,0.7)
 
 
+## Kingdom awakening: a wave of light runs over every tile in order of distance from `origin`.
+func tile_wave(centers: PackedVector3Array, origin: Vector3, duration := 1.5) -> void:
+	if not special_active() or centers.is_empty():
+		return
+	var disc := QuadMesh.new()
+	disc.size = Vector2(1.5,1.5)
+	disc.orientation = PlaneMesh.FACE_Y
+	disc.material = glow_material(soft_texture,false)
+	var batch := MultiMesh.new()
+	batch.transform_format = MultiMesh.TRANSFORM_3D
+	batch.use_colors = true
+	batch.mesh = disc
+	batch.instance_count = centers.size()
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = batch
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.custom_aabb = AABB(Vector3(-14,-1,-16),Vector3(28,4,32))
+	fx_root.add_child(node)
+	var far := 0.0
+	for c in centers:
+		far = maxf(far,Vector2(c.x - origin.x,c.z - origin.z).length())
+	var wave := node.create_tween()
+	wave.tween_method(func(t: float) -> void:
+		for i in range(centers.size()):
+			var d := Vector2(centers[i].x - origin.x,centers[i].z - origin.z).length()/maxf(1.0,far)
+			var k := clampf((t*1.35 - d*0.9)/0.35,0.0,1.0)
+			var glow := sin(PI*k)
+			var tint := Color("#8fe9ff").lerp(Color("#ffe58a"),d)
+			batch.set_instance_transform(i,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*(0.6 + 0.6*glow)),centers[i] + Vector3.UP*0.24))
+			batch.set_instance_color(i,Color(tint,0.85*glow)),0.0,1.0,duration)
+	wave.tween_callback(node.queue_free)
+
+
+## Pufi's sneeze: soft bubbles in three colours plus a pop of stars.
+func bubble_burst(point: Vector3) -> void:
+	for colour in [Color("#ff9fd6"),Color("#9ff0ff"),Color("#fff09a")]:
+		_particles(point,colour,6,1.6,1.1,0.34,true)
+	sparkle_burst(point,Color("#e8c4ff"),0.8)
+
+
+## Pongo's comic accident: a plank jumps off the building, spins and drops back.
+func plank_jump(point: Vector3) -> void:
+	if not special_active():
+		return
+	var plank := MeshInstance3D.new()
+	var board := BoxMesh.new()
+	board.size = Vector3(0.42,0.06,0.13)
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color("#b9783f")
+	board.material = wood
+	plank.mesh = board
+	fx_root.add_child(plank)
+	plank.global_position = point
+	var flight := plank.create_tween()
+	flight.tween_method(func(t: float) -> void:
+		plank.global_position = point + Vector3(0.25*t,1.6*sin(PI*t*0.92),0.2*t)
+		plank.rotation = Vector3(t*7.0,t*2.0,t*5.0),0.0,1.0,0.85)
+	flight.tween_property(plank,"scale",Vector3.ONE*0.01,0.12)
+	flight.tween_callback(plank.queue_free)
+
+
 func crystal_burst() -> void:
 	ring_burst(crystal_center - Vector3.UP*0.9,Color("#8fe9ff"),2.6,0.8)
 	sparkle_burst(crystal_center,Color("#b6f1ff"),1.0)

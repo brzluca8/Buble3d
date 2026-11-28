@@ -13,6 +13,7 @@ var accumulated := 0.0
 var reduced := false
 var age := 0.0
 var jets := 6
+var gust := 0.0
 
 
 func _ready() -> void:
@@ -86,13 +87,14 @@ func _process(delta: float) -> void:
 	if accumulated < step_time:
 		return
 	accumulated = fmod(accumulated,step_time)
+	gust = maxf(0.0,gust - step_time*0.6)
 	if not reduced:
 		_drift_embers()
 	var breath := 0.5-0.5*cos(age*2.0)
 	gem.scale = Vector3.ONE * (1.0+0.035*breath+0.012*sin(age*5.3))
 	gem.position.y = 0.012*breath
 	for i in range(flags.size()):
-		var wave := sin(age*2.8+i) * 0.15 + sin(age*4.3+i)*0.05 + sin(age*1.1+i*0.7)*0.08
+		var wave := (sin(age*2.8+i) * 0.15 + sin(age*4.3+i)*0.05 + sin(age*1.1+i*0.7)*0.08)*(1.0 + 2.5*gust) + sin(age*9.0+i)*0.08*gust
 		var turn := Basis(Vector3.UP,wave) * Basis(Vector3.BACK,0.06*sin(age*3.3+i*1.7) + 0.03*sin(age*5.1+i))
 		flags[i].transform = Transform3D(turn,anchors[i]-turn*anchors[i])
 	for i in range(jets):
@@ -157,3 +159,8 @@ func configure(tier: int, fewer: bool) -> void:
 		embers.visible_instance_count = 0
 	else:
 		_drift_embers()
+
+
+## A strong breeze for a moment (kingdom awakening). Flags flap harder and settle back.
+func blow(strength := 1.0) -> void:
+	gust = maxf(gust,strength)

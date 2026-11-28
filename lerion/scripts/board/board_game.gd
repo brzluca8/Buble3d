@@ -8,6 +8,11 @@ const Crystal := preload("res://scripts/crystal/super_crystal_service.gd")
 const CrystalGlow := preload("res://scripts/board/crystal_glow.gd")
 const Polish := preload("res://scripts/board/polish.gd")
 const LerikAnimator := preload("res://scripts/board/lerik_animator.gd")
+const EnvironmentLife := preload("res://scripts/board/environment_life.gd")
+const Cameo := preload("res://scripts/board/cameo.gd")
+var life: EnvironmentLife
+var cameo_rng := RandomNumberGenerator.new()
+var awaken_pending := false
 var animator: LerikAnimator
 var dice_reacted := false
 var roll_total := 7
@@ -94,6 +99,12 @@ func _connect_mode() -> void:
 	animator.name = "AnimatieLerik"
 	add_child(animator)
 	animator.setup(pawn,body,shade)
+	life = EnvironmentLife.new()
+	life.name = "ViataRegatului"
+	add_child(life)
+	life.setup(village,$Ambient,$Castel,$Fantana,[$Vegetatie,$Gradina])
+	life.configure(hud.prefs.quality,hud.prefs.reduced)
+	cameo_rng.randomize()
 	camera.occluders = _building_bounds()
 	animator.reduced = hud.prefs.reduced
 	facets = FacetTransition.new()
@@ -258,6 +269,12 @@ func _finish() -> void:
 	sounds.play_event("landing")
 	if not landing.is_empty():
 		polish.emote(pawn.position + Vector3.UP*1.95,str(landing.resource))
+	# Rare and short: sometimes Pufi pops in to sneeze magic over a magic tile.
+	if awaken_pending:
+		awaken_pending = false
+		get_tree().create_timer(0.7).timeout.connect(awaken)
+	elif category == "magic" and cameo_rng.randf() < 0.3:
+		pufi_cameo()
 	var event_points := int(game.state.last_roll.get("event_points",0))
 	if event_points > 0:
 		hud.show_event_points(event_points,str(Events.definition(str(game.state.event.id)).name))
@@ -343,6 +360,7 @@ func _upgrade(slot: int, level: int) -> void:
 	hud.spark_at(camera,model.global_position+Vector3.UP*1.45,Color("#ffe992"))
 	polish.upgrade_burst(model.global_position)
 	sounds.play_event("upgrade")
+	pongo_cameo(slot)
 	if not hud.prefs.reduced:
 		var puff := CONSTRUCTION_PUFF.instantiate() as CPUParticles3D
 		puff.amount = [5,8,12][hud.prefs.quality]
@@ -410,6 +428,8 @@ func apply_preferences() -> void:
 		crystal_glow.configure(tier,hud.prefs.reduced)
 	if polish:
 		polish.configure(tier,hud.prefs.reduced)
+	if life:
+		life.configure(tier,hud.prefs.reduced or not polish.ambient_on)
 	if wheel:
 		wheel.reduced = hud.prefs.reduced
 	if chest_screen:
@@ -436,9 +456,11 @@ func _sync_crystal() -> void:
 	# Visual beats only: a pulse for every point of charge, a burst when the crystal becomes ready.
 	if last_charge >= 0 and polish:
 		if ready and not last_ready:
-			crystal_glow.pulse_now(1.5)
-			polish.crystal_burst()
-			sounds.play_event("crystal_ready")
+			# The roll that fills the crystal is still on screen: wake the kingdom after landing.
+			if game.busy:
+				awaken_pending = true
+			else:
+				awaken()
 		elif charge > last_charge:
 			crystal_glow.pulse_now(0.7)
 			sounds.play_event("crystal_pulse")
@@ -733,3 +755,89 @@ func _building_bounds() -> Array[AABB]:
 		if not first:
 			boxes.append(merged.grow(-0.15))
 	return boxes
+
+
+# Pongo and Pufi cameos and the kingdom awakening. Visual only, never blocking.
+
+func _cameo_running(who: String) -> bool:
+	for node in get_children():
+		if node is Cameo and node.character == who:
+			return true
+	return false
+
+
+func spawn_cameo(who: String, clip: String, at: Vector3, look: Vector3, size := 1.0) -> Node:
+	if not polish.special_active() or _cameo_running(who):
+		return null
+	var cameo := Cameo.new()
+	cameo.name = "Cameo_" + who
+	add_child(cameo)
+	cameo.start(who,clip,at,look,size)
+	cameo.event.connect(_cameo_event)
+	return cameo
+
+
+## Pongo hammers next to the building he just upgraded, overdoes the last hit and cheers.
+func pongo_cameo(slot: int) -> Node:
+	var model: Node3D = village.models[slot]
+	var base := model.global_position
+	var side := -signf(base.x) if absf(base.x) > 0.1 else 1.0
+	return spawn_cameo("pongo","pongo_build",base + Vector3(side*1.15,0.02,0.95),camera.global_position,1.1)
+
+
+## Pufi flies in beside Lerik, sneezes magic bubbles; Lerik jumps back in surprise.
+func pufi_cameo() -> Node:
+	var right := pawn.global_basis.x
+	return spawn_cameo("pufi","pufi_sneeze",pawn.global_position + right*0.95 + Vector3(0,0,0.2),pawn.global_position,0.95)
+
+
+func _cameo_event(name: String, at: Vector3) -> void:
+	match name:
+		"hit":
+			polish.sparkle_burst(at + Vector3(0.4,-0.4,0.2),Color("#ffc36b"),0.35)
+			sounds.play_event("hammer")
+		"big_hit":
+			polish.sparkle_burst(at + Vector3(0.4,-0.3,0.2),Color("#fff0a8"),0.8)
+			polish.ring_burst(Vector3(at.x,0.05,at.z),Color("#ffd27a"),1.6,0.4)
+			polish.plank_jump(at + Vector3(0.5,0.1,0.1))
+			camera.kick(0.6)
+			sounds.play_event("hammer_big")
+		"cheer":
+			polish.emote(at + Vector3.UP*0.9,"build_points")
+			sounds.play_event("cheer")
+		"sneeze":
+			polish.bubble_burst(at + Vector3(0,0.1,0.25))
+			sounds.play_event("sneeze")
+			if at.distance_to(pawn.global_position) < 3.0 and not game.busy:
+				animator.play("surprise")
+
+
+## WOW: the kingdom wakes up when the Super Crystal is full. A wave of light runs out from
+## the fountain over every tile, each building hops as it reaches it, the flags catch a gust
+## and Pufi circles the crystal once and sneezes magic into it.
+func awaken() -> void:
+	crystal_glow.pulse_now(1.6)
+	sounds.play_event("crystal_ready")
+	if not polish.special_active():
+		polish.crystal_burst()
+		return
+	var center := crystal_glow.crystal_center()
+	polish.crystal_wave()
+	polish.tile_wave(path.centers,center)
+	$Ambient.blow(1.0)
+	for slot in range(village.models.size()):
+		var model: Node3D = village.models[slot]
+		if not model.visible or construction_tweens.has(slot):
+			continue
+		var delay := 0.15 + Vector2(model.global_position.x,model.global_position.z).length()*0.07
+		var hop := model.create_tween()
+		hop.tween_interval(delay)
+		hop.tween_property(model,"scale",Vector3(1.05,0.86,1.05),0.1).set_trans(Tween.TRANS_SINE)
+		hop.tween_property(model,"scale",Vector3(0.97,1.08,0.97),0.14).set_trans(Tween.TRANS_SINE)
+		hop.tween_property(model,"scale",Vector3.ONE,0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		hop.tween_callback(func() -> void: polish.sparkle_burst(model.global_position + Vector3.UP*1.6,Color("#fff0b0"),0.4))
+	var pufi := spawn_cameo("pufi","pufi_orbit",center + Vector3(0,-0.8,1.9),center,0.85)
+	if pufi:
+		pufi.circle(Vector3(center.x,center.y - 0.9,center.z))
+	if not game.busy:
+		animator.play("wow")

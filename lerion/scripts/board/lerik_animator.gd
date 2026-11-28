@@ -202,16 +202,20 @@ func busy() -> bool:
 # ---- Evaluation -------------------------------------------------------------------------------
 
 static func sample(name: String, time: float) -> Dictionary:
-	var keys: Array = CLIPS[name][1]
+	return sample_keys(CLIPS[name][1],time)
+
+
+## Interpolates a list of [time, pose] keys with ease-in-out between neighbours.
+static func sample_keys(keys: Array, time: float) -> Dictionary:
 	if time <= float(keys[0][0]):
-		return keys[0][1]
+		return (keys[0][1] as Dictionary).duplicate()
 	for i in range(keys.size() - 1):
 		var a: Array = keys[i]
 		var b: Array = keys[i + 1]
 		if time <= float(b[0]):
 			var u := smoothstep(0.0,1.0,(time - float(a[0]))/maxf(0.0001,float(b[0]) - float(a[0])))
 			return blend(a[1],b[1],u)
-	return keys[-1][1]
+	return (keys[-1][1] as Dictionary).duplicate()
 
 
 static func blend(a: Dictionary, b: Dictionary, w: float) -> Dictionary:
